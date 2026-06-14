@@ -44,6 +44,50 @@ ${userMessage}
 </question>`;
 }
 
+export async function generateQuizQuestion(): Promise<{ question: string; answer: string } | null> {
+  const prompt = `สร้างคำถามความรู้ทั่วไปภาษาไทย 1 ข้อ เนื้อหาสนุกน่าสนใจ ระดับปานกลาง เหมาะกับคนไทยทั่วไป
+คำตอบต้องสั้น ไม่เกิน 5 คำ
+ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่น: {"question":"...","answer":"..."}`;
+
+  const result = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { temperature: 1.2, maxOutputTokens: 256 },
+  });
+
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as { question: string; answer: string };
+  } catch {
+    return null;
+  }
+}
+
+export async function checkQuizAnswer(question: string, correctAnswer: string, userAnswer: string): Promise<boolean> {
+  const prompt = `คำถาม: "${question}"
+คำตอบที่ถูกต้อง: "${correctAnswer}"
+คำตอบของผู้เล่น: "${userAnswer}"
+ผู้เล่นตอบถูกหรือไม่? (ยอมรับคำตอบที่มีความหมายใกล้เคียง สะกดผิดเล็กน้อย หรือเป็นคำย่อที่รู้จักกัน)
+ตอบ JSON เท่านั้น ไม่ต้องอธิบาย: {"correct":true} หรือ {"correct":false}`;
+
+  const result = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { temperature: 0, maxOutputTokens: 32 },
+  });
+
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return false;
+  try {
+    return JSON.parse(match[0]).correct === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
   const result = await ai.models.generateContent({
     model: "gemini-2.5-flash",

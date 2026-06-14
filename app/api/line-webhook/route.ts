@@ -3,12 +3,24 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
-import { askGemini, DEFAULT_REPLY } from "@/lib/gemini";
+import { askGemini, DEFAULT_REPLY, generateQuizQuestion, checkQuizAnswer } from "@/lib/gemini";
 import { getUserByLineId } from "@/lib/points";
+import {
+  migrateQuizDB, getQuizSession, ensureSession,
+  startQuestion, clearQuestion, awardQuizPoint, QuizSession,
+} from "@/lib/quiz";
 
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET ?? "";
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 const LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply";
+const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
+const QUIZ_TRIGGER = "🎮 เล่นเกมตอบคำถาม";
+const MAX_QUESTIONS = 3;
+
+let quizDbReady = false;
+async function ensureQuizDB() {
+  if (!quizDbReady) { await migrateQuizDB(); quizDbReady = true; }
+}
 
 function verifySignature(rawBody: string, signature: string): boolean {
   const hmac = crypto.createHmac("sha256", CHANNEL_SECRET);
@@ -19,49 +31,25 @@ function verifySignature(rawBody: string, signature: string): boolean {
 async function sendReply(replyToken: string, text: string): Promise<void> {
   const res = await fetch(LINE_REPLY_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`,
-    },
-    body: JSON.stringify({
-      replyToken,
-      messages: [{ type: "text", text }],
-    }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
+    body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] }),
   });
-
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`[line] reply failed replyToken=${replyToken} status=${res.status} body=${body}`);
-  }
+  if (!res.ok) console.error(`[line] reply failed status=${res.status} body=${await res.text()}`);
 }
-
-const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
 
 async function sendReplyButton(replyToken: string, text: string, label: string, uri: string): Promise<void> {
   const res = await fetch(LINE_REPLY_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
     body: JSON.stringify({
       replyToken,
       messages: [{
-        type: "template",
-        altText: text,
-        template: {
-          type: "buttons",
-          text,
-          actions: [{ type: "uri", label, uri }],
-        },
+        type: "template", altText: text,
+        template: { type: "buttons", text, actions: [{ type: "uri", label, uri }] },
       }],
     }),
   });
-
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`[line] reply button failed status=${res.status} body=${body}`);
-  }
+  if (!res.ok) console.error(`[line] reply button failed status=${res.status} body=${await res.text()}`);
 }
 
 const WELCOME_MESSAGE =
@@ -75,18 +63,115 @@ const WELCOME_MESSAGE =
   `💬 สอบถามสินค้าและราคา\n` +
   `พิมพ์คำถามได้เลยค่ะ น้อง DK ยินดีช่วยเสมอ 😊`;
 
+// ── เกมตอบคำถาม: ประเมินคำตอบ ──────────────────────────────────
+async function handleQuizAnswer(
+  userId: number,
+  replyToken: string,
+  session: QuizSession,
+  userAnswer: string,
+): Promise<void> {
+  const { current_question, current_answer, points_earned, questions_asked } = session;
 
+  const isCorrect = await checkQuizAnswer(current_question!, current_answer!, userAnswer);
+  await clearQuestion(userId);
 
+  let msg = "";
+
+  if (isCorrect) {
+    msg += `✅ ถูกต้องค่ะ! คำตอบคือ "${current_answer}"\n\n`;
+    if (points_earned === 0) {
+      await awardQuizPoint(userId);
+      msg += `🌟 ได้รับ 1 แต้มแล้วค่ะ!`;
+    } else {
+      msg += `(รับแต้มรางวัลประจำวันไปแล้วนะคะ 1 แต้ม/วัน 😊)`;
+    }
+    if (questions_asked < MAX_QUESTIONS) {
+      msg += `\n\n📝 เหลืออีก ${MAX_QUESTIONS - questions_asked} คำถาม\nพิมพ์ "${QUIZ_TRIGGER}" เพื่อเล่นต่อค่ะ`;
+    } else {
+      msg += `\n\n🎉 เล่นครบแล้วค่ะ มาเล่นใหม่ได้พรุ่งนี้นะคะ 😊`;
+    }
+  } else {
+    msg += `❌ ยังไม่ถูกนะคะ\n✨ คำตอบที่ถูกต้องคือ "${current_answer}"\n\n`;
+
+    if (questions_asked < MAX_QUESTIONS) {
+      const next = await generateQuizQuestion();
+      if (next) {
+        await startQuestion(userId, next.question, next.answer);
+        msg += `📝 คำถามที่ ${questions_asked + 1}/${MAX_QUESTIONS}:\n\n${next.question}\n\n💡 พิมพ์คำตอบได้เลยค่ะ`;
+      } else {
+        msg += `พิมพ์ "${QUIZ_TRIGGER}" เพื่อเล่นต่อค่ะ`;
+      }
+    } else {
+      msg += `⏰ เล่นครบ ${MAX_QUESTIONS} คำถามแล้วค่ะ\nมาเล่นใหม่ได้พรุ่งนี้นะคะ 😊`;
+    }
+  }
+
+  await sendReply(replyToken, msg);
+}
+
+// ── เกมตอบคำถาม: เริ่มเกม ───────────────────────────────────────
+async function startQuiz(lineUserId: string, replyToken: string): Promise<void> {
+  const user = await getUserByLineId(lineUserId);
+  if (!user) {
+    await sendReplyButton(
+      replyToken,
+      "สมัครสมาชิกก่อนเล่นเกมได้เลยค่ะ 🎮",
+      "สมัครสมาชิก",
+      LIFF_URL,
+    );
+    return;
+  }
+
+  await ensureQuizDB();
+  const session = await ensureSession(user.id);
+
+  if (session.questions_asked >= MAX_QUESTIONS) {
+    await sendReply(replyToken, `⏰ วันนี้เล่นครบ ${MAX_QUESTIONS} คำถามแล้วค่ะ\nมาเล่นใหม่ได้พรุ่งนี้นะคะ 😊`);
+    return;
+  }
+
+  const q = await generateQuizQuestion();
+  if (!q) {
+    await sendReply(replyToken, `ขอโทษค่ะ โหลดคำถามไม่ได้ กรุณาลองใหม่อีกครั้งนะคะ`);
+    return;
+  }
+
+  await startQuestion(user.id, q.question, q.answer);
+
+  let msg = `🎮 เกมตอบคำถามรับแต้ม!\n`;
+  msg += `━━━━━━━━━━━━━━━━\n`;
+  msg += `📝 คำถามที่ ${session.questions_asked + 1}/${MAX_QUESTIONS}:\n\n`;
+  msg += `${q.question}\n\n`;
+  msg += `💡 พิมพ์คำตอบได้เลยค่ะ`;
+  if (session.points_earned === 0) {
+    msg += `\n🌟 ตอบถูกรับ 1 แต้ม (สูงสุด 1 แต้ม/วัน)`;
+  }
+
+  await sendReply(replyToken, msg);
+}
+
+// ── จัดการข้อความหลัก ───────────────────────────────────────────
 async function handleMessage(
   lineUserId: string,
   replyToken: string,
   text: string,
   faq: string
 ): Promise<void> {
-  let reply: string;
+  const trimmed = text.trim();
+
+  // ตรวจสอบว่ากำลังอยู่ในเกมอยู่ไหม
+  const user = await getUserByLineId(lineUserId);
+  if (user) {
+    await ensureQuizDB();
+    const session = await getQuizSession(user.id);
+    if (session?.current_question) {
+      await handleQuizAnswer(user.id, replyToken, session, trimmed);
+      return;
+    }
+  }
 
   // สมัครสมาชิก → เปิด LIFF
-  if (text.trim() === "สมัครสมาชิก") {
+  if (trimmed === "สมัครสมาชิก") {
     await sendReplyButton(
       replyToken,
       "กดปุ่มด้านล่างเพื่อสมัครสมาชิกหรือดูบัตรสมาชิกค่ะ 🎴",
@@ -96,20 +181,15 @@ async function handleMessage(
     return;
   }
 
-  // คำสั่งลูกค้า: ดูวิธีสะสมแต้ม / สมาชิก
-  if (text.trim() === "สมาชิก" || text.trim() === "วิธีสะสมแต้ม" || text.trim() === "สะสมแต้ม") {
-    await sendReply(replyToken, WELCOME_MESSAGE).catch((e) =>
-      console.error("[line] sendReply error", e)
-    );
+  if (trimmed === "สมาชิก" || trimmed === "วิธีสะสมแต้ม" || trimmed === "สะสมแต้ม") {
+    await sendReply(replyToken, WELCOME_MESSAGE).catch((e) => console.error("[line] sendReply error", e));
     return;
   }
 
-  // คำสั่งลูกค้า: ดูคะแนน
-  if (text.trim() === "คะแนน" || text.trim() === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
-    const user = await getUserByLineId(lineUserId);
+  if (trimmed === "คะแนน" || trimmed === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
     if (user) {
-      reply = `แต้มสะสมของคุณ: ${user.points} แต้มค่ะ 🌟\nทุก 100 บาท = 1 แต้ม`;
-      await sendReply(replyToken, reply).catch((e) => console.error("[line] sendReply error", e));
+      await sendReply(replyToken, `แต้มสะสมของคุณ: ${user.points} แต้มค่ะ 🌟\nทุก 100 บาท = 1 แต้ม`)
+        .catch((e) => console.error("[line] sendReply error", e));
     } else {
       await sendReplyButton(
         replyToken,
@@ -121,16 +201,21 @@ async function handleMessage(
     return;
   }
 
-  // ส่งต่อให้ Gemini ตอบ FAQ
+  // เกมตอบคำถาม
+  if (trimmed === QUIZ_TRIGGER) {
+    await startQuiz(lineUserId, replyToken).catch((e) => console.error("[quiz] error", e));
+    return;
+  }
+
+  // Gemini FAQ
+  let reply: string;
   try {
     reply = await askGemini(faq, text);
   } catch (err) {
     console.error("[gemini] error:", err);
     reply = DEFAULT_REPLY;
   }
-  await sendReply(replyToken, reply).catch((e) =>
-    console.error("[line] sendReply error", e)
-  );
+  await sendReply(replyToken, reply).catch((e) => console.error("[line] sendReply error", e));
 }
 
 interface LineTextEvent {
@@ -167,7 +252,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     parsed.events.map(async (ev) => {
       const event = ev as LineTextEvent | LineFollowEvent;
 
-      // ลูกค้า add LINE OA ครั้งแรก
       if (event.type === "follow") {
         await sendReply(event.replyToken, WELCOME_MESSAGE).catch((e) =>
           console.error("[line] follow reply error", e)
@@ -175,11 +259,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return;
       }
 
-      // ข้อความปกติ
-      if (
-        event.type === "message" &&
-        (event as LineTextEvent).message?.type === "text"
-      ) {
+      if (event.type === "message" && (event as LineTextEvent).message?.type === "text") {
         const { source, replyToken, message } = event as LineTextEvent;
         await handleMessage(source.userId, replyToken, message.text, faq);
       }
