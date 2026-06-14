@@ -201,6 +201,20 @@ async function handleMessage(
     return;
   }
 
+  // ติดต่อฝ่ายขาย
+  if (trimmed === "ติดต่อฝ่ายขาย") {
+    const msg =
+      `📞 ติดต่อฝ่ายขาย DK วัสดุก่อสร้าง\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `📱 คุณเก๋    094-651-4309\n` +
+      `📱 คุณหญิง  088-760-8470\n` +
+      `📱 คุณแพรว  065-209-4955\n` +
+      `📱 คุณลัย   095-023-6382\n` +
+      `📱 คุณมีน   094-629-3510`;
+    await sendReply(replyToken, msg).catch((e) => console.error("[line] sendReply error", e));
+    return;
+  }
+
   // เกมตอบคำถาม
   if (trimmed === QUIZ_TRIGGER) {
     await startQuiz(lineUserId, replyToken).catch((e) => console.error("[quiz] error", e));

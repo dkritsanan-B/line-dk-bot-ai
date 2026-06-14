@@ -103,22 +103,25 @@ async function main() {
   }
 
   // 2. สร้าง rich menu ใหม่
-  console.log("2️⃣  สร้าง Rich Menu ใหม่...");
+  console.log("2️⃣  สร้าง Rich Menu ใหม่ (6 ปุ่ม)...");
   const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
+  const MAPS_URL = "https://maps.app.goo.gl/kaxxDP9ywmorkXPC6";
+  const FB_URL   = "https://www.facebook.com/dksteelandtools";
+  const WEB_URL  = FB_URL; // เปลี่ยนเป็น URL เว็บไซต์จริงเมื่อพร้อม
   const created = await lineAPI("POST", "api.line.me", "/v2/bot/richmenu", {
-    size: { width: 2500, height: 843 },
+    size: { width: 2500, height: 1686 },
     selected: true,
-    name: "DK Loyalty Menu",
+    name: "DK Menu 6 Buttons",
     chatBarText: "เมนู 📋",
     areas: [
-      {
-        bounds: { x: 0, y: 0, width: 1250, height: 843 },
-        action: { type: "uri", label: "สมัครสมาชิก / ดูบัตร", uri: LIFF_URL },
-      },
-      {
-        bounds: { x: 1250, y: 0, width: 1250, height: 843 },
-        action: { type: "uri", label: "เช็คคะแนนสะสม", uri: LIFF_URL },
-      },
+      // แถวบน
+      { bounds: { x: 0,    y: 0,   width: 833, height: 843 }, action: { type: "uri",     label: "สมัครสมาชิก / เช็คคะแนน", uri: LIFF_URL } },
+      { bounds: { x: 833,  y: 0,   width: 833, height: 843 }, action: { type: "uri",     label: "แผนที่ร้าน",                uri: MAPS_URL } },
+      { bounds: { x: 1666, y: 0,   width: 834, height: 843 }, action: { type: "message", label: "ติดต่อฝ่ายขาย",             text: "ติดต่อฝ่ายขาย" } },
+      // แถวล่าง
+      { bounds: { x: 0,    y: 843, width: 833, height: 843 }, action: { type: "message", label: "เล่นเกมรับแต้ม",            text: "🎮 เล่นเกมตอบคำถาม" } },
+      { bounds: { x: 833,  y: 843, width: 833, height: 843 }, action: { type: "uri",     label: "Facebook เพจ",              uri: FB_URL } },
+      { bounds: { x: 1666, y: 843, width: 834, height: 843 }, action: { type: "uri",     label: "เว็บไซต์ร้าน",              uri: WEB_URL } },
     ],
   });
   const richMenuId = created.richMenuId;
