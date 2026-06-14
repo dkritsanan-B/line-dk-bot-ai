@@ -35,6 +35,18 @@ async function sendReply(replyToken: string, text: string): Promise<void> {
   }
 }
 
+const WELCOME_MESSAGE =
+  `ยินดีต้อนรับสู่ร้าน DK วัสดุก่อสร้างค่ะ 🏗️\n\n` +
+  `📌 ระบบสะสมแต้ม\n` +
+  `ทุกการซื้อ 100 บาท = 1 แต้ม\n\n` +
+  `📝 สมัครสมาชิก\n` +
+  `พิมพ์: สมัครสมาชิก [เบอร์มือถือ]\n` +
+  `เช่น: สมัครสมาชิก 0812345678\n\n` +
+  `🌟 เช็คแต้มสะสม\n` +
+  `พิมพ์: แต้ม\n\n` +
+  `💬 สอบถามสินค้าและราคา\n` +
+  `พิมพ์คำถามได้เลยค่ะ น้อง DK ยินดีช่วยเสมอ 😊`;
+
 // +แต้ม 1500 0812345678
 function parseAddPointsCommand(text: string): { amount: number; phone: string } | null {
   const match = text.trim().match(/^\+แต้ม\s+(\d+)\s+(0\d{9})$/);
@@ -87,6 +99,14 @@ async function handleMessage(
     return;
   }
 
+  // คำสั่งลูกค้า: ดูวิธีสะสมแต้ม / สมาชิก
+  if (text.trim() === "สมาชิก" || text.trim() === "วิธีสะสมแต้ม" || text.trim() === "สะสมแต้ม") {
+    await sendReply(replyToken, WELCOME_MESSAGE).catch((e) =>
+      console.error("[line] sendReply error", e)
+    );
+    return;
+  }
+
   // คำสั่งลูกค้า: ดูคะแนน
   if (text.trim() === "คะแนน" || text.trim() === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
     const user = await getUserByLineId(lineUserId);
@@ -118,6 +138,12 @@ interface LineTextEvent {
   message: { type: "text"; text: string };
 }
 
+interface LineFollowEvent {
+  type: "follow";
+  replyToken: string;
+  source: { userId: string };
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
   const signature = req.headers.get("x-line-signature") ?? "";
@@ -133,18 +159,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const textEvents = parsed.events.filter(
-    (ev): ev is LineTextEvent =>
-      (ev as LineTextEvent).type === "message" &&
-      (ev as LineTextEvent).message?.type === "text"
-  );
-
   const faq = await getFaqContent();
 
   await Promise.all(
-    textEvents.map((ev) =>
-      handleMessage(ev.source.userId, ev.replyToken, ev.message.text, faq)
-    )
+    parsed.events.map(async (ev) => {
+      const event = ev as LineTextEvent | LineFollowEvent;
+
+      // ลูกค้า add LINE OA ครั้งแรก
+      if (event.type === "follow") {
+        await sendReply(event.replyToken, WELCOME_MESSAGE).catch((e) =>
+          console.error("[line] follow reply error", e)
+        );
+        return;
+      }
+
+      // ข้อความปกติ
+      if (
+        event.type === "message" &&
+        (event as LineTextEvent).message?.type === "text"
+      ) {
+        const { source, replyToken, message } = event as LineTextEvent;
+        await handleMessage(source.userId, replyToken, message.text, faq);
+      }
+    })
   );
 
   return NextResponse.json({ ok: true });
