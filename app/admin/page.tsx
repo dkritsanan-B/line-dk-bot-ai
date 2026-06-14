@@ -183,12 +183,13 @@ export default function AdminPage() {
       const res  = await fetch(`/api/admin/members?search=${encodeURIComponent(q)}`, {
         headers: { "x-admin-password": pw },
       });
+      if (res.status === 401) { setError("รหัสผ่านไม่ถูกต้อง"); setAuthed(false); setLoading(false); return; }
+      if (!res.ok) { setError(`เกิดข้อผิดพลาด (${res.status}) — กรุณา Redeploy Vercel`); setLoading(false); return; }
       const data = await res.json();
-      if (res.status === 401) { setError("รหัสผ่านไม่ถูกต้อง"); setAuthed(false); return; }
       setUsers(data.users ?? []);
       setAuthed(true);
       setSavedPw(pw);
-    } catch { setError("เกิดข้อผิดพลาด"); }
+    } catch { setError("เชื่อมต่อ API ไม่ได้ — กรุณาตรวจสอบ Vercel deployment"); }
     finally { setLoading(false); }
   }, []);
 
