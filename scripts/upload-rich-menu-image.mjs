@@ -10,6 +10,7 @@
 import https from "https";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
+import sharp from "sharp";
 
 // ── อ่าน env ──────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -42,9 +43,23 @@ if (!existsSync(absPath)) {
   process.exit(1);
 }
 const ext = path.extname(absPath).toLowerCase();
-const contentType = ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
-const imageBuffer = readFileSync(absPath);
-console.log(`📁  ไฟล์: ${absPath} (${(imageBuffer.length / 1024).toFixed(1)} KB)`);
+let contentType = ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+const rawBuffer = readFileSync(absPath);
+console.log(`📁  ไฟล์: ${absPath} (${(rawBuffer.length / 1024).toFixed(1)} KB)`);
+
+// ── บีบอัดให้ต่ำกว่า 1 MB (LINE limit) ──────────────────────────────────────
+const MAX_BYTES = 950 * 1024; // 950 KB เผื่อ margin
+let imageBuffer = rawBuffer;
+if (rawBuffer.length > MAX_BYTES) {
+  console.log("⚙️   รูปใหญ่เกิน 1 MB กำลังบีบอัดเป็น JPEG...");
+  imageBuffer = await sharp(rawBuffer)
+    .resize({ width: 2500, withoutEnlargement: true })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
+  console.log(`   บีบอัดแล้ว: ${(imageBuffer.length / 1024).toFixed(1)} KB`);
+  // contentType ต้องเปลี่ยนเป็น jpeg ด้วย
+  contentType = "image/jpeg";
+}
 
 // ── LINE API ──────────────────────────────────────────────────────────────────
 function lineAPI(method, hostname, path, body, isBuffer = false) {
@@ -79,45 +94,42 @@ function lineAPI(method, hostname, path, body, isBuffer = false) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  // 1. ดึงรายการ rich menu ที่มีอยู่
-  console.log("1️⃣  ดึงรายการ Rich Menu...");
+  // 1. ลบ rich menu เก่าทั้งหมดออกก่อน (บังคับ LINE refresh cache)
+  console.log("1️⃣  ลบ Rich Menu เก่า...");
   const list = await lineAPI("GET", "api.line.me", "/v2/bot/richmenu/list");
-  const menus = list.richmenus ?? [];
-
-  let richMenuId;
-  if (menus.length === 0) {
-    // ยังไม่มี rich menu — สร้างใหม่
-    console.log("   ยังไม่มี Rich Menu สร้างใหม่...");
-    const created = await lineAPI("POST", "api.line.me", "/v2/bot/richmenu", {
-      size: { width: 2500, height: 843 },
-      selected: true,
-      name: "DK Loyalty Menu",
-      chatBarText: "เมนู 📋",
-      areas: [
-        {
-          bounds: { x: 0, y: 0, width: 1250, height: 843 },
-          action: { type: "message", label: "สมัครสมาชิก", text: "สมัครสมาชิก" },
-        },
-        {
-          bounds: { x: 1250, y: 0, width: 1250, height: 843 },
-          action: { type: "message", label: "เช็คคะแนนสะสม", text: "แต้ม" },
-        },
-      ],
-    });
-    richMenuId = created.richMenuId;
-    console.log(`   สร้างแล้ว: ${richMenuId}`);
-  } else {
-    richMenuId = menus[0].richMenuId;
-    console.log(`   ใช้ richMenuId: ${richMenuId} (${menus[0].name})`);
+  for (const m of list.richmenus ?? []) {
+    await lineAPI("DELETE", "api.line.me", `/v2/bot/richmenu/${m.richMenuId}`);
+    console.log(`   ลบ: ${m.richMenuId}`);
   }
 
-  // 2. อัปโหลดรูป
-  console.log("2️⃣  อัปโหลดรูปภาพ...");
+  // 2. สร้าง rich menu ใหม่
+  console.log("2️⃣  สร้าง Rich Menu ใหม่...");
+  const created = await lineAPI("POST", "api.line.me", "/v2/bot/richmenu", {
+    size: { width: 2500, height: 843 },
+    selected: true,
+    name: "DK Loyalty Menu",
+    chatBarText: "เมนู 📋",
+    areas: [
+      {
+        bounds: { x: 0, y: 0, width: 1250, height: 843 },
+        action: { type: "message", label: "สมัครสมาชิก", text: "สมัครสมาชิก" },
+      },
+      {
+        bounds: { x: 1250, y: 0, width: 1250, height: 843 },
+        action: { type: "message", label: "เช็คคะแนนสะสม", text: "แต้ม" },
+      },
+    ],
+  });
+  const richMenuId = created.richMenuId;
+  console.log(`   richMenuId ใหม่: ${richMenuId}`);
+
+  // 3. อัปโหลดรูป
+  console.log("3️⃣  อัปโหลดรูปภาพ...");
   await lineAPI("POST", "api-data.line.me", `/v2/bot/richmenu/${richMenuId}/content`, imageBuffer, true);
   console.log("   อัปโหลดสำเร็จ ✓");
 
-  // 3. ตั้งเป็น default
-  console.log("3️⃣  ตั้งเป็น default Rich Menu...");
+  // 4. ตั้งเป็น default
+  console.log("4️⃣  ตั้งเป็น default Rich Menu...");
   await lineAPI("POST", "api.line.me", `/v2/bot/user/all/richmenu/${richMenuId}`, {});
   console.log("   ตั้งค่าสำเร็จ ✓");
 
