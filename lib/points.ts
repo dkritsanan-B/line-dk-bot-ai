@@ -75,6 +75,10 @@ export async function addPoints(
   const pointsEarned = Math.floor(purchaseAmount / POINTS_PER_BAHT);
   if (pointsEarned <= 0) return null;
 
+  await sql`
+    ALTER TABLE transactions
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  `;
   await sql`UPDATE users SET points = points + ${pointsEarned} WHERE phone = ${phone}`;
   await sql`
     INSERT INTO transactions (user_id, purchase_amount, points_earned)

@@ -76,6 +76,14 @@ export default function AdminPage() {
   const [csvError, setCsvError]     = useState("");
   const csvInputRef                 = useRef<HTMLInputElement>(null);
 
+  // ประวัติการเพิ่มแต้ม
+  interface TxRow { id: number; purchase_amount: number; points_earned: number; created_at: string; phone: string; first_name: string | null; last_name: string | null; display_name: string | null; }
+  const [txRows, setTxRows]         = useState<TxRow[]>([]);
+  const [txSearch, setTxSearch]     = useState("");
+  const [txFrom, setTxFrom]         = useState("");
+  const [txTo, setTxTo]             = useState("");
+  const [txLoading, setTxLoading]   = useState(false);
+
   async function handleAddPoints() {
     if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
     const amt = parseInt(apAmount);
@@ -177,6 +185,19 @@ export default function AdminPage() {
     } catch { setError("เกิดข้อผิดพลาด"); }
     finally { setLoading(false); }
   }, []);
+
+  async function fetchTransactions(q = txSearch, from = txFrom, to = txTo) {
+    setTxLoading(true);
+    try {
+      const params = new URLSearchParams({ search: q, from, to });
+      const res  = await fetch(`/api/admin/transactions?${params}`, {
+        headers: { "x-admin-password": savedPw },
+      });
+      const data = await res.json();
+      setTxRows(data.transactions ?? []);
+    } catch { /* silent */ }
+    finally { setTxLoading(false); }
+  }
 
   /* ── Login ── */
   if (!authed) return (
@@ -430,6 +451,83 @@ export default function AdminPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* ── ประวัติการเพิ่มแต้ม ── */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>📋 ประวัติการเพิ่มแต้ม</div>
+          <button onClick={() => fetchTransactions()} style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
+            {txLoading ? "กำลังโหลด..." : "🔄 โหลดประวัติ"}
+          </button>
+        </div>
+
+        {/* Filter */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          <input
+            type="text" placeholder="ค้นหาชื่อ / เบอร์..."
+            value={txSearch} onChange={e => setTxSearch(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && fetchTransactions()}
+            style={{ ...s.input, flex: 1, minWidth: 180, marginBottom: 0 }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>ตั้งแต่</span>
+            <input type="date" value={txFrom} onChange={e => setTxFrom(e.target.value)}
+              style={{ ...s.input, width: 160, marginBottom: 0 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>ถึง</span>
+            <input type="date" value={txTo} onChange={e => setTxTo(e.target.value)}
+              style={{ ...s.input, width: 160, marginBottom: 0 }} />
+          </div>
+          <button onClick={() => fetchTransactions()} style={s.btn}>🔍 ค้นหา</button>
+          {(txSearch || txFrom || txTo) && (
+            <button onClick={() => { setTxSearch(""); setTxFrom(""); setTxTo(""); fetchTransactions("", "", ""); }}
+              style={{ ...s.btn, background: "#eee", color: "#555" }}>ล้าง</button>
+          )}
+        </div>
+
+        {txRows.length === 0 && !txLoading && (
+          <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 14 }}>
+            กด "โหลดประวัติ" เพื่อดูข้อมูล
+          </div>
+        )}
+
+        {txRows.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={s.table}>
+              <thead>
+                <tr style={{ background: "#f5f7fa" }}>
+                  {["#", "วันที่", "เวลา", "ชื่อลูกค้า", "เบอร์", "ยอดซื้อ (บาท)", "แต้มที่ได้"].map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {txRows.map((t, i) => {
+                  const dt = new Date(t.created_at);
+                  const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+                  const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                  const name = t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-");
+                  return (
+                    <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                      <td style={s.td}>{i + 1}</td>
+                      <td style={s.td}>{dateStr}</td>
+                      <td style={s.td}>{timeStr}</td>
+                      <td style={{ ...s.td, fontWeight: 600 }}>{name}</td>
+                      <td style={s.td}>{t.phone}</td>
+                      <td style={{ ...s.td, textAlign: "right" }}>{Number(t.purchase_amount).toLocaleString()}</td>
+                      <td style={{ ...s.td, textAlign: "right", fontWeight: 700, color: "#1976D2" }}>+{t.points_earned}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div style={{ padding: "12px 14px", fontSize: 12, color: "#aaa" }}>
+              แสดง {txRows.length} รายการล่าสุด
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
