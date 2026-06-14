@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 interface User {
   id: number;
@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [csvLoading, setCsvLoading] = useState(false);
   const [csvDone, setCsvDone]       = useState(false);
   const [csvError, setCsvError]     = useState("");
+  const csvInputRef                 = useRef<HTMLInputElement>(null);
 
   async function handleAddPoints() {
     if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
@@ -282,18 +283,17 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div
-          style={{ border: "2px dashed #ccc", borderRadius: 12, padding: "28px", textAlign: "center", cursor: "pointer", background: "#fafafa" }}
-          onClick={() => document.getElementById("csv-upload")?.click()}
+        <label
+          style={{ border: "2px dashed #ccc", borderRadius: 12, padding: "28px", textAlign: "center", cursor: "pointer", background: "#fafafa", display: "block" }}
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
           <div style={{ fontSize: 14, color: "#666" }}>คลิกหรือลากไฟล์ CSV มาวางที่นี่</div>
           <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>รูปแบบ: เบอร์มือถือ, ยอดซื้อ (บาท)</div>
-          <input id="csv-upload" type="file" accept=".csv" style={{ display: "none" }}
+          <input ref={csvInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = ""; }} />
-        </div>
+        </label>
 
         {csvError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {csvError}</div>}
 
