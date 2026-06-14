@@ -86,6 +86,19 @@ async function handleMessage(
     return;
   }
 
+  // ปุ่ม Rich Menu: สมัครสมาชิก (ไม่มีเบอร์) → แสดงวิธีกรอก
+  if (text.trim() === "สมัครสมาชิก") {
+    reply =
+      `📝 สมัครสมาชิกสะสมแต้มค่ะ\n\n` +
+      `พิมพ์: สมัครสมาชิก [เบอร์มือถือ]\n` +
+      `ตัวอย่าง: สมัครสมาชิก 0812345678\n\n` +
+      `ทุก 100 บาท = 1 แต้ม 🌟`;
+    await sendReply(replyToken, reply).catch((e) =>
+      console.error("[line] sendReply error", e)
+    );
+    return;
+  }
+
   // คำสั่งลูกค้า: สมัครสมาชิก 0812345678
   const phone = parseRegisterCommand(text);
   if (phone) {
