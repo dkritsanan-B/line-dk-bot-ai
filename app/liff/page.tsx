@@ -78,6 +78,7 @@ export default function LiffPage() {
 
         const p = await liff.getProfile();
         setProfile({ userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl ?? "" });
+        sessionStorage.setItem("liff_uid", p.userId);
 
         const res  = await fetch(`/api/member?lineUserId=${p.userId}`);
         const data = await res.json();

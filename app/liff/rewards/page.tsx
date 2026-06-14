@@ -31,21 +31,22 @@ export default function RewardsPage() {
   useEffect(() => {
     async function init() {
       try {
-        // ดึง lineUserId จาก LIFF หรือ URL param (fallback)
-        let lineUserId = "";
+        // ดึง lineUserId จาก sessionStorage (เก็บไว้จากหน้าหลัก) → URL param → LIFF
+        let lineUserId = sessionStorage.getItem("liff_uid") ?? "";
 
-        try {
-          const liff = (await import("@line/liff")).default;
-          await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-          if (liff.isLoggedIn()) {
-            const p = await liff.getProfile();
-            lineUserId = p.userId;
-          }
-        } catch {}
-
-        // fallback: ใช้ uid จาก URL query param ที่ส่งมาจากหน้าหลัก
         if (!lineUserId) {
           lineUserId = new URLSearchParams(window.location.search).get("uid") ?? "";
+        }
+
+        if (!lineUserId) {
+          try {
+            const liff = (await import("@line/liff")).default;
+            await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+            if (liff.isLoggedIn()) {
+              const p = await liff.getProfile();
+              lineUserId = p.userId;
+            }
+          } catch {}
         }
 
         if (lineUserId) {
