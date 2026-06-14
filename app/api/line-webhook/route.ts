@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
 import { askGemini, DEFAULT_REPLY } from "@/lib/gemini";
-import { addPoints, getUserByLineId, registerUser } from "@/lib/points";
+import { addPoints, getUserByLineId } from "@/lib/points";
 
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET ?? "";
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -35,15 +35,43 @@ async function sendReply(replyToken: string, text: string): Promise<void> {
   }
 }
 
+const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
+
+async function sendReplyButton(replyToken: string, text: string, label: string, uri: string): Promise<void> {
+  const res = await fetch(LINE_REPLY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`,
+    },
+    body: JSON.stringify({
+      replyToken,
+      messages: [{
+        type: "template",
+        altText: text,
+        template: {
+          type: "buttons",
+          text,
+          actions: [{ type: "uri", label, uri }],
+        },
+      }],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[line] reply button failed status=${res.status} body=${body}`);
+  }
+}
+
 const WELCOME_MESSAGE =
   `ยินดีต้อนรับสู่ร้าน DK วัสดุก่อสร้างค่ะ 🏗️\n\n` +
   `📌 ระบบสะสมแต้ม\n` +
   `ทุกการซื้อ 100 บาท = 1 แต้ม\n\n` +
-  `📝 สมัครสมาชิก\n` +
-  `พิมพ์: สมัครสมาชิก [เบอร์มือถือ]\n` +
-  `เช่น: สมัครสมาชิก 0812345678\n\n` +
+  `🎴 สมัครสมาชิก / ดูบัตรสมาชิก\n` +
+  `กดปุ่ม "สมัครสมาชิก" ในเมนูด้านล่างค่ะ\n\n` +
   `🌟 เช็คแต้มสะสม\n` +
-  `พิมพ์: แต้ม\n\n` +
+  `พิมพ์: แต้ม หรือกดปุ่มในเมนูด้านล่างค่ะ\n\n` +
   `💬 สอบถามสินค้าและราคา\n` +
   `พิมพ์คำถามได้เลยค่ะ น้อง DK ยินดีช่วยเสมอ 😊`;
 
@@ -54,11 +82,6 @@ function parseAddPointsCommand(text: string): { amount: number; phone: string } 
   return { amount: parseInt(match[1]), phone: match[2] };
 }
 
-// สมัครสมาชิก 0812345678
-function parseRegisterCommand(text: string): string | null {
-  const match = text.trim().match(/^สมัครสมาชิก\s+(0\d{9})$/);
-  return match ? match[1] : null;
-}
 
 async function handleMessage(
   lineUserId: string,
@@ -86,29 +109,14 @@ async function handleMessage(
     return;
   }
 
-  // ปุ่ม Rich Menu: สมัครสมาชิก (ไม่มีเบอร์) → แสดงวิธีกรอก
+  // สมัครสมาชิก → เปิด LIFF
   if (text.trim() === "สมัครสมาชิก") {
-    reply =
-      `📝 สมัครสมาชิกสะสมแต้มค่ะ\n\n` +
-      `พิมพ์: สมัครสมาชิก [เบอร์มือถือ]\n` +
-      `ตัวอย่าง: สมัครสมาชิก 0812345678\n\n` +
-      `ทุก 100 บาท = 1 แต้ม 🌟`;
-    await sendReply(replyToken, reply).catch((e) =>
-      console.error("[line] sendReply error", e)
-    );
-    return;
-  }
-
-  // คำสั่งลูกค้า: สมัครสมาชิก 0812345678
-  const phone = parseRegisterCommand(text);
-  if (phone) {
-    const { isNew } = await registerUser(lineUserId, phone);
-    reply = isNew
-      ? `สมัครสมาชิกสำเร็จแล้วค่ะ 🎊 เบอร์ ${phone}\nสะสมแต้มได้เลยนะคะ ทุก 100 บาท = 1 แต้ม`
-      : `ผูกบัญชีเบอร์ ${phone} กับ LINE นี้เรียบร้อยแล้วค่ะ 😊`;
-    await sendReply(replyToken, reply).catch((e) =>
-      console.error("[line] sendReply error", e)
-    );
+    await sendReplyButton(
+      replyToken,
+      "กดปุ่มด้านล่างเพื่อสมัครสมาชิกหรือดูบัตรสมาชิกค่ะ 🎴",
+      "สมัครสมาชิก / ดูบัตรสมาชิก",
+      LIFF_URL,
+    ).catch((e) => console.error("[line] sendReplyButton error", e));
     return;
   }
 
@@ -123,12 +131,17 @@ async function handleMessage(
   // คำสั่งลูกค้า: ดูคะแนน
   if (text.trim() === "คะแนน" || text.trim() === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
     const user = await getUserByLineId(lineUserId);
-    reply = user
-      ? `แต้มสะสมของคุณ: ${user.points} แต้มค่ะ 🌟\nทุก 100 บาท = 1 แต้ม`
-      : `ยังไม่ได้สมัครสมาชิกค่ะ 😊\nพิมพ์ "สมัครสมาชิก [เบอร์มือถือ]" เพื่อเริ่มสะสมแต้มได้เลยนะคะ`;
-    await sendReply(replyToken, reply).catch((e) =>
-      console.error("[line] sendReply error", e)
-    );
+    if (user) {
+      reply = `แต้มสะสมของคุณ: ${user.points} แต้มค่ะ 🌟\nทุก 100 บาท = 1 แต้ม`;
+      await sendReply(replyToken, reply).catch((e) => console.error("[line] sendReply error", e));
+    } else {
+      await sendReplyButton(
+        replyToken,
+        "ยังไม่ได้สมัครสมาชิกค่ะ 😊 กดปุ่มด้านล่างเพื่อสมัครได้เลยนะคะ",
+        "สมัครสมาชิก",
+        LIFF_URL,
+      ).catch((e) => console.error("[line] sendReplyButton error", e));
+    }
     return;
   }
 
