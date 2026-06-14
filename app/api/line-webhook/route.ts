@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
 import { askGemini, DEFAULT_REPLY } from "@/lib/gemini";
-import { addPoints, getUserByLineId } from "@/lib/points";
+import { getUserByLineId } from "@/lib/points";
 
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET ?? "";
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -75,12 +75,6 @@ const WELCOME_MESSAGE =
   `💬 สอบถามสินค้าและราคา\n` +
   `พิมพ์คำถามได้เลยค่ะ น้อง DK ยินดีช่วยเสมอ 😊`;
 
-// +แต้ม 1500 0812345678
-function parseAddPointsCommand(text: string): { amount: number; phone: string } | null {
-  const match = text.trim().match(/^\+แต้ม\s+(\d+)\s+(0\d{9})$/);
-  if (!match) return null;
-  return { amount: parseInt(match[1]), phone: match[2] };
-}
 
 
 async function handleMessage(
@@ -90,24 +84,6 @@ async function handleMessage(
   faq: string
 ): Promise<void> {
   let reply: string;
-
-  // คำสั่งพนักงาน: +แต้ม 1500 0812345678
-  const addCmd = parseAddPointsCommand(text);
-  if (addCmd) {
-    const result = await addPoints(addCmd.phone, addCmd.amount);
-    if (!result) {
-      reply = `ไม่พบลูกค้าเบอร์ ${addCmd.phone} ในระบบค่ะ`;
-    } else {
-      reply =
-        `เพิ่ม ${result.pointsEarned} แต้มให้เบอร์ ${addCmd.phone} สำเร็จค่ะ 🎉\n` +
-        `(ซื้อ ${addCmd.amount.toLocaleString()} บาท)\n` +
-        `แต้มสะสมรวม: ${result.totalPoints} แต้ม`;
-    }
-    await sendReply(replyToken, reply).catch((e) =>
-      console.error("[line] sendReply error", e)
-    );
-    return;
-  }
 
   // สมัครสมาชิก → เปิด LIFF
   if (text.trim() === "สมัครสมาชิก") {

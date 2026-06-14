@@ -60,6 +60,33 @@ export default function AdminPage() {
   const [error, setError]         = useState("");
   const [savedPw, setSavedPw]     = useState("");
 
+  // เพิ่มแต้ม
+  const [apPhone, setApPhone]     = useState("");
+  const [apAmount, setApAmount]   = useState("");
+  const [apLoading, setApLoading] = useState(false);
+  const [apResult, setApResult]   = useState<{ name: string; pointsEarned: number; totalPoints: number } | null>(null);
+  const [apError, setApError]     = useState("");
+
+  async function handleAddPoints() {
+    if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
+    const amt = parseInt(apAmount);
+    if (!amt || amt < 100) { setApError("ยอดซื้อต้องไม่ต่ำกว่า 100 บาท"); return; }
+    setApLoading(true); setApError(""); setApResult(null);
+    try {
+      const res  = await fetch("/api/admin/add-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        body: JSON.stringify({ phone: apPhone, amount: amt }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setApError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setApResult(data);
+      setApPhone(""); setApAmount("");
+      fetchUsers(savedPw, search);
+    } catch { setApError("เกิดข้อผิดพลาด"); }
+    finally { setApLoading(false); }
+  }
+
   const fetchUsers = useCallback(async (pw: string, q = "") => {
     setLoading(true); setError("");
     try {
@@ -147,6 +174,48 @@ export default function AdminPage() {
           </div>
           <div style={s.statLabel}>🥉 BRONZE (0-3,000)</div>
         </div>
+      </div>
+
+      {/* เพิ่มแต้ม */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>⭐ เพิ่มแต้มให้ลูกค้า</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
+            <input
+              type="tel" inputMode="numeric" maxLength={10}
+              placeholder="0812345678"
+              value={apPhone}
+              onChange={e => { setApPhone(e.target.value.replace(/\D/g, "")); setApResult(null); setApError(""); }}
+              style={{ ...s.input, width: 180, marginBottom: 0 }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ยอดซื้อ (บาท)</div>
+            <input
+              type="number" min={100} step={100}
+              placeholder="1500"
+              value={apAmount}
+              onChange={e => { setApAmount(e.target.value); setApResult(null); setApError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleAddPoints()}
+              style={{ ...s.input, width: 160, marginBottom: 0 }}
+            />
+          </div>
+          {apAmount && parseInt(apAmount) >= 100 && (
+            <div style={{ fontSize: 13, color: "#888", paddingBottom: 10 }}>
+              = <strong style={{ color: "#1976D2", fontSize: 16 }}>{Math.floor(parseInt(apAmount) / 100)}</strong> แต้ม
+            </div>
+          )}
+          <button onClick={handleAddPoints} disabled={apLoading} style={{ ...s.btn, paddingBottom: 12, paddingTop: 12 }}>
+            {apLoading ? "กำลังเพิ่ม..." : "➕ เพิ่มแต้ม"}
+          </button>
+        </div>
+        {apError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {apError}</div>}
+        {apResult && (
+          <div style={{ marginTop: 12, padding: "12px 16px", background: "#E8F5E9", borderRadius: 10, fontSize: 14, color: "#2e7d32" }}>
+            ✅ เพิ่มแต้มสำเร็จ! <strong>{apResult.name}</strong> ได้รับ <strong>{apResult.pointsEarned} แต้ม</strong> — แต้มรวม: <strong>{apResult.totalPoints.toLocaleString()} แต้ม</strong>
+          </div>
+        )}
       </div>
 
       {/* Search */}
