@@ -121,5 +121,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, expiringPoints: pts, lineSent });
   }
 
-  return NextResponse.json({ error: "action ไม่ถูกต้อง: status / set-expire / set-notify3m / set-notify1m" }, { status: 400 });
+  // ── reset: คืนสถานะทุกอย่างกลับ (ใช้หลังเทส) ─────────────────
+  if (action === "reset") {
+    // ลบ transaction ประเภท expire ที่สร้างจากการเทส
+    const expired = await sql`
+      SELECT SUM(points_earned)::int AS pts FROM transactions
+      WHERE user_id = ${user.id} AND type = 'expire'
+    `;
+    const ptsToRestore = expired[0]?.pts ?? 0;
+
+    await sql`DELETE FROM transactions WHERE user_id = ${user.id} AND type = 'expire'`;
+
+    // คืน expired = FALSE และ expires_at = 1 ปีจาก created_at ให้ earn transactions
+    await sql`
+      UPDATE transactions
+      SET expired = FALSE, expires_at = created_at + INTERVAL '1 year'
+      WHERE user_id = ${user.id} AND type = 'earn'
+    `;
+
+    // คืนคะแนน
+    if (ptsToRestore > 0) {
+      await sql`UPDATE users SET points = points + ${ptsToRestore} WHERE id = ${user.id}`;
+    }
+
+    return NextResponse.json({ ok: true, message: `reset สำเร็จ คืนคะแนน ${ptsToRestore} แต้ม` });
+  }
+
+  return NextResponse.json({ error: "action ไม่ถูกต้อง: status / set-expire / set-notify3m / set-notify1m / reset" }, { status: 400 });
 }
