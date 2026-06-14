@@ -31,13 +31,28 @@ export default function RewardsPage() {
   useEffect(() => {
     async function init() {
       try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
-        const p = await liff.getProfile();
-        const res = await fetch(`/api/member?lineUserId=${p.userId}`);
-        const data = await res.json();
-        if (data.member) setMember(data.member);
+        // ดึง lineUserId จาก LIFF หรือ URL param (fallback)
+        let lineUserId = "";
+
+        try {
+          const liff = (await import("@line/liff")).default;
+          await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+          if (liff.isLoggedIn()) {
+            const p = await liff.getProfile();
+            lineUserId = p.userId;
+          }
+        } catch {}
+
+        // fallback: ใช้ uid จาก URL query param ที่ส่งมาจากหน้าหลัก
+        if (!lineUserId) {
+          lineUserId = new URLSearchParams(window.location.search).get("uid") ?? "";
+        }
+
+        if (lineUserId) {
+          const res = await fetch(`/api/member?lineUserId=${lineUserId}`);
+          const data = await res.json();
+          if (data.member) setMember(data.member);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -59,18 +74,18 @@ export default function RewardsPage() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#ECEFF1", fontFamily: "Leelawadee UI, Tahoma, sans-serif", paddingBottom: 40 }}>
+    <div style={{ minHeight: "100vh", background: "#EEF2F7", fontFamily: "Leelawadee UI, Tahoma, sans-serif", paddingBottom: 40 }}>
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #1a237e, #1976D2)", padding: "20px 20px 32px", textAlign: "center" }}>
+      <div style={{ background: "linear-gradient(160deg, #0D1B5E 0%, #1565C0 100%)", padding: "28px 20px 36px", textAlign: "center", position: "relative" }}>
         <button
           onClick={() => window.location.href = "/liff"}
-          style={{ position: "absolute", left: 16, top: 20, background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 20, padding: "6px 14px", color: "white", fontSize: 14, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+          style={{ position: "absolute", left: 16, top: 26, background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 20, padding: "7px 16px", color: "white", fontSize: 14, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif", fontWeight: 600 }}>
           ← กลับ
         </button>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "white", letterSpacing: 1 }}>🎁 ของรางวัล</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>แลกแต้มสะสมได้ที่ร้าน</div>
-        <div style={{ marginTop: 14, background: "rgba(255,255,255,0.18)", borderRadius: 24, padding: "10px 24px", display: "inline-block" }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: "white" }}>🎁 ของรางวัล</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>แลกแต้มสะสมได้ที่ร้าน</div>
+        <div style={{ marginTop: 14, background: "rgba(255,255,255,0.18)", borderRadius: 24, padding: "10px 28px", display: "inline-block" }}>
           <span style={{ color: "white", fontSize: 16, fontWeight: 800 }}>⭐ แต้มของคุณ: {userPoints.toLocaleString()} แต้ม</span>
         </div>
       </div>
@@ -94,7 +109,7 @@ export default function RewardsPage() {
               border: canRedeem ? "2px solid #43A047" : "2px solid transparent",
             }}>
               {/* รูปสินค้า */}
-              <div style={{ position: "relative" }}>
+              <div style={{ position: "relative", background: "#f8f8f8" }}>
                 <img
                   src={reward.image}
                   alt={reward.name}
@@ -102,15 +117,15 @@ export default function RewardsPage() {
                   onError={e => {
                     const t = e.target as HTMLImageElement;
                     t.style.display = "none";
-                    (t.nextSibling as HTMLElement).style.display = "flex";
+                    const fb = t.nextSibling as HTMLElement;
+                    if (fb) fb.style.display = "flex";
                   }}
                 />
-                {/* fallback ถ้าไม่มีรูป */}
-                <div style={{ display: "none", height: 180, justifyContent: "center", alignItems: "center", background: "#f5f5f5", fontSize: 80 }}>
+                <div style={{ display: "none", height: 180, justifyContent: "center", alignItems: "center", fontSize: 90 }}>
                   {reward.emoji}
                 </div>
                 {canRedeem && (
-                  <div style={{ position: "absolute", top: 12, right: 12, background: "#43A047", color: "white", borderRadius: 20, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
+                  <div style={{ position: "absolute", top: 12, right: 12, background: "#43A047", color: "white", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                     ✅ แลกได้เลย!
                   </div>
                 )}
@@ -134,7 +149,7 @@ export default function RewardsPage() {
                   </div>
                   <div style={{ fontSize: 13, color: canRedeem ? "#2e7d32" : "#999", fontWeight: 600, textAlign: "right" }}>
                     {canRedeem
-                      ? `เหลือแต้ม ${(userPoints - reward.points).toLocaleString()} หลังแลก`
+                      ? `เหลือ ${(userPoints - reward.points).toLocaleString()} แต้มหลังแลก`
                       : `ขาดอีก ${lacking.toLocaleString()} แต้ม`}
                   </div>
                 </div>
@@ -143,11 +158,17 @@ export default function RewardsPage() {
           );
         })}
 
-        <div style={{ background: "white", borderRadius: 16, padding: "18px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 16, marginBottom: 6 }}>📞 ติดต่อแลกของรางวัล</div>
-          <div style={{ fontSize: 14, color: "#555" }}>คุณเก๋ 094-651-4309</div>
-          <div style={{ fontSize: 14, color: "#555" }}>คุณหญิง 088-760-8470</div>
-          <div style={{ fontSize: 13, color: "#aaa", marginTop: 8 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
+        {/* ติดต่อร้าน */}
+        <div style={{ background: "white", borderRadius: 16, padding: "20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>📞 ติดต่อแลกของรางวัล</div>
+          <div style={{ fontSize: 14, color: "#555", lineHeight: 1.8 }}>
+            คุณเก๋ 094-651-4309<br />
+            คุณหญิง 088-760-8470<br />
+            คุณแพรว 065-209-4955<br />
+            คุณลัย 095-023-6382<br />
+            คุณมีน 094-629-3510
+          </div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 10 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
         </div>
       </div>
     </div>

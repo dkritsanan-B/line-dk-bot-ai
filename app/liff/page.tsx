@@ -267,60 +267,86 @@ export default function LiffPage() {
   const points = member?.points ?? 0;
   const progress = level.next ? Math.min(100, ((points - level.target) / (level.next - level.target)) * 100) : 100;
   const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
+  const phone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
 
   return (
-    <div style={{ ...s.page, background: "#ECEFF1" }}>
+    <div style={{ ...s.page, background: "#EEF2F7" }}>
       {/* Header */}
-      <div style={{ width: "100%", background: "linear-gradient(135deg, #1a237e, #1976D2)", padding: "20px 20px 60px", textAlign: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: 1 }}>🏗️ DK STEEL AND TOOLS</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>ระบบสมาชิกสะสมแต้ม</div>
+      <div style={{ width: "100%", background: "linear-gradient(160deg, #0D1B5E 0%, #1565C0 100%)", padding: "28px 20px 72px", textAlign: "center" }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: 1.5 }}>🏗️ DK STEEL AND TOOLS</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 6, letterSpacing: 2 }}>─── ระบบสมาชิกสะสมแต้ม ───</div>
       </div>
 
       {/* Premium Card */}
-      <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: -44, position: "relative", zIndex: 1 }}>
-        <div style={{ background: level.cardGrad, borderRadius: 24, padding: "28px 24px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", position: "relative", overflow: "hidden" }}>
+      <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: -52, position: "relative", zIndex: 1 }}>
+        <div style={{ background: level.cardGrad, borderRadius: 26, padding: "24px 22px 22px", boxShadow: "0 16px 48px rgba(0,0,0,0.28)", position: "relative", overflow: "hidden", minHeight: 260 }}>
 
-          {/* Decorative circles */}
-          <div style={{ position: "absolute", top: -30, right: -30, width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-          <div style={{ position: "absolute", bottom: -20, left: -20, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+          {/* Construction crane silhouette */}
+          <svg style={{ position: "absolute", right: -8, bottom: -4, width: 170, height: 210, opacity: 0.13 }} viewBox="0 0 170 210" fill="white" xmlns="http://www.w3.org/2000/svg">
+            <rect x="76" y="55" width="14" height="155" />
+            <rect x="18" y="50" width="130" height="9" />
+            <polygon points="83,12 74,55 92,55" />
+            <rect x="18" y="50" width="5" height="80" />
+            <rect x="143" y="50" width="5" height="50" />
+            <line x1="125" y1="59" x2="100" y2="110" stroke="white" strokeWidth="2.5" />
+            <rect x="96" y="108" width="10" height="8" rx="2" />
+            <rect x="8"   y="135" width="34" height="75" opacity="0.5" />
+            <rect x="8"   y="140" width="8"  height="7"  opacity="0.8" />
+            <rect x="20"  y="140" width="8"  height="7"  opacity="0.8" />
+            <rect x="8"   y="155" width="8"  height="7"  opacity="0.8" />
+            <rect x="20"  y="155" width="8"  height="7"  opacity="0.8" />
+            <rect x="50"  y="150" width="28" height="60" opacity="0.4" />
+            <rect x="120" y="125" width="42" height="85" opacity="0.45" />
+            <rect x="125" y="132" width="9"  height="8"  opacity="0.8" />
+            <rect x="138" y="132" width="9"  height="8"  opacity="0.8" />
+            <rect x="125" y="148" width="9"  height="8"  opacity="0.8" />
+            <rect x="138" y="148" width="9"  height="8"  opacity="0.8" />
+          </svg>
 
-          {/* Top row: logo + level badge */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 700, letterSpacing: 1 }}>MEMBER CARD</div>
-            <div style={{ background: "rgba(255,255,255,0.22)", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 800, color: "white", letterSpacing: 1 }}>
+          {/* MEMBER CARD + level badge */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 700, letterSpacing: 2 }}>MEMBER CARD</div>
+            <div style={{ background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 800, color: "white", letterSpacing: 1, backdropFilter: "blur(4px)" }}>
               {level.emoji} {level.name}
             </div>
           </div>
 
           {/* Profile */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 22 }}>
-            {profile?.pictureUrl && (
-              <img src={profile.pictureUrl} alt="" style={{ width: 66, height: 66, borderRadius: "50%", border: `3px solid rgba(255,255,255,0.8)`, boxShadow: "0 4px 12px rgba(0,0,0,0.3)", objectFit: "cover", flexShrink: 0 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
+            {profile?.pictureUrl ? (
+              <img src={profile.pictureUrl} alt="" style={{ width: 68, height: 68, borderRadius: "50%", border: "3px solid rgba(255,255,255,0.85)", boxShadow: "0 4px 14px rgba(0,0,0,0.3)", objectFit: "cover", flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>👤</div>
             )}
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 20, color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.3)", lineHeight: 1.2 }}>{name}</div>
-              {member?.company && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>🏢 {member.company}</div>}
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 3 }}>📱 {member?.phone}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 19, color: "white", textShadow: "0 1px 6px rgba(0,0,0,0.25)", lineHeight: 1.25, wordBreak: "break-word" }}>{name}</div>
+              {member?.company && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 3 }}>🏢 {member.company}</div>}
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 11 }}>📞</span> {phone}
+              </div>
             </div>
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: "rgba(255,255,255,0.25)", marginBottom: 18 }} />
+          <div style={{ height: 1, background: "rgba(255,255,255,0.3)", marginBottom: 16 }} />
 
-          {/* Points */}
+          {/* Points + Birthday */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
             <div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 1, marginBottom: 4 }}>แต้มสะสม</div>
-              <div style={{ fontSize: 52, fontWeight: 900, color: "white", lineHeight: 1, textShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 2, marginBottom: 3 }}>แต้มสะสม</div>
+              <div style={{ fontSize: 54, fontWeight: 900, color: "white", lineHeight: 1, textShadow: "0 3px 10px rgba(0,0,0,0.2)", letterSpacing: -1 }}>
                 {points.toLocaleString()}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>POINTS</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 3, letterSpacing: 2 }}>POINTS</div>
             </div>
             {member?.birthday && (
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>วันเกิด</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
-                  🎂 {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>วันเกิด</div>
+                <div style={{ background: "rgba(255,255,255,0.22)", borderRadius: 14, padding: "7px 13px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>📅</span>
+                  <span style={{ fontSize: 14, color: "white", fontWeight: 700 }}>
+                    {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                  </span>
                 </div>
               </div>
             )}
@@ -328,31 +354,30 @@ export default function LiffPage() {
 
           {/* Progress bar */}
           {level.next && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>
                 <span>{level.name}</span>
                 <span>อีก {(level.next - points).toLocaleString()} แต้ม → {level.next >= 10000 ? "GOLD" : "SILVER"}</span>
               </div>
-              <div style={{ height: 8, background: "rgba(255,255,255,0.25)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ height: 7, background: "rgba(255,255,255,0.22)", borderRadius: 10, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${progress}%`, background: "rgba(255,255,255,0.85)", borderRadius: 10, transition: "width 0.8s ease" }} />
-              </div>
-              <div style={{ textAlign: "right", fontSize: 10, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-                {points.toLocaleString()} / {level.next.toLocaleString()}
               </div>
             </div>
           )}
 
-          <div style={{ marginTop: 18, fontSize: 11, color: "rgba(255,255,255,0.55)", textAlign: "right" }}>
+          <div style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.5)", textAlign: "right" }}>
             สมัครเมื่อ {member?.created_at ? formatDate(member.created_at) : "-"}
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — with subtitle */}
         <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
           <button
             onClick={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
-            style={{ flex: 1, padding: "13px", background: "white", color: "#555", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
-            {txLoading ? "⏳ โหลด..." : txOpen ? "▲ ซ่อนประวัติ" : "📋 ประวัติแต้ม"}
+            style={{ flex: 1, padding: "14px 10px", background: "white", border: "none", borderRadius: 16, cursor: "pointer", boxShadow: "0 2px 10px rgba(0,0,0,0.09)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", textAlign: "center" }}>
+            <div style={{ fontSize: 22, marginBottom: 4 }}>{txLoading ? "⏳" : "📋"}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{txLoading ? "กำลังโหลด..." : txOpen ? "ซ่อนประวัติ" : "ประวัติแต้ม"}</div>
+            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>ดูประวัติการสะสมแต้ม</div>
           </button>
           <button
             onClick={() => {
@@ -364,16 +389,19 @@ export default function LiffPage() {
               setError("");
               setEditing(true);
             }}
-            style={{ flex: 1, padding: "13px", background: "white", color: "#1976D2", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
-            ✏️ แก้ไขข้อมูล
+            style={{ flex: 1, padding: "14px 10px", background: "white", border: "none", borderRadius: 16, cursor: "pointer", boxShadow: "0 2px 10px rgba(0,0,0,0.09)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", textAlign: "center" }}>
+            <div style={{ fontSize: 22, marginBottom: 4 }}>✏️</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#1565C0" }}>แก้ไขข้อมูล</div>
+            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>อัปเดตข้อมูลสมาชิก</div>
           </button>
         </div>
 
         {/* ของรางวัล */}
         <button
-          onClick={() => window.location.href = "/liff/rewards"}
-          style={{ marginTop: 10, width: "100%", padding: "14px", background: "linear-gradient(135deg, #E65100, #FF8F00)", color: "white", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 12px rgba(230,81,0,0.3)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", letterSpacing: 0.5 }}>
-          🎁 ดูของรางวัลที่แลกได้
+          onClick={() => window.location.href = `/liff/rewards?uid=${profile?.userId ?? ""}`}
+          style={{ marginTop: 10, width: "100%", padding: "14px", background: "linear-gradient(135deg, #E65100, #FF8F00)", color: "white", border: "none", borderRadius: 16, cursor: "pointer", boxShadow: "0 4px 14px rgba(230,81,0,0.35)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", textAlign: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>🎁 ดูของรางวัล</div>
+          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>แลกแต้มสะสมได้ที่ร้าน</div>
         </button>
       </div>
 
