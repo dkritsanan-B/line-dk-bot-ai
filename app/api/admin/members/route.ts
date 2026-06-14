@@ -12,16 +12,17 @@ export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const rows = search
     ? await sql`
-        SELECT id, first_name, last_name, phone, company, birthday, points, created_at
+        SELECT id, customer_id, first_name, last_name, phone, company, birthday, points, created_at
         FROM users
-        WHERE first_name ILIKE ${"%" + search + "%"}
-           OR last_name  ILIKE ${"%" + search + "%"}
-           OR phone      ILIKE ${"%" + search + "%"}
-           OR company    ILIKE ${"%" + search + "%"}
+        WHERE first_name  ILIKE ${"%" + search + "%"}
+           OR last_name   ILIKE ${"%" + search + "%"}
+           OR phone       ILIKE ${"%" + search + "%"}
+           OR company     ILIKE ${"%" + search + "%"}
+           OR customer_id ILIKE ${"%" + search + "%"}
         ORDER BY created_at DESC
       `
     : await sql`
-        SELECT id, first_name, last_name, phone, company, birthday, points, created_at
+        SELECT id, customer_id, first_name, last_name, phone, company, birthday, points, created_at
         FROM users
         ORDER BY created_at DESC
       `;

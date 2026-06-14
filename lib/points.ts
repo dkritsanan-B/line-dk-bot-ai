@@ -18,10 +18,11 @@ export interface User {
 export async function migrateDB() {
   await sql`
     ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS first_name TEXT,
-      ADD COLUMN IF NOT EXISTS last_name  TEXT,
-      ADD COLUMN IF NOT EXISTS company    TEXT,
-      ADD COLUMN IF NOT EXISTS birthday   DATE
+      ADD COLUMN IF NOT EXISTS first_name   TEXT,
+      ADD COLUMN IF NOT EXISTS last_name    TEXT,
+      ADD COLUMN IF NOT EXISTS company      TEXT,
+      ADD COLUMN IF NOT EXISTS birthday     DATE,
+      ADD COLUMN IF NOT EXISTS customer_id  TEXT
   `;
 }
 

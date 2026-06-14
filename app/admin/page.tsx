@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 
 interface User {
   id: number;
+  customer_id: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string;
@@ -27,9 +28,10 @@ function formatBirthday(iso: string | null) {
 }
 
 function exportCSV(users: User[]) {
-  const header = ["ลำดับ", "ชื่อ", "นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "สมัครเมื่อ"];
+  const header = ["ลำดับ", "รหัสลูกค้า", "ชื่อ", "นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "สมัครเมื่อ"];
   const rows = users.map((u, i) => [
     i + 1,
+    u.customer_id ?? "",
     u.first_name ?? "",
     u.last_name ?? "",
     u.phone,
@@ -75,6 +77,10 @@ export default function AdminPage() {
   const [csvDone, setCsvDone]       = useState(false);
   const [csvError, setCsvError]     = useState("");
   const csvInputRef                 = useRef<HTMLInputElement>(null);
+
+  // inline edit customer_id
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [editValue, setEditValue]   = useState("");
 
   // ประวัติการเพิ่มแต้ม
   interface TxRow { id: number; purchase_amount: number; points_earned: number; created_at: string; phone: string; first_name: string | null; last_name: string | null; display_name: string | null; }
@@ -185,6 +191,16 @@ export default function AdminPage() {
     } catch { setError("เกิดข้อผิดพลาด"); }
     finally { setLoading(false); }
   }, []);
+
+  async function saveCustomerId(userId: number, value: string) {
+    setEditingId(null);
+    await fetch("/api/admin/update-member", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+      body: JSON.stringify({ id: userId, customer_id: value.trim() || null }),
+    });
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: value.trim() || null } : u));
+  }
 
   function exportTxExcel() {
     const data = txRows.map((t, i) => {
@@ -441,21 +457,41 @@ export default function AdminPage() {
         <table style={s.table}>
           <thead>
             <tr style={{ background: "#f5f7fa" }}>
-              {["#", "ชื่อ-นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "ระดับ", "สมัครเมื่อ"].map(h => (
+              {["#", "รหัสลูกค้า", "ชื่อ-นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "ระดับ", "สมัครเมื่อ"].map(h => (
                 <th key={h} style={s.th}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {users.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
             )}
             {users.map((u, i) => {
               const level = u.points >= 10000 ? "🥇 GOLD" : u.points >= 3001 ? "🥈 SILVER" : "🥉 BRONZE";
               const levelColor = u.points >= 10000 ? "#F9A825" : u.points >= 3001 ? "#757575" : "#8D6E63";
+              const isEditing = editingId === u.id;
               return (
                 <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
                   <td style={s.td}>{i + 1}</td>
+                  <td style={{ ...s.td, minWidth: 110 }}>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        value={editValue}
+                        onChange={e => setEditValue(e.target.value)}
+                        onBlur={() => saveCustomerId(u.id, editValue)}
+                        onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }}
+                        style={{ width: 100, padding: "4px 8px", border: "1.5px solid #1976D2", borderRadius: 6, fontSize: 13 }}
+                      />
+                    ) : (
+                      <div
+                        onClick={() => { setEditingId(u.id); setEditValue(u.customer_id ?? ""); }}
+                        title="คลิกเพื่อแก้ไข"
+                        style={{ cursor: "pointer", padding: "4px 8px", borderRadius: 6, minWidth: 80, minHeight: 24, border: "1.5px dashed #ddd", color: u.customer_id ? "#333" : "#bbb", fontSize: 13 }}>
+                        {u.customer_id ?? "คลิกกรอก"}
+                      </div>
+                    )}
+                  </td>
                   <td style={s.td}>
                     <div style={{ fontWeight: 600 }}>
                       {u.first_name ? `${u.first_name} ${u.last_name}` : <span style={{ color: "#aaa" }}>-</span>}
