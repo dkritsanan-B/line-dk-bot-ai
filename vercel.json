@@ -2,5 +2,15 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/expire-points",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/notify-expiry",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }

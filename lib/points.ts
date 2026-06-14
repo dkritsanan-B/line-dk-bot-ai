@@ -24,6 +24,14 @@ export async function migrateDB() {
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'earn'`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note TEXT`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expired BOOLEAN NOT NULL DEFAULT FALSE`;
+  // ตั้ง expires_at ให้ transaction เก่าที่ยังไม่มีค่า
+  await sql`
+    UPDATE transactions
+    SET expires_at = created_at + INTERVAL '1 year'
+    WHERE type = 'earn' AND expires_at IS NULL
+  `;
 }
 
 export async function getUserByPhone(phone: string): Promise<User | null> {
@@ -79,8 +87,8 @@ export async function addPoints(
 
   await sql`UPDATE users SET points = points + ${pointsEarned} WHERE phone = ${phone}`;
   await sql`
-    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
-    VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned}, 'earn', ${note ?? null})
+    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
+    VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned}, 'earn', ${note ?? null}, NOW() + INTERVAL '1 year')
   `;
 
   return { pointsEarned, totalPoints: user.points + pointsEarned };
