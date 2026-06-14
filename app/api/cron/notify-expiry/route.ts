@@ -14,15 +14,10 @@ async function pushMessage(lineUserId: string, text: string) {
   });
 }
 
-export async function GET(req: NextRequest) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  // หา earn transactions ที่จะหมดอายุในช่วง 85-95 วันข้างหน้า (~3 เดือน)
-  const upcoming = await sql`
+async function notifyWindow(daysMin: number, daysMax: number, label: string) {
+  const rows = await sql`
     SELECT
-      u.id         AS user_id,
+      u.id          AS user_id,
       u.line_user_id,
       u.first_name,
       SUM(t.points_earned)::int AS expiring_points,
@@ -31,13 +26,14 @@ export async function GET(req: NextRequest) {
     JOIN users u ON t.user_id = u.id
     WHERE t.type = 'earn'
       AND t.expired = FALSE
-      AND t.expires_at BETWEEN NOW() + INTERVAL '85 days' AND NOW() + INTERVAL '95 days'
+      AND t.expires_at BETWEEN NOW() + (${daysMin} || ' days')::interval
+                           AND NOW() + (${daysMax} || ' days')::interval
     GROUP BY u.id, u.line_user_id, u.first_name
     HAVING SUM(t.points_earned) > 0
   `;
 
-  let notified = 0;
-  for (const row of upcoming) {
+  let count = 0;
+  for (const row of rows) {
     if (!row.line_user_id) continue;
 
     const name = row.first_name ?? "คุณ";
@@ -47,10 +43,23 @@ export async function GET(req: NextRequest) {
 
     await pushMessage(
       row.line_user_id as string,
-      `⏰ แจ้งเตือนจาก DK Steel and Tools\n\n${name} คะแนนสะสม ${row.expiring_points} แต้มของคุณจะหมดอายุในอีก 3 เดือน\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมนำคะแนนมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁\n\nกดดูของรางวัลได้เลยค่ะ 👉 https://line-dk-bot-ai.vercel.app/liff/rewards`
+      `⏰ แจ้งเตือนจาก DK Steel and Tools\n\n${name} คะแนนสะสม ${row.expiring_points} แต้มของคุณจะหมดอายุในอีก ${label}\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมนำคะแนนมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁\n\nกดดูของรางวัลได้เลยค่ะ 👉 https://line-dk-bot-ai.vercel.app/liff/rewards`
     );
-    notified++;
+    count++;
+  }
+  return count;
+}
+
+export async function GET(req: NextRequest) {
+  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true, notified });
+  // แจ้งเตือน 3 เดือน (85-95 วัน)
+  const notify3m = await notifyWindow(85, 95, "3 เดือน");
+
+  // แจ้งเตือน 1 เดือน (27-33 วัน)
+  const notify1m = await notifyWindow(27, 33, "1 เดือน");
+
+  return NextResponse.json({ ok: true, notified_3months: notify3m, notified_1month: notify1m });
 }
