@@ -43,6 +43,7 @@ export default function LiffPage() {
   const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
+  const [editing, setEditing]     = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -87,7 +88,7 @@ export default function LiffPage() {
         }),
       });
       const data = await res.json();
-      if (data.success) { setRegistered(true); setMember(data.user); }
+      if (data.success) { setRegistered(true); setMember(data.user); setEditing(false); }
       else setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } catch { setError("เกิดข้อผิดพลาด กรุณาลองใหม่"); }
     finally { setSubmitting(false); }
@@ -173,6 +174,59 @@ export default function LiffPage() {
     </div>
   );
 
+  /* ── แก้ไขข้อมูล (เปิดฟอร์มเดิม) ── */
+  if (registered && editing) return (
+    <div style={s.page}>
+      <div style={s.header}>
+        <div style={s.logo}>🏗️ DK STEEL AND TOOLS</div>
+        <div style={{ fontSize: 13, opacity: 0.85 }}>แก้ไขข้อมูลสมาชิก</div>
+      </div>
+      <div style={s.card}>
+        <div style={{ width: "100%", display: "flex", gap: 8, marginBottom: 8 }}>
+          <div style={{ flex: 1 }}>
+            <label style={s.label}>ชื่อ *</label>
+            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
+              placeholder="สมชาย" style={s.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={s.label}>นามสกุล *</label>
+            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
+              placeholder="ใจดี" style={s.input} />
+          </div>
+        </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>เบอร์มือถือ (10 หลัก) *</label>
+          <input type="tel" inputMode="numeric" maxLength={10}
+            value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
+            placeholder="0812345678" style={{ ...s.input, background: "#f9f9f9" }} readOnly />
+        </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>วันเกิด *</label>
+          <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
+            style={s.input} />
+        </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>บริษัท / ร้านค้า (ถ้ามี)</label>
+          <input type="text" value={company} onChange={e => setCompany(e.target.value)}
+            placeholder="บริษัท ABC จำกัด" style={s.input} />
+        </div>
+
+        {error && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>{error}</div>}
+
+        <button onClick={handleRegister} disabled={submitting} style={s.btn}>
+          {submitting ? "กำลังบันทึก..." : "💾 บันทึกข้อมูล"}
+        </button>
+        <button onClick={() => setEditing(false)}
+          style={{ ...s.btn, background: "transparent", color: "#888", border: "1.5px solid #ddd", marginTop: 10 }}>
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  );
+
   /* ── การ์ดสมาชิก ── */
   const level = getLevel(member?.points ?? 0);
   const points = member?.points ?? 0;
@@ -240,6 +294,22 @@ export default function LiffPage() {
           <span>📅 สมัครเมื่อ</span>
           <span>{member?.created_at ? formatDate(member.created_at) : "-"}</span>
         </div>
+
+        <div style={s.divider} />
+
+        <button
+          onClick={() => {
+            setFirstName(member?.first_name ?? "");
+            setLastName(member?.last_name ?? "");
+            setPhone(member?.phone ?? "");
+            setCompany(member?.company ?? "");
+            setBirthday(member?.birthday ? member.birthday.substring(0, 10) : "");
+            setError("");
+            setEditing(true);
+          }}
+          style={{ ...s.btn, background: "transparent", color: "#1976D2", border: "1.5px solid #1976D2", fontSize: 14 }}>
+          ✏️ แก้ไขข้อมูล
+        </button>
       </div>
 
       <div style={{ fontSize: 12, color: "#aaa", marginTop: 16, textAlign: "center" }}>
