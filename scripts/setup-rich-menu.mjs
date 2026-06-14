@@ -1,6 +1,6 @@
-import zlib from "zlib";
 import https from "https";
 import { readFileSync } from "fs";
+import { Resvg } from "@resvg/resvg-js";
 
 // ── อ่าน token จาก .env.local ───────────────────────────────────────────────
 function loadEnv() {
@@ -20,59 +20,98 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-// ── สร้างภาพ PNG 2 ช่อง (สีฟ้า | สีเขียว) ──────────────────────────────────
-function crc32(buf) {
-  const table = [];
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    table[n] = c;
-  }
-  let crc = 0xffffffff;
-  for (const b of buf) crc = table[(crc ^ b) & 0xff] ^ (crc >>> 8);
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function pngChunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(body));
-  return Buffer.concat([len, body, crc]);
-}
-
+// ── สร้างภาพ Rich Menu จาก SVG ───────────────────────────────────────────────
 function createRichMenuPNG() {
-  const W = 2500, H = 843, MID = 1250;
-  const BLUE  = [25, 118, 210];   // #1976D2
-  const GREEN = [46, 125, 50];    // #2E7D32
-  const WHITE = [255, 255, 255];
+  const EMOJI = "Segoe UI Emoji,Apple Color Emoji,Noto Color Emoji";
+  const THAI  = "Leelawadee UI,Tahoma,Arial";
 
-  const raw = Buffer.alloc(H * (1 + W * 3));
-  for (let y = 0; y < H; y++) {
-    const row = y * (1 + W * 3);
-    raw[row] = 0; // filter: None
-    for (let x = 0; x < W; x++) {
-      const divider = x >= MID - 3 && x <= MID + 3;
-      const color = divider ? WHITE : x < MID ? BLUE : GREEN;
-      raw[row + 1 + x * 3]     = color[0];
-      raw[row + 1 + x * 3 + 1] = color[1];
-      raw[row + 1 + x * 3 + 2] = color[2];
-    }
-  }
+  const svg = `<svg width="2500" height="843" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0D47A1"/>
+      <stop offset="100%" stop-color="#1E88E5"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#BF360C"/>
+      <stop offset="100%" stop-color="#FF8F00"/>
+    </linearGradient>
+  </defs>
 
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(W, 0);
-  ihdr.writeUInt32BE(H, 4);
-  ihdr.writeUInt8(8, 8); // bit depth
-  ihdr.writeUInt8(2, 9); // RGB color type
+  <!-- พื้นหลัง -->
+  <rect x="0"    y="0" width="1244" height="843" fill="url(#blueGrad)"/>
+  <rect x="1256" y="0" width="1244" height="843" fill="url(#goldGrad)"/>
+  <rect x="1244" y="0" width="12"   height="843" fill="white" opacity="0.4"/>
 
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    pngChunk("IHDR", ihdr),
-    pngChunk("IDAT", zlib.deflateSync(raw, { level: 6 })),
-    pngChunk("IEND", Buffer.alloc(0)),
-  ]);
+  <!-- ══ ช่องซ้าย: สมัครสมาชิก (ช่าง) ══ -->
+
+  <!-- หมวกนิรภัย (hard hat) -->
+  <ellipse cx="622" cy="290" rx="145" ry="30" fill="#F9A825"/>
+  <path d="M477 290 Q477 180 622 165 Q767 180 767 290 Z" fill="#FDD835"/>
+  <rect x="455" y="285" width="334" height="28" rx="14" fill="#F57F17"/>
+  <!-- แถบหมวก -->
+  <rect x="477" y="275" width="290" height="14" rx="7" fill="#E65100" opacity="0.5"/>
+  <!-- ร่างกาย (เสื้อช่าง) -->
+  <path d="M542 390 Q540 340 580 330 L622 350 L664 330 Q704 340 702 390 Z" fill="#1565C0"/>
+  <rect x="540" y="388" width="164" height="60" rx="8" fill="#1565C0"/>
+  <!-- แขน -->
+  <path d="M540 345 Q500 360 490 410 L530 415 Q535 375 560 365 Z" fill="#1565C0"/>
+  <path d="M702 345 Q742 360 752 410 L712 415 Q709 375 684 365 Z" fill="#1565C0"/>
+  <!-- หัว -->
+  <ellipse cx="622" cy="310" rx="52" ry="48" fill="#FFCC80"/>
+
+  <!-- ข้อความช่องซ้าย -->
+  <text x="622" y="535" text-anchor="middle" font-size="118" font-weight="bold"
+        fill="white" font-family="${THAI}" letter-spacing="1">สมัครสมาชิก</text>
+  <rect x="372" y="558" width="500" height="4" rx="2" fill="white" opacity="0.35"/>
+  <text x="622" y="640" text-anchor="middle" font-size="62" fill="white" opacity="0.92"
+        font-family="${THAI}">ทุก 100 บาท = 1 แต้ม</text>
+  <text x="622" y="720" text-anchor="middle" font-size="58" fill="#FDD835"
+        font-family="${THAI}" font-weight="bold">กดเพื่อเริ่มสะสมแต้ม!</text>
+
+  <!-- ══ ช่องขวา: เช็คแต้มสะสม (ของรางวัล) ══ -->
+
+  <!-- พัดลม -->
+  <circle cx="1580" cy="255" r="68" fill="white" opacity="0.15"/>
+  <circle cx="1580" cy="255" r="22" fill="white" opacity="0.9"/>
+  <ellipse cx="1556" cy="218" rx="18" ry="32" fill="white" opacity="0.75" transform="rotate(-30 1556 218)"/>
+  <ellipse cx="1617" cy="228" rx="18" ry="32" fill="white" opacity="0.75" transform="rotate(50 1617 228)"/>
+  <ellipse cx="1604" cy="290" rx="18" ry="32" fill="white" opacity="0.75" transform="rotate(160 1604 290)"/>
+  <ellipse cx="1543" cy="285" rx="18" ry="32" fill="white" opacity="0.75" transform="rotate(-110 1543 285)"/>
+  <text x="1580" y="340" text-anchor="middle" font-size="36" fill="white" opacity="0.85" font-family="${THAI}">พัดลม</text>
+
+  <!-- ทีวี -->
+  <rect x="1700" y="195" width="140" height="100" rx="10" fill="white" opacity="0.85"/>
+  <rect x="1710" y="203" width="120" height="76"  rx="5"  fill="#1A237E" opacity="0.9"/>
+  <rect x="1755" y="295" width="30"  height="18"  rx="3"  fill="white" opacity="0.7"/>
+  <text x="1770" y="340" text-anchor="middle" font-size="36" fill="white" opacity="0.85" font-family="${THAI}">ทีวี</text>
+
+  <!-- ตู้เย็น -->
+  <rect x="1870" y="185" width="110" height="140" rx="10" fill="white" opacity="0.85"/>
+  <rect x="1870" y="185" width="110" height="55"  rx="10" fill="#E0F7FA" opacity="0.9"/>
+  <rect x="1870" y="236" width="110" height="4"   fill="#90A4AE"/>
+  <rect x="1878" y="200" width="6"   height="30"  rx="3"  fill="#90A4AE"/>
+  <rect x="1878" y="250" width="6"   height="60"  rx="3"  fill="#90A4AE"/>
+  <text x="1925" y="346" text-anchor="middle" font-size="36" fill="white" opacity="0.85" font-family="${THAI}">ตู้เย็น</text>
+
+  <!-- ทองคำ -->
+  <rect x="2040" y="210" width="130" height="68" rx="8" fill="#FFD600" opacity="0.95"/>
+  <rect x="2048" y="218" width="114" height="52" rx="6" fill="#FFEA00"/>
+  <text x="2105" y="255" text-anchor="middle" font-size="32" font-weight="bold" fill="#E65100" font-family="${THAI}">GOLD</text>
+  <text x="2105" y="285" text-anchor="middle" font-size="26" fill="#BF360C" font-family="${THAI}">99.99%</text>
+  <text x="2105" y="340" text-anchor="middle" font-size="36" fill="white" opacity="0.85" font-family="${THAI}">ทองคำ</text>
+
+  <!-- ข้อความช่องขวา -->
+  <text x="1878" y="470" text-anchor="middle" font-size="118" font-weight="bold"
+        fill="white" font-family="${THAI}" letter-spacing="1">เช็คแต้มสะสม</text>
+  <rect x="1578" y="490" width="600" height="4" rx="2" fill="white" opacity="0.35"/>
+  <text x="1878" y="572" text-anchor="middle" font-size="62" fill="white" opacity="0.92"
+        font-family="${THAI}">สะสมแต้มแลกของรางวัล</text>
+  <text x="1878" y="652" text-anchor="middle" font-size="58" fill="#FFD600"
+        font-family="${THAI}" font-weight="bold">กดเพื่อดูคะแนนของคุณ!</text>
+</svg>`;
+
+  const resvg = new Resvg(svg, { font: { loadSystemFonts: true } });
+  return Buffer.from(resvg.render().asPng());
 }
 
 // ── เรียก LINE API ────────────────────────────────────────────────────────────
