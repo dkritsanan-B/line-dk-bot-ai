@@ -186,6 +186,27 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, []);
 
+  function exportTxExcel() {
+    const data = txRows.map((t, i) => {
+      const dt = new Date(t.created_at);
+      return {
+        "#": i + 1,
+        "วันที่": dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
+        "เวลา": dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        "ชื่อลูกค้า": t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-"),
+        "เบอร์มือถือ": t.phone,
+        "ยอดซื้อ (บาท)": t.purchase_amount,
+        "แต้มที่ได้": t.points_earned,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = [{ wch: 5 }, { wch: 16 }, { wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ประวัติแต้ม");
+    const date = new Date().toISOString().substring(0, 10);
+    XLSX.writeFile(wb, `dk-transactions-${date}.xlsx`);
+  }
+
   async function fetchTransactions(q = txSearch, from = txFrom, to = txTo) {
     setTxLoading(true);
     try {
@@ -455,11 +476,18 @@ export default function AdminPage() {
 
       {/* ── ประวัติการเพิ่มแต้ม ── */}
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>📋 ประวัติการเพิ่มแต้ม</div>
-          <button onClick={() => fetchTransactions()} style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
-            {txLoading ? "กำลังโหลด..." : "🔄 โหลดประวัติ"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {txRows.length > 0 && (
+              <button onClick={exportTxExcel} style={{ ...s.exportBtn, fontSize: 13, padding: "8px 14px" }}>
+                ⬇️ Export Excel
+              </button>
+            )}
+            <button onClick={() => fetchTransactions()} style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
+              {txLoading ? "กำลังโหลด..." : "🔄 โหลดประวัติ"}
+            </button>
+          </div>
         </div>
 
         {/* Filter */}
