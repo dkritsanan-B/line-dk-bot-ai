@@ -52,7 +52,7 @@ export default function RewardsPage() {
         if (lineUserId) {
           const res = await fetch(`/api/member?lineUserId=${lineUserId}`);
           const data = await res.json();
-          if (data.member) setMember(data.member);
+          if (data.user) setMember(data.user);
         }
       } catch (e) {
         console.error(e);
