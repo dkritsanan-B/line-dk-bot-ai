@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 
+interface TxItem {
+  id: number;
+  purchase_amount: number;
+  points_earned: number;
+  type: string;
+  note: string | null;
+  created_at: string;
+}
+
 interface Profile {
   userId: string;
   displayName: string;
@@ -44,6 +53,9 @@ export default function LiffPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
   const [editing, setEditing]     = useState(false);
+  const [txList, setTxList]       = useState<TxItem[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txOpen, setTxOpen]       = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -66,6 +78,17 @@ export default function LiffPage() {
       }
     })();
   }, []);
+
+  async function loadTransactions() {
+    if (!profile) return;
+    setTxLoading(true);
+    try {
+      const res  = await fetch(`/api/member/transactions?lineUserId=${profile.userId}`);
+      const data = await res.json();
+      setTxList(data.transactions ?? []);
+      setTxOpen(true);
+    } finally { setTxLoading(false); }
+  }
 
   async function handleRegister() {
     if (!firstName.trim())          { setError("กรุณากรอกชื่อ"); return; }
@@ -310,6 +333,47 @@ export default function LiffPage() {
           style={{ ...s.btn, background: "transparent", color: "#1976D2", border: "1.5px solid #1976D2", fontSize: 14 }}>
           ✏️ แก้ไขข้อมูล
         </button>
+      </div>
+
+      {/* ประวัติการสะสมแต้ม */}
+      <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: 16 }}>
+        <button
+          onClick={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
+          style={{ ...s.btn, width: "100%", background: "white", color: "#555", border: "1.5px solid #ddd", fontSize: 14 }}>
+          {txLoading ? "กำลังโหลด..." : txOpen ? "▲ ซ่อนประวัติ" : "📋 ดูประวัติการสะสมแต้ม"}
+        </button>
+
+        {txOpen && (
+          <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", marginTop: 10, overflow: "hidden" }}>
+            {txList.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "28px 16px", color: "#aaa", fontSize: 14 }}>
+                ยังไม่มีประวัติการสะสมแต้ม
+              </div>
+            ) : (
+              txList.map((t, i) => {
+                const isRedeem = t.type === "redeem";
+                const dt = new Date(t.created_at);
+                const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+                const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={t.id} style={{ padding: "14px 18px", borderBottom: i < txList.length - 1 ? "1px solid #f0f0f0" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>
+                        {isRedeem ? "🎁 แลกของรางวัล" : "⭐ สะสมแต้ม"}
+                      </div>
+                      {t.note && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{t.note}</div>}
+                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{dateStr} · {timeStr}</div>
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: isRedeem ? "#e53935" : "#2e7d32", minWidth: 60, textAlign: "right" }}>
+                      {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
+                      <div style={{ fontSize: 11, fontWeight: 400, color: "#aaa" }}>แต้ม</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ fontSize: 12, color: "#aaa", marginTop: 16, textAlign: "center" }}>
