@@ -181,7 +181,7 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
         {
           type: "text",
           text: "ฝ่ายขาย",
-          color: "rgba(255,255,255,0.75)",
+          color: "#FFFFFFAA",
           align: "center",
           size: "sm",
           margin: "sm",
