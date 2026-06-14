@@ -60,12 +60,19 @@ export default function AdminPage() {
   const [error, setError]         = useState("");
   const [savedPw, setSavedPw]     = useState("");
 
-  // เพิ่มแต้ม
+  // เพิ่มแต้มรายเดียว
   const [apPhone, setApPhone]     = useState("");
   const [apAmount, setApAmount]   = useState("");
   const [apLoading, setApLoading] = useState(false);
   const [apResult, setApResult]   = useState<{ name: string; pointsEarned: number; totalPoints: number } | null>(null);
   const [apError, setApError]     = useState("");
+
+  // เพิ่มแต้มแบบ CSV
+  type BulkRow = { phone: string; amount: number; status?: string; name?: string; pointsEarned?: number; totalPoints?: number; message?: string };
+  const [csvRows, setCsvRows]       = useState<BulkRow[]>([]);
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvDone, setCsvDone]       = useState(false);
+  const [csvError, setCsvError]     = useState("");
 
   async function handleAddPoints() {
     if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
@@ -85,6 +92,54 @@ export default function AdminPage() {
       fetchUsers(savedPw, search);
     } catch { setApError("เกิดข้อผิดพลาด"); }
     finally { setApLoading(false); }
+  }
+
+  function handleCSVFile(file: File) {
+    setCsvError(""); setCsvDone(false); setCsvRows([]);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const parsed: BulkRow[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+        const phone  = cols[0]?.replace(/\D/g, "");
+        const amount = parseInt(cols[1]);
+        if (i === 0 && isNaN(amount)) continue; // skip header
+        if (!/^0\d{9}$/.test(phone)) { setCsvError(`แถวที่ ${i + 1}: เบอร์ "${cols[0]}" ไม่ถูกต้อง`); return; }
+        if (!amount || amount < 100)  { setCsvError(`แถวที่ ${i + 1}: ยอดซื้อต้องไม่ต่ำกว่า 100 บาท`); return; }
+        parsed.push({ phone, amount });
+      }
+      if (parsed.length === 0) { setCsvError("ไม่พบข้อมูลใน CSV"); return; }
+      setCsvRows(parsed);
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  async function handleBulkAddPoints() {
+    setCsvLoading(true); setCsvError(""); setCsvDone(false);
+    try {
+      const res  = await fetch("/api/admin/bulk-add-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        body: JSON.stringify({ rows: csvRows.map(r => ({ phone: r.phone, amount: r.amount })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCsvError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setCsvRows(data.results);
+      setCsvDone(true);
+      fetchUsers(savedPw, search);
+    } catch { setCsvError("เกิดข้อผิดพลาด"); }
+    finally { setCsvLoading(false); }
+  }
+
+  function downloadTemplate() {
+    const csv = "﻿เบอร์มือถือ,ยอดซื้อ\n0812345678,1500\n0898765432,3000";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "template-add-points.csv"; a.click();
+    URL.revokeObjectURL(url);
   }
 
   const fetchUsers = useCallback(async (pw: string, q = "") => {
@@ -215,6 +270,86 @@ export default function AdminPage() {
           <div style={{ marginTop: 12, padding: "12px 16px", background: "#E8F5E9", borderRadius: 10, fontSize: 14, color: "#2e7d32" }}>
             ✅ เพิ่มแต้มสำเร็จ! <strong>{apResult.name}</strong> ได้รับ <strong>{apResult.pointsEarned} แต้ม</strong> — แต้มรวม: <strong>{apResult.totalPoints.toLocaleString()} แต้ม</strong>
           </div>
+        )}
+      </div>
+
+      {/* เพิ่มแต้มแบบ CSV */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>📂 เพิ่มแต้มหลายรายจาก CSV</div>
+          <button onClick={downloadTemplate} style={{ ...s.btn, background: "#f5f5f5", color: "#555", fontSize: 13, padding: "8px 14px" }}>
+            ⬇️ ดาวน์โหลด Template CSV
+          </button>
+        </div>
+
+        <div
+          style={{ border: "2px dashed #ccc", borderRadius: 12, padding: "28px", textAlign: "center", cursor: "pointer", background: "#fafafa" }}
+          onClick={() => document.getElementById("csv-upload")?.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
+        >
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+          <div style={{ fontSize: 14, color: "#666" }}>คลิกหรือลากไฟล์ CSV มาวางที่นี่</div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>รูปแบบ: เบอร์มือถือ, ยอดซื้อ (บาท)</div>
+          <input id="csv-upload" type="file" accept=".csv" style={{ display: "none" }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = ""; }} />
+        </div>
+
+        {csvError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {csvError}</div>}
+
+        {csvRows.length > 0 && (
+          <>
+            <div style={{ marginTop: 16, overflowX: "auto" }}>
+              <table style={{ ...s.table, fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#f5f7fa" }}>
+                    {["#", "เบอร์มือถือ", "ยอดซื้อ (บาท)", "แต้มที่จะได้", ...(csvDone ? ["ชื่อลูกค้า", "ผลลัพธ์"] : [])].map(h => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvRows.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                      <td style={s.td}>{i + 1}</td>
+                      <td style={s.td}>{r.phone}</td>
+                      <td style={s.td}>{r.amount.toLocaleString()}</td>
+                      <td style={{ ...s.td, fontWeight: 600, color: "#1976D2" }}>{Math.floor(r.amount / 100)}</td>
+                      {csvDone && <td style={s.td}>{r.name ?? "-"}</td>}
+                      {csvDone && (
+                        <td style={{ ...s.td, color: r.status === "success" ? "#2e7d32" : "#e53935", fontWeight: 600 }}>
+                          {r.status === "success" ? `✅ +${r.pointsEarned} แต้ม (รวม ${r.totalPoints?.toLocaleString()})` : `❌ ${r.message}`}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!csvDone && (
+              <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={handleBulkAddPoints} disabled={csvLoading} style={s.btn}>
+                  {csvLoading ? "กำลังเพิ่มแต้ม..." : `➕ ยืนยันเพิ่มแต้ม ${csvRows.length} รายการ`}
+                </button>
+                <button onClick={() => { setCsvRows([]); setCsvDone(false); setCsvError(""); }}
+                  style={{ ...s.btn, background: "#eee", color: "#555" }}>
+                  ยกเลิก
+                </button>
+              </div>
+            )}
+            {csvDone && (
+              <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={{ fontSize: 14, color: "#2e7d32", fontWeight: 600 }}>
+                  ✅ สำเร็จ {csvRows.filter(r => r.status === "success").length} / {csvRows.length} รายการ
+                </div>
+                <button onClick={() => { setCsvRows([]); setCsvDone(false); }}
+                  style={{ ...s.btn, background: "#eee", color: "#555", fontSize: 13, padding: "8px 14px" }}>
+                  อัพโหลดไฟล์ใหม่
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
