@@ -16,14 +16,11 @@ export interface User {
 }
 
 export async function migrateDB() {
-  await sql`
-    ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS first_name   TEXT,
-      ADD COLUMN IF NOT EXISTS last_name    TEXT,
-      ADD COLUMN IF NOT EXISTS company      TEXT,
-      ADD COLUMN IF NOT EXISTS birthday     DATE,
-      ADD COLUMN IF NOT EXISTS customer_id  TEXT
-  `;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name  TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name   TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS company     TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday    DATE`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id TEXT`;
 }
 
 export async function getUserByPhone(phone: string): Promise<User | null> {
