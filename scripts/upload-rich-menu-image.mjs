@@ -104,6 +104,7 @@ async function main() {
 
   // 2. สร้าง rich menu ใหม่
   console.log("2️⃣  สร้าง Rich Menu ใหม่...");
+  const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
   const created = await lineAPI("POST", "api.line.me", "/v2/bot/richmenu", {
     size: { width: 2500, height: 843 },
     selected: true,
@@ -112,11 +113,11 @@ async function main() {
     areas: [
       {
         bounds: { x: 0, y: 0, width: 1250, height: 843 },
-        action: { type: "message", label: "สมัครสมาชิก", text: "สมัครสมาชิก" },
+        action: { type: "uri", label: "สมัครสมาชิก / ดูบัตร", uri: LIFF_URL },
       },
       {
         bounds: { x: 1250, y: 0, width: 1250, height: 843 },
-        action: { type: "message", label: "เช็คคะแนนสะสม", text: "แต้ม" },
+        action: { type: "uri", label: "เช็คคะแนนสะสม", uri: LIFF_URL },
       },
     ],
   });
