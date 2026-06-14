@@ -107,7 +107,7 @@ async function main() {
   const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
   const MAPS_URL = "https://maps.app.goo.gl/kaxxDP9ywmorkXPC6";
   const FB_URL   = "https://www.facebook.com/dksteelandtools";
-  const WEB_URL  = FB_URL; // เปลี่ยนเป็น URL เว็บไซต์จริงเมื่อพร้อม
+  const WEB_URL  = "https://line-dk-bot-ai.vercel.app";
   const created = await lineAPI("POST", "api.line.me", "/v2/bot/richmenu", {
     size: { width: 2500, height: 1686 },
     selected: true,

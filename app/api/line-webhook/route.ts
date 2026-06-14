@@ -150,6 +150,84 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
   await sendReply(replyToken, msg);
 }
 
+// ── ติดต่อฝ่ายขาย: Flex Message Carousel ────────────────────────
+const SALES_STAFF = [
+  { name: "คุณเก๋",   phone: "094-651-4309", color: "#E53935" },
+  { name: "คุณหญิง", phone: "088-760-8470", color: "#8E24AA" },
+  { name: "คุณแพรว", phone: "065-209-4955", color: "#1E88E5" },
+  { name: "คุณลัย",  phone: "095-023-6382", color: "#00897B" },
+  { name: "คุณมีน",  phone: "094-629-3510", color: "#F4511E" },
+];
+
+async function sendFlexSalesContact(replyToken: string): Promise<void> {
+  const bubbles = SALES_STAFF.map((s) => ({
+    type: "bubble",
+    size: "micro",
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: s.color,
+      paddingTop: "36px",
+      paddingBottom: "36px",
+      contents: [
+        {
+          type: "text",
+          text: s.name.replace("คุณ", ""),
+          color: "#ffffff",
+          align: "center",
+          size: "3xl",
+          weight: "bold",
+        },
+        {
+          type: "text",
+          text: "ฝ่ายขาย",
+          color: "rgba(255,255,255,0.75)",
+          align: "center",
+          size: "sm",
+          margin: "sm",
+        },
+      ],
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "xs",
+      contents: [
+        { type: "text", text: s.name, weight: "bold", size: "lg", align: "center" },
+        { type: "text", text: s.phone, size: "sm", color: "#555555", align: "center" },
+      ],
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: s.color,
+          height: "sm",
+          action: { type: "uri", label: `📞 โทร${s.name}`, uri: `tel:${s.phone.replace(/-/g, "")}` },
+        },
+      ],
+    },
+  }));
+
+  const res = await fetch(LINE_REPLY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
+    body: JSON.stringify({
+      replyToken,
+      messages: [{
+        type: "flex",
+        altText: "📞 ติดต่อฝ่ายขาย DK วัสดุก่อสร้าง",
+        contents: { type: "carousel", contents: bubbles },
+      }],
+    }),
+  });
+  if (!res.ok) console.error(`[line] flex sales failed status=${res.status} body=${await res.text()}`);
+}
+
 // ── จัดการข้อความหลัก ───────────────────────────────────────────
 async function handleMessage(
   lineUserId: string,
@@ -201,17 +279,9 @@ async function handleMessage(
     return;
   }
 
-  // ติดต่อฝ่ายขาย
+  // ติดต่อฝ่ายขาย → Flex Message Carousel
   if (trimmed === "ติดต่อฝ่ายขาย") {
-    const msg =
-      `📞 ติดต่อฝ่ายขาย DK วัสดุก่อสร้าง\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `📱 คุณเก๋    094-651-4309\n` +
-      `📱 คุณหญิง  088-760-8470\n` +
-      `📱 คุณแพรว  065-209-4955\n` +
-      `📱 คุณลัย   095-023-6382\n` +
-      `📱 คุณมีน   094-629-3510`;
-    await sendReply(replyToken, msg).catch((e) => console.error("[line] sendReply error", e));
+    await sendFlexSalesContact(replyToken).catch((e) => console.error("[line] sendFlexSalesContact error", e));
     return;
   }
 
