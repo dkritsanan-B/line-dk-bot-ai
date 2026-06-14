@@ -159,17 +159,12 @@ export default function RewardsPage() {
           );
         })}
 
-        {/* ติดต่อร้าน */}
-        <div style={{ background: "white", borderRadius: 16, padding: "20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>📞 ติดต่อแลกของรางวัล</div>
-          <div style={{ fontSize: 14, color: "#555", lineHeight: 1.8 }}>
-            คุณเก๋ 094-651-4309<br />
-            คุณหญิง 088-760-8470<br />
-            คุณแพรว 065-209-4955<br />
-            คุณลัย 095-023-6382<br />
-            คุณมีน 094-629-3510
-          </div>
-          <div style={{ fontSize: 12, color: "#aaa", marginTop: 10 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
+        {/* แลกของรางวัลที่ร้าน */}
+        <div style={{ background: "white", borderRadius: 16, padding: "24px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🏪</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>สามารถเข้ามาแลกของรางวัลที่หน้าร้านได้เลย</div>
+          <div style={{ fontSize: 13, color: "#888" }}>นำบัตรสมาชิกมาแสดงที่ร้านเพื่อแลกของรางวัล</div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
         </div>
       </div>
     </div>
