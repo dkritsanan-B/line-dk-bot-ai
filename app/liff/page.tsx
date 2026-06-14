@@ -267,7 +267,7 @@ export default function LiffPage() {
   const points = member?.points ?? 0;
   const progress = level.next ? Math.min(100, ((points - level.target) / (level.next - level.target)) * 100) : 100;
   const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
-  const phone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
+  const formattedPhone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
 
   return (
     <div style={{ ...s.page, background: "#EEF2F7" }}>
@@ -322,7 +322,7 @@ export default function LiffPage() {
               <div style={{ fontWeight: 800, fontSize: 19, color: "white", textShadow: "0 1px 6px rgba(0,0,0,0.25)", lineHeight: 1.25, wordBreak: "break-word" }}>{name}</div>
               {member?.company && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 3 }}>🏢 {member.company}</div>}
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ fontSize: 11 }}>📞</span> {phone}
+                <span style={{ fontSize: 11 }}>📞</span> {formattedPhone}
               </div>
             </div>
           </div>
