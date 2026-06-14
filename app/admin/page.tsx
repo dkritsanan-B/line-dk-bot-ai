@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 
 interface User {
   id: number;
@@ -97,24 +98,43 @@ export default function AdminPage() {
 
   function handleCSVFile(file: File) {
     setCsvError(""); setCsvDone(false); setCsvRows([]);
+    const ext = file.name.split(".").pop()?.toLowerCase();
     const reader = new FileReader();
+
     reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const parsed: BulkRow[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ""));
-        const phone  = cols[0]?.replace(/\D/g, "");
-        const amount = parseInt(cols[1]);
-        if (i === 0 && isNaN(amount)) continue; // skip header
-        if (!/^0\d{9}$/.test(phone)) { setCsvError(`แถวที่ ${i + 1}: เบอร์ "${cols[0]}" ไม่ถูกต้อง`); return; }
-        if (!amount || amount < 100)  { setCsvError(`แถวที่ ${i + 1}: ยอดซื้อต้องไม่ต่ำกว่า 100 บาท`); return; }
-        parsed.push({ phone, amount });
+      try {
+        const data = e.target?.result;
+        let rows2d: string[][];
+
+        if (ext === "xlsx" || ext === "xls") {
+          const wb = XLSX.read(data, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          rows2d = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: false });
+        } else {
+          // CSV
+          const text = new TextDecoder("utf-8").decode(data as ArrayBuffer);
+          rows2d = text.split(/\r?\n/).filter(l => l.trim()).map(l =>
+            l.split(",").map(c => c.trim().replace(/^"|"$/g, ""))
+          );
+        }
+
+        const parsed: BulkRow[] = [];
+        for (let i = 0; i < rows2d.length; i++) {
+          const cols   = rows2d[i];
+          const phone  = String(cols[0] ?? "").replace(/\D/g, "");
+          const amount = parseInt(String(cols[1] ?? ""));
+          if (i === 0 && isNaN(amount)) continue; // skip header
+          if (!/^0\d{9}$/.test(phone)) { setCsvError(`แถวที่ ${i + 1}: เบอร์ "${cols[0]}" ไม่ถูกต้อง`); return; }
+          if (!amount || amount < 100)  { setCsvError(`แถวที่ ${i + 1}: ยอดซื้อต้องไม่ต่ำกว่า 100 บาท`); return; }
+          parsed.push({ phone, amount });
+        }
+        if (parsed.length === 0) { setCsvError("ไม่พบข้อมูลในไฟล์"); return; }
+        setCsvRows(parsed);
+      } catch {
+        setCsvError("อ่านไฟล์ไม่ได้ กรุณาใช้ไฟล์ .xlsx หรือ .csv");
       }
-      if (parsed.length === 0) { setCsvError("ไม่พบข้อมูลใน CSV"); return; }
-      setCsvRows(parsed);
     };
-    reader.readAsText(file, "UTF-8");
+    reader.readAsArrayBuffer(file);
   }
 
   async function handleBulkAddPoints() {
@@ -289,9 +309,9 @@ export default function AdminPage() {
           onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
-          <div style={{ fontSize: 14, color: "#666" }}>คลิกหรือลากไฟล์ CSV มาวางที่นี่</div>
-          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>รูปแบบ: เบอร์มือถือ, ยอดซื้อ (บาท)</div>
-          <input ref={csvInputRef} type="file" accept=".csv,.txt" style={{ display: "none" }}
+          <div style={{ fontSize: 14, color: "#666" }}>คลิกหรือลากไฟล์มาวางที่นี่</div>
+          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>รองรับ Excel (.xlsx) และ CSV · คอลัมน์: เบอร์มือถือ, ยอดซื้อ (บาท)</div>
+          <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = ""; }} />
         </label>
 
