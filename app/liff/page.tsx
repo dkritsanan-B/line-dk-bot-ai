@@ -11,6 +11,10 @@ interface Member {
   id: number;
   phone: string;
   display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  birthday: string | null;
   points: number;
   created_at: string;
 }
@@ -32,6 +36,10 @@ export default function LiffPage() {
   const [member, setMember]       = useState<Member | null>(null);
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [phone, setPhone]         = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName]   = useState("");
+  const [company, setCompany]     = useState("");
+  const [birthday, setBirthday]   = useState("");
   const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
@@ -59,13 +67,24 @@ export default function LiffPage() {
   }, []);
 
   async function handleRegister() {
-    if (!/^0\d{9}$/.test(phone)) { setError("เบอร์มือถือไม่ถูกต้อง (10 หลัก)"); return; }
+    if (!firstName.trim())          { setError("กรุณากรอกชื่อ"); return; }
+    if (!lastName.trim())           { setError("กรุณากรอกนามสกุล"); return; }
+    if (!/^0\d{9}$/.test(phone))    { setError("เบอร์มือถือไม่ถูกต้อง (10 หลัก)"); return; }
+    if (!birthday)                  { setError("กรุณาเลือกวันเกิด"); return; }
     setSubmitting(true); setError("");
     try {
       const res  = await fetch("/api/member", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineUserId: profile!.userId, phone, displayName: profile!.displayName }),
+        body: JSON.stringify({
+          lineUserId: profile!.userId,
+          phone,
+          displayName: profile!.displayName,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          company: company.trim() || null,
+          birthday,
+        }),
       });
       const data = await res.json();
       if (data.success) { setRegistered(true); setMember(data.user); }
@@ -112,17 +131,38 @@ export default function LiffPage() {
         <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{profile?.displayName}</div>
         <div style={{ color: "#888", fontSize: 13, marginBottom: 24 }}>ยังไม่ได้สมัครสมาชิก</div>
 
-        <div style={{ width: "100%", marginBottom: 8 }}>
-          <label style={{ fontSize: 13, color: "#555", display: "block", marginBottom: 6 }}>
-            เบอร์มือถือ (10 หลัก)
-          </label>
-          <input
-            type="tel" inputMode="numeric" maxLength={10}
-            value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
-            placeholder="0812345678"
-            style={s.input}
-          />
+        <div style={{ width: "100%", display: "flex", gap: 8, marginBottom: 8 }}>
+          <div style={{ flex: 1 }}>
+            <label style={s.label}>ชื่อ *</label>
+            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
+              placeholder="สมชาย" style={s.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={s.label}>นามสกุล *</label>
+            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
+              placeholder="ใจดี" style={s.input} />
+          </div>
         </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>เบอร์มือถือ (10 หลัก) *</label>
+          <input type="tel" inputMode="numeric" maxLength={10}
+            value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
+            placeholder="0812345678" style={s.input} />
+        </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>วันเกิด *</label>
+          <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
+            style={s.input} />
+        </div>
+
+        <div style={{ width: "100%", marginBottom: 8 }}>
+          <label style={s.label}>บริษัท / ร้านค้า (ถ้ามี)</label>
+          <input type="text" value={company} onChange={e => setCompany(e.target.value)}
+            placeholder="บริษัท ABC จำกัด" style={s.input} />
+        </div>
+
         {error && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>{error}</div>}
 
         <button onClick={handleRegister} disabled={submitting} style={s.btn}>
@@ -150,10 +190,18 @@ export default function LiffPage() {
           <img src={profile.pictureUrl} alt="" style={s.avatar} />
         )}
         <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 2 }}>
-          {profile?.displayName ?? member?.display_name}
+          {member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name)}
         </div>
+        {member?.company && (
+          <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>🏢 {member.company}</div>
+        )}
         {member?.phone && (
-          <div style={{ color: "#888", fontSize: 13, marginBottom: 16 }}>📱 {member.phone}</div>
+          <div style={{ color: "#888", fontSize: 13, marginBottom: member?.birthday ? 4 : 16 }}>📱 {member.phone}</div>
+        )}
+        {member?.birthday && (
+          <div style={{ color: "#888", fontSize: 13, marginBottom: 16 }}>
+            🎂 {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+          </div>
         )}
 
         {/* Level badge */}
@@ -246,4 +294,5 @@ const s: Record<string, React.CSSProperties> = {
   },
   progressFill: { height: "100%", borderRadius: 10, transition: "width 0.5s ease" },
   divider: { width: "100%", height: 1, background: "#f0f0f0", margin: "18px 0" },
+  label: { fontSize: 13, color: "#555", display: "block", marginBottom: 6 },
 };

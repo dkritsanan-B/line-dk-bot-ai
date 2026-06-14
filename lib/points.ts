@@ -2,12 +2,27 @@ import { sql } from "./db";
 
 const POINTS_PER_BAHT = 100; // 100 บาท = 1 แต้ม
 
-interface User {
+export interface User {
   id: number;
   line_user_id: string | null;
   phone: string;
   display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  birthday: string | null;
   points: number;
+  created_at: string;
+}
+
+export async function migrateDB() {
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS first_name TEXT,
+      ADD COLUMN IF NOT EXISTS last_name  TEXT,
+      ADD COLUMN IF NOT EXISTS company    TEXT,
+      ADD COLUMN IF NOT EXISTS birthday   DATE
+  `;
 }
 
 export async function getUserByPhone(phone: string): Promise<User | null> {
@@ -23,19 +38,29 @@ export async function getUserByLineId(lineUserId: string): Promise<User | null> 
 export async function registerUser(
   lineUserId: string,
   phone: string,
-  displayName?: string
+  displayName?: string,
+  firstName?: string,
+  lastName?: string,
+  company?: string,
+  birthday?: string,
 ): Promise<{ isNew: boolean }> {
   const existing = await getUserByPhone(phone);
   if (existing) {
     await sql`
-      UPDATE users SET line_user_id = ${lineUserId}, display_name = ${displayName ?? null}
+      UPDATE users SET
+        line_user_id = ${lineUserId},
+        display_name = ${displayName ?? null},
+        first_name   = ${firstName  ?? null},
+        last_name    = ${lastName   ?? null},
+        company      = ${company    ?? null},
+        birthday     = ${birthday   ?? null}
       WHERE phone = ${phone}
     `;
     return { isNew: false };
   }
   await sql`
-    INSERT INTO users (line_user_id, phone, display_name)
-    VALUES (${lineUserId}, ${phone}, ${displayName ?? null})
+    INSERT INTO users (line_user_id, phone, display_name, first_name, last_name, company, birthday)
+    VALUES (${lineUserId}, ${phone}, ${displayName ?? null}, ${firstName ?? null}, ${lastName ?? null}, ${company ?? null}, ${birthday ?? null})
   `;
   return { isNew: true };
 }
