@@ -75,33 +75,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, totalExpired, lineSent });
   }
 
-  // ── set-notify3m: ตั้งให้หมดอายุใน 90 วัน แล้วส่งแจ้งเตือนทันที ──
-  if (action === "set-notify3m") {
-    await sql`
-      UPDATE transactions SET expires_at = NOW() + INTERVAL '90 days'
-      WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE
-    `;
-    const rows = await sql`
-      SELECT SUM(points_earned)::int AS pts, MIN(NOW() + INTERVAL '90 days') AS exp_date
-      FROM transactions WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE
-    `;
-    const pts = rows[0]?.pts ?? 0;
-    const expDate = new Date(Date.now() + 90 * 86400000).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
-
-    let lineSent = false;
-    if (user.line_user_id) {
-      lineSent = await pushMessage(
-        user.line_user_id,
-        `⏰ แจ้งเตือนจาก DK Steel and Tools\n\n${user.first_name ?? "คุณ"} คะแนนสะสม ${pts} แต้มของคุณจะหมดอายุในอีก 3 เดือน\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมนำคะแนนมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁`
-      );
-    }
-    return NextResponse.json({ ok: true, expiringPoints: pts, lineSent });
-  }
-
-  // ── set-notify1m: ตั้งให้หมดอายุใน 30 วัน แล้วส่งแจ้งเตือนทันที ──
+  // ── set-notify1m: ตั้งให้หมดอายุใน 30 วัน แล้วส่งแจ้งเตือนทันที (จำลอง cron notify-expiry) ──
   if (action === "set-notify1m") {
     await sql`
-      UPDATE transactions SET expires_at = NOW() + INTERVAL '30 days'
+      UPDATE transactions
+      SET expires_at = NOW() + INTERVAL '30 days', notified_1m = FALSE
       WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE
     `;
     const expDate = new Date(Date.now() + 30 * 86400000).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
@@ -115,8 +93,14 @@ export async function GET(req: NextRequest) {
     if (user.line_user_id) {
       lineSent = await pushMessage(
         user.line_user_id,
-        `⏰ แจ้งเตือนจาก DK Steel and Tools\n\n${user.first_name ?? "คุณ"} คะแนนสะสม ${pts} แต้มของคุณจะหมดอายุในอีก 1 เดือน\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมนำคะแนนมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁`
+        `⏰ แจ้งเตือนจาก DK Steel and Tools\n\nสวัสดีค่ะ ${user.first_name ?? "คุณ"} คะแนนสะสม ${pts} แต้มของคุณจะหมดอายุในอีก 30 วัน\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁`
       );
+    }
+    if (lineSent) {
+      await sql`
+        UPDATE transactions SET notified_1m = TRUE
+        WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE
+      `;
     }
     return NextResponse.json({ ok: true, expiringPoints: pts, lineSent });
   }
@@ -132,10 +116,10 @@ export async function GET(req: NextRequest) {
 
     await sql`DELETE FROM transactions WHERE user_id = ${user.id} AND type = 'expire'`;
 
-    // คืน expired = FALSE และ expires_at = 1 ปีจาก created_at ให้ earn transactions
+    // คืน expired = FALSE, expires_at = 1 ปีจาก created_at, notified_1m = FALSE ให้ earn transactions
     await sql`
       UPDATE transactions
-      SET expired = FALSE, expires_at = created_at + INTERVAL '1 year'
+      SET expired = FALSE, expires_at = created_at + INTERVAL '1 year', notified_1m = FALSE
       WHERE user_id = ${user.id} AND type = 'earn'
     `;
 
@@ -147,5 +131,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, message: `reset สำเร็จ คืนคะแนน ${ptsToRestore} แต้ม` });
   }
 
-  return NextResponse.json({ error: "action ไม่ถูกต้อง: status / set-expire / set-notify3m / set-notify1m / reset" }, { status: 400 });
+  return NextResponse.json({ error: "action ไม่ถูกต้อง: status / set-expire / set-notify1m / reset" }, { status: 400 });
 }

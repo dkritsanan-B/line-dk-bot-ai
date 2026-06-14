@@ -26,6 +26,7 @@ export async function migrateDB() {
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note TEXT`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expired BOOLEAN NOT NULL DEFAULT FALSE`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS notified_1m BOOLEAN NOT NULL DEFAULT FALSE`;
   // ตั้ง expires_at ให้ transaction เก่าที่ยังไม่มีค่า
   await sql`
     UPDATE transactions
