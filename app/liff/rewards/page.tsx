@@ -94,7 +94,7 @@ export default function RewardsPage() {
       {/* Rewards list */}
       <div style={{ padding: "20px 16px 0" }}>
         <div style={{ fontSize: 13, color: "#888", marginBottom: 16, textAlign: "center" }}>
-          📍 นำบัตรสมาชิกมาแสดงที่ร้านเพื่อแลกของรางวัล
+          📍 เปิดหน้าบัตรสมาชิกในแอปแสดงพนักงานเพื่อแลกของรางวัล
         </div>
 
         {REWARDS.map(reward => {
@@ -163,7 +163,7 @@ export default function RewardsPage() {
         <div style={{ background: "white", borderRadius: 16, padding: "24px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>🏪</div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>สามารถเข้ามาแลกของรางวัลที่หน้าร้านได้เลย</div>
-          <div style={{ fontSize: 13, color: "#888" }}>นำบัตรสมาชิกมาแสดงที่ร้านเพื่อแลกของรางวัล</div>
+          <div style={{ fontSize: 13, color: "#888" }}>เปิดหน้าบัตรสมาชิกในแอปแล้วแสดงให้พนักงานที่ร้านเพื่อแลกของรางวัล</div>
           <div style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
         </div>
       </div>
