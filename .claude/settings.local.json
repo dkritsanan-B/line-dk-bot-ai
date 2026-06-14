@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location C:\\\\Users\\\\Win11x64\\\\line_OA_chat_bot; git add .; git commit -m \"feat: add loyalty points system with Neon PostgreSQL\"; git push origin master:main)"
+    ]
+  }
+}
