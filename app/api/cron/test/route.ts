@@ -14,12 +14,15 @@ import { sql } from "@/lib/db";
 export async function GET(req: NextRequest) {
   const action     = req.nextUrl.searchParams.get("action");
   const lineUserId = req.nextUrl.searchParams.get("lineUserId");
+  const phone      = req.nextUrl.searchParams.get("phone");
 
-  if (!lineUserId) {
-    return NextResponse.json({ error: "ต้องระบุ lineUserId" }, { status: 400 });
+  if (!lineUserId && !phone) {
+    return NextResponse.json({ error: "ต้องระบุ lineUserId หรือ phone" }, { status: 400 });
   }
 
-  const users = await sql`SELECT * FROM users WHERE line_user_id = ${lineUserId} LIMIT 1`;
+  const users = lineUserId
+    ? await sql`SELECT * FROM users WHERE line_user_id = ${lineUserId} LIMIT 1`
+    : await sql`SELECT * FROM users WHERE phone = ${phone} LIMIT 1`;
   if (!users[0]) return NextResponse.json({ error: "ไม่พบ user" }, { status: 404 });
   const user = users[0];
 
