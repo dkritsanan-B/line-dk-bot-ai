@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
       t.id,
       t.purchase_amount,
       t.points_earned,
+      t.type,
+      t.note,
       t.created_at,
       u.phone,
       u.first_name,

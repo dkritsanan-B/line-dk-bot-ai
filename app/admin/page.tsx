@@ -66,9 +66,18 @@ export default function AdminPage() {
   // เพิ่มแต้มรายเดียว
   const [apPhone, setApPhone]     = useState("");
   const [apAmount, setApAmount]   = useState("");
+  const [apNote, setApNote]       = useState("");
   const [apLoading, setApLoading] = useState(false);
   const [apResult, setApResult]   = useState<{ name: string; pointsEarned: number; totalPoints: number } | null>(null);
   const [apError, setApError]     = useState("");
+
+  // ลดแต้ม
+  const [dpPhone, setDpPhone]     = useState("");
+  const [dpPoints, setDpPoints]   = useState("");
+  const [dpNote, setDpNote]       = useState("");
+  const [dpLoading, setDpLoading] = useState(false);
+  const [dpResult, setDpResult]   = useState<{ name: string; pointsDeducted: number; totalPoints: number } | null>(null);
+  const [dpError, setDpError]     = useState("");
 
   // เพิ่มแต้มแบบ CSV
   type BulkRow = { phone: string; amount: number; status?: string; name?: string; pointsEarned?: number; totalPoints?: number; message?: string };
@@ -83,7 +92,7 @@ export default function AdminPage() {
   const [editValue, setEditValue]   = useState("");
 
   // ประวัติการเพิ่มแต้ม
-  interface TxRow { id: number; purchase_amount: number; points_earned: number; created_at: string; phone: string; first_name: string | null; last_name: string | null; display_name: string | null; }
+  interface TxRow { id: number; purchase_amount: number; points_earned: number; type: string; note: string | null; created_at: string; phone: string; first_name: string | null; last_name: string | null; display_name: string | null; }
   const [txRows, setTxRows]         = useState<TxRow[]>([]);
   const [txSearch, setTxSearch]     = useState("");
   const [txFrom, setTxFrom]         = useState("");
@@ -99,15 +108,35 @@ export default function AdminPage() {
       const res  = await fetch("/api/admin/add-points", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
-        body: JSON.stringify({ phone: apPhone, amount: amt }),
+        body: JSON.stringify({ phone: apPhone, amount: amt, note: apNote.trim() || null }),
       });
       const data = await res.json();
       if (!res.ok) { setApError(data.error ?? "เกิดข้อผิดพลาด"); return; }
       setApResult(data);
-      setApPhone(""); setApAmount("");
+      setApPhone(""); setApAmount(""); setApNote("");
       fetchUsers(savedPw, search);
     } catch { setApError("เกิดข้อผิดพลาด"); }
     finally { setApLoading(false); }
+  }
+
+  async function handleDeductPoints() {
+    if (!/^0\d{9}$/.test(dpPhone)) { setDpError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
+    const pts = parseInt(dpPoints);
+    if (!pts || pts <= 0) { setDpError("กรุณากรอกจำนวนแต้มที่ต้องการแลก"); return; }
+    setDpLoading(true); setDpError(""); setDpResult(null);
+    try {
+      const res  = await fetch("/api/admin/deduct-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        body: JSON.stringify({ phone: dpPhone, points: pts, note: dpNote.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setDpError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setDpResult(data);
+      setDpPhone(""); setDpPoints(""); setDpNote("");
+      fetchUsers(savedPw, search);
+    } catch { setDpError("เกิดข้อผิดพลาด"); }
+    finally { setDpLoading(false); }
   }
 
   function handleCSVFile(file: File) {
@@ -206,14 +235,17 @@ export default function AdminPage() {
   function exportTxExcel() {
     const data = txRows.map((t, i) => {
       const dt = new Date(t.created_at);
+      const isRedeem = t.type === "redeem";
       return {
         "#": i + 1,
+        "ประเภท": isRedeem ? "แลกรางวัล" : "เพิ่มแต้ม",
         "วันที่": dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
         "เวลา": dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         "ชื่อลูกค้า": t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-"),
         "เบอร์มือถือ": t.phone,
-        "ยอดซื้อ (บาท)": t.purchase_amount,
-        "แต้มที่ได้": t.points_earned,
+        "ยอดซื้อ (บาท)": isRedeem ? 0 : t.purchase_amount,
+        "แต้ม": isRedeem ? -t.points_earned : t.points_earned,
+        "หมายเหตุ": t.note ?? "",
       };
     });
     const ws = XLSX.utils.json_to_sheet(data);
@@ -345,10 +377,54 @@ export default function AdminPage() {
             {apLoading ? "กำลังเพิ่ม..." : "➕ เพิ่มแต้ม"}
           </button>
         </div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ (ถ้ามี)</div>
+          <input type="text" placeholder="เช่น ซื้อปูน 10 ถุง" value={apNote}
+            onChange={e => setApNote(e.target.value)}
+            style={{ ...s.input, maxWidth: 400, marginBottom: 0 }} />
+        </div>
         {apError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {apError}</div>}
         {apResult && (
           <div style={{ marginTop: 12, padding: "12px 16px", background: "#E8F5E9", borderRadius: 10, fontSize: 14, color: "#2e7d32" }}>
             ✅ เพิ่มแต้มสำเร็จ! <strong>{apResult.name}</strong> ได้รับ <strong>{apResult.pointsEarned} แต้ม</strong> — แต้มรวม: <strong>{apResult.totalPoints.toLocaleString()} แต้ม</strong>
+          </div>
+        )}
+      </div>
+
+      {/* ลดแต้ม / แลกของรางวัล */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>🎁 แลกของรางวัล (ลดแต้ม)</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
+            <input type="tel" inputMode="numeric" maxLength={10} placeholder="0812345678"
+              value={dpPhone}
+              onChange={e => { setDpPhone(e.target.value.replace(/\D/g, "")); setDpResult(null); setDpError(""); }}
+              style={{ ...s.input, width: 180, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>จำนวนแต้มที่แลก</div>
+            <input type="number" min={1} placeholder="100"
+              value={dpPoints}
+              onChange={e => { setDpPoints(e.target.value); setDpResult(null); setDpError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleDeductPoints()}
+              style={{ ...s.input, width: 160, marginBottom: 0 }} />
+          </div>
+          <button onClick={handleDeductPoints} disabled={dpLoading}
+            style={{ ...s.btn, background: "#e53935", paddingBottom: 12, paddingTop: 12 }}>
+            {dpLoading ? "กำลังบันทึก..." : "🎁 แลกของรางวัล"}
+          </button>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ / ของรางวัลที่แลก *</div>
+          <input type="text" placeholder="เช่น แลกพัดลม Hatari 16 นิ้ว" value={dpNote}
+            onChange={e => setDpNote(e.target.value)}
+            style={{ ...s.input, maxWidth: 400, marginBottom: 0 }} />
+        </div>
+        {dpError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {dpError}</div>}
+        {dpResult && (
+          <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
+            ✅ แลกของรางวัลสำเร็จ! <strong>{dpResult.name}</strong> ใช้ <strong>{dpResult.pointsDeducted} แต้ม</strong> — แต้มคงเหลือ: <strong>{dpResult.totalPoints.toLocaleString()} แต้ม</strong>
           </div>
         )}
       </div>
@@ -563,7 +639,7 @@ export default function AdminPage() {
             <table style={s.table}>
               <thead>
                 <tr style={{ background: "#f5f7fa" }}>
-                  {["#", "วันที่", "เวลา", "ชื่อลูกค้า", "เบอร์", "ยอดซื้อ (บาท)", "แต้มที่ได้"].map(h => (
+                  {["#", "ประเภท", "วันที่", "เวลา", "ชื่อลูกค้า", "เบอร์", "ยอดซื้อ (บาท)", "แต้ม", "หมายเหตุ"].map(h => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
                 </tr>
@@ -574,15 +650,24 @@ export default function AdminPage() {
                   const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
                   const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
                   const name = t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-");
+                  const isRedeem = t.type === "redeem";
                   return (
-                    <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                    <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0", background: isRedeem ? "#FFF8F5" : (i % 2 === 0 ? "white" : "#fafafa") }}>
                       <td style={s.td}>{i + 1}</td>
+                      <td style={s.td}>
+                        <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: isRedeem ? "#FFE0B2" : "#E3F2FD", color: isRedeem ? "#e65100" : "#1565C0" }}>
+                          {isRedeem ? "🎁 แลกรางวัล" : "⭐ เพิ่มแต้ม"}
+                        </span>
+                      </td>
                       <td style={s.td}>{dateStr}</td>
                       <td style={s.td}>{timeStr}</td>
                       <td style={{ ...s.td, fontWeight: 600 }}>{name}</td>
                       <td style={s.td}>{t.phone}</td>
-                      <td style={{ ...s.td, textAlign: "right" }}>{Number(t.purchase_amount).toLocaleString()}</td>
-                      <td style={{ ...s.td, textAlign: "right", fontWeight: 700, color: "#1976D2" }}>+{t.points_earned}</td>
+                      <td style={{ ...s.td, textAlign: "right" }}>{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td>
+                      <td style={{ ...s.td, textAlign: "right", fontWeight: 700, color: isRedeem ? "#e53935" : "#2e7d32" }}>
+                        {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
+                      </td>
+                      <td style={{ ...s.td, color: "#888", maxWidth: 200 }}>{t.note ?? "-"}</td>
                     </tr>
                   );
                 })}

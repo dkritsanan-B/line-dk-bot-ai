@@ -21,6 +21,9 @@ export async function migrateDB() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS company     TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday    DATE`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id TEXT`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'earn'`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note TEXT`;
 }
 
 export async function getUserByPhone(phone: string): Promise<User | null> {
@@ -65,7 +68,8 @@ export async function registerUser(
 
 export async function addPoints(
   phone: string,
-  purchaseAmount: number
+  purchaseAmount: number,
+  note?: string,
 ): Promise<{ pointsEarned: number; totalPoints: number } | null> {
   const user = await getUserByPhone(phone);
   if (!user) return null;
@@ -73,15 +77,29 @@ export async function addPoints(
   const pointsEarned = Math.floor(purchaseAmount / POINTS_PER_BAHT);
   if (pointsEarned <= 0) return null;
 
-  await sql`
-    ALTER TABLE transactions
-      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  `;
   await sql`UPDATE users SET points = points + ${pointsEarned} WHERE phone = ${phone}`;
   await sql`
-    INSERT INTO transactions (user_id, purchase_amount, points_earned)
-    VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned})
+    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
+    VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned}, 'earn', ${note ?? null})
   `;
 
   return { pointsEarned, totalPoints: user.points + pointsEarned };
+}
+
+export async function deductPoints(
+  phone: string,
+  points: number,
+  note?: string,
+): Promise<{ pointsDeducted: number; totalPoints: number } | null> {
+  const user = await getUserByPhone(phone);
+  if (!user) return null;
+  if (user.points < points) return null;
+
+  await sql`UPDATE users SET points = points - ${points} WHERE phone = ${phone}`;
+  await sql`
+    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
+    VALUES (${user.id}, 0, ${points}, 'redeem', ${note ?? null})
+  `;
+
+  return { pointsDeducted: points, totalPoints: user.points - points };
 }

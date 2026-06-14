@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { phone, amount } = await req.json();
+  const { phone, amount, note } = await req.json();
   if (!phone || !amount || amount <= 0) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ไม่พบลูกค้าเบอร์นี้ในระบบ" }, { status: 404 });
   }
 
-  const result = await addPoints(phone, amount);
+  const result = await addPoints(phone, amount, note);
   if (!result) {
     return NextResponse.json({ error: "เพิ่มแต้มไม่สำเร็จ" }, { status: 500 });
   }
