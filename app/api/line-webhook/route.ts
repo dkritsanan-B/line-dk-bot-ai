@@ -209,6 +209,12 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
           height: "sm",
           action: { type: "uri", label: `📞 โทร${s.name}`, uri: `tel:${s.phone.replace(/-/g, "")}` },
         },
+        {
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          action: { type: "uri", label: "➕ แอดไลน์", uri: "line://nv/addFriendByPhoneNumber" },
+        },
       ],
     },
   }));
