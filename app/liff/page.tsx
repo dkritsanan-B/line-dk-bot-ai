@@ -8,6 +8,7 @@ interface TxItem {
   type: string;
   note: string | null;
   created_at: string;
+  expires_at: string | null;
 }
 
 interface Profile {
@@ -74,6 +75,7 @@ export default function LiffPage() {
   const [txList, setTxList]       = useState<TxItem[]>([]);
   const [txLoading, setTxLoading] = useState(false);
   const [txOpen, setTxOpen]       = useState(false);
+  const [txFilter, setTxFilter]   = useState<"all"|"earn"|"redeem"|"expire">("all");
 
   useEffect(() => {
     (async () => {
@@ -372,29 +374,34 @@ export default function LiffPage() {
             </div>
           )}
 
-          {expiry?.earliest_expiry && (() => {
-            const daysLeft = Math.ceil((new Date(expiry.earliest_expiry).getTime() - Date.now()) / 86400000);
-            const expStr = new Date(expiry.earliest_expiry).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
-            const urgent = daysLeft <= 30;
-            return (
-              <div style={{ marginTop: 14, background: urgent ? "rgba(255,80,80,0.25)" : "rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 16 }}>{urgent ? "🔴" : "⏰"}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: urgent ? "#FFB3B3" : "rgba(255,255,255,0.7)" }}>
-                    คะแนนหมดอายุในอีก <span style={{ fontWeight: 800, color: urgent ? "#FF8080" : "#FFD700" }}>{daysLeft} วัน</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
-                    วันหมดอายุ: {expStr}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.5)", textAlign: "right" }}>
+          <div style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.5)", textAlign: "right" }}>
             สมัครเมื่อ {member?.created_at ? formatDate(member.created_at) : "-"}
           </div>
         </div>
+
+        {/* Expiry box สีเหลือง */}
+        {expiry?.earliest_expiry && (expiry.expiring_points ?? 0) > 0 && (() => {
+          const expDate = new Date(expiry.earliest_expiry).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+          const daysLeft = Math.ceil((new Date(expiry.earliest_expiry).getTime() - Date.now()) / 86400000);
+          const urgent = daysLeft <= 30;
+          return (
+            <div style={{ marginTop: 12, background: urgent ? "#FFF0F0" : "#FFFBEA", border: `1px solid ${urgent ? "#FFCDD2" : "#FFE082"}`, borderRadius: 14, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: urgent ? "#C62828" : "#E65100" }}>
+                  {(expiry.expiring_points ?? 0).toLocaleString()} คะแนน
+                </div>
+                <div style={{ fontSize: 12, color: urgent ? "#E53935" : "#F57C00", marginTop: 2 }}>
+                  หมดอายุ: {expDate}{daysLeft <= 90 ? ` (อีก ${daysLeft} วัน)` : ""}
+                </div>
+              </div>
+              <button
+                onClick={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); setTxOpen(true); }}
+                style={{ background: "none", border: "none", color: urgent ? "#C62828" : "#E65100", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                ดูประวัติ &gt;
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Action buttons — with subtitle */}
         <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
@@ -435,33 +442,70 @@ export default function LiffPage() {
       {txOpen && (
         <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: 10 }}>
           <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", overflow: "hidden" }}>
-            {txList.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "28px 16px", color: "#aaa", fontSize: 14 }}>
-                ยังไม่มีประวัติการสะสมแต้ม
-              </div>
-            ) : (
-              txList.map((t, i) => {
+
+            {/* 4 แท็บ */}
+            <div style={{ display: "flex", borderBottom: "1px solid #f0f0f0" }}>
+              {([
+                { key: "all",    label: "ทั้งหมด" },
+                { key: "earn",   label: "ที่ได้รับ" },
+                { key: "redeem", label: "ใช้แล้ว" },
+                { key: "expire", label: "หมดอายุ" },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setTxFilter(tab.key)}
+                  style={{
+                    flex: 1, padding: "11px 4px", border: "none", background: "none",
+                    fontSize: 13, fontWeight: txFilter === tab.key ? 800 : 500,
+                    color: txFilter === tab.key ? "#1565C0" : "#999",
+                    borderBottom: txFilter === tab.key ? "2.5px solid #1565C0" : "2.5px solid transparent",
+                    cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif",
+                    transition: "all 0.15s",
+                  }}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* รายการ */}
+            {(() => {
+              const filtered = txFilter === "all" ? txList : txList.filter(t => t.type === txFilter);
+              if (filtered.length === 0) return (
+                <div style={{ textAlign: "center", padding: "28px 16px", color: "#aaa", fontSize: 14 }}>
+                  ไม่มีรายการในหมวดนี้
+                </div>
+              );
+              return filtered.map((t, i) => {
+                const isEarn   = t.type === "earn";
                 const isRedeem = t.type === "redeem";
+                const isExpire = t.type === "expire";
                 const dt = new Date(t.created_at);
                 const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
                 const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                const icon  = isEarn ? "⭐" : isRedeem ? "🎁" : "⏳";
+                const label = isEarn ? "สะสมแต้ม" : isRedeem ? "แลกของรางวัล" : "คะแนนหมดอายุ";
+                const color = isEarn ? "#2E7D32" : isRedeem ? "#E53935" : "#9E9E9E";
+                const prefix = isEarn ? "+" : "-";
                 return (
-                  <div key={t.id} style={{ padding: "14px 18px", borderBottom: i < txList.length - 1 ? "1px solid #f0f0f0" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>
-                        {isRedeem ? "🎁 แลกของรางวัล" : "⭐ สะสมแต้ม"}
-                      </div>
+                  <div key={t.id} style={{ padding: "14px 18px", borderBottom: i < filtered.length - 1 ? "1px solid #f0f0f0" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{icon} {label}</div>
                       {t.note && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{t.note}</div>}
                       <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{dateStr} · {timeStr}</div>
+                      {isEarn && t.expires_at && (
+                        <div style={{ fontSize: 11, color: "#BF8000", marginTop: 2 }}>
+                          หมดอายุ: {new Date(t.expires_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: isRedeem ? "#e53935" : "#2e7d32", minWidth: 60, textAlign: "right" }}>
-                      {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
+                    <div style={{ fontSize: 20, fontWeight: 800, color, minWidth: 60, textAlign: "right" }}>
+                      {prefix}{t.points_earned}
                       <div style={{ fontSize: 11, fontWeight: 400, color: "#aaa" }}>แต้ม</div>
                     </div>
                   </div>
                 );
-              })
-            )}
+              });
+            })()}
           </div>
         </div>
       )}
