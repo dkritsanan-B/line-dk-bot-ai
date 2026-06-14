@@ -368,6 +368,13 @@ export default function LiffPage() {
             ✏️ แก้ไขข้อมูล
           </button>
         </div>
+
+        {/* ของรางวัล */}
+        <button
+          onClick={() => window.location.href = "/liff/rewards"}
+          style={{ marginTop: 10, width: "100%", padding: "14px", background: "linear-gradient(135deg, #E65100, #FF8F00)", color: "white", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 12px rgba(230,81,0,0.3)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", letterSpacing: 0.5 }}>
+          🎁 ดูของรางวัลที่แลกได้
+        </button>
       </div>
 
       {/* ประวัติการสะสมแต้ม */}
