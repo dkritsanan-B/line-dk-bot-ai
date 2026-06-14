@@ -29,9 +29,21 @@ interface Member {
 }
 
 function getLevel(points: number) {
-  if (points >= 10000) return { name: "GOLD",   color: "#F9A825", bg: "#FFF8E1", next: null,  target: 10000 };
-  if (points >= 3001)  return { name: "SILVER",  color: "#757575", bg: "#F5F5F5", next: 10000, target: 3001 };
-  return                      { name: "BRONZE",  color: "#8D6E63", bg: "#EFEBE9", next: 3001,  target: 0 };
+  if (points >= 10000) return {
+    name: "GOLD", emoji: "🥇", color: "#F57F17", textColor: "#FFF8E1",
+    cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)",
+    ring: "#FFD600", next: null, target: 10000,
+  };
+  if (points >= 3001) return {
+    name: "SILVER", emoji: "🥈", color: "#546E7A", textColor: "#ECEFF1",
+    cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)",
+    ring: "#B0BEC5", next: 10000, target: 3001,
+  };
+  return {
+    name: "BRONZE", emoji: "🥉", color: "#6D4C41", textColor: "#FFF8F5",
+    cardGrad: "linear-gradient(135deg, #6D4C41 0%, #A1887F 50%, #D7A27C 100%)",
+    ring: "#D7A27C", next: 3001, target: 0,
+  };
 }
 
 function formatDate(iso: string) {
@@ -250,101 +262,118 @@ export default function LiffPage() {
     </div>
   );
 
-  /* ── การ์ดสมาชิก ── */
+  /* ── การ์ดสมาชิก (Premium) ── */
   const level = getLevel(member?.points ?? 0);
   const points = member?.points ?? 0;
   const progress = level.next ? Math.min(100, ((points - level.target) / (level.next - level.target)) * 100) : 100;
+  const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
 
   return (
-    <div style={s.page}>
-      <div style={s.header}>
-        <div style={s.logo}>🏗️ DK STEEL AND TOOLS</div>
-        <div style={{ fontSize: 13, opacity: 0.85 }}>บัตรสมาชิกดิจิทัล</div>
+    <div style={{ ...s.page, background: "#ECEFF1" }}>
+      {/* Header */}
+      <div style={{ width: "100%", background: "linear-gradient(135deg, #1a237e, #1976D2)", padding: "20px 20px 60px", textAlign: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: 1 }}>🏗️ DK STEEL AND TOOLS</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>ระบบสมาชิกสะสมแต้ม</div>
       </div>
 
-      <div style={s.card}>
-        {profile?.pictureUrl && (
-          <img src={profile.pictureUrl} alt="" style={s.avatar} />
-        )}
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 2 }}>
-          {member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name)}
-        </div>
-        {member?.company && (
-          <div style={{ color: "#555", fontSize: 13, marginBottom: 4 }}>🏢 {member.company}</div>
-        )}
-        {member?.phone && (
-          <div style={{ color: "#888", fontSize: 13, marginBottom: member?.birthday ? 4 : 16 }}>📱 {member.phone}</div>
-        )}
-        {member?.birthday && (
-          <div style={{ color: "#888", fontSize: 13, marginBottom: 16 }}>
-            🎂 {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
-          </div>
-        )}
+      {/* Premium Card */}
+      <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: -44, position: "relative", zIndex: 1 }}>
+        <div style={{ background: level.cardGrad, borderRadius: 24, padding: "28px 24px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", position: "relative", overflow: "hidden" }}>
 
-        {/* Level badge */}
-        <div style={{ ...s.badge, background: level.bg, color: level.color, borderColor: level.color }}>
-          ⭐ {level.name}
-        </div>
+          {/* Decorative circles */}
+          <div style={{ position: "absolute", top: -30, right: -30, width: 130, height: 130, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+          <div style={{ position: "absolute", bottom: -20, left: -20, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
 
-        {/* Points */}
-        <div style={{ margin: "20px 0 4px", fontSize: 13, color: "#888" }}>แต้มสะสม</div>
-        <div style={{ fontSize: 52, fontWeight: 800, color: "#1a1a1a", lineHeight: 1 }}>
-          {points.toLocaleString()}
-        </div>
-        <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>แต้ม</div>
-
-        {/* Progress bar */}
-        {level.next && (
-          <div style={{ width: "100%", marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888", marginBottom: 6 }}>
-              <span>{level.name}</span>
-              <span>อีก {(level.next - points).toLocaleString()} แต้ม → {
-                level.next >= 10000 ? "GOLD" : "SILVER"
-              }</span>
-            </div>
-            <div style={s.progressBg}>
-              <div style={{ ...s.progressFill, width: `${progress}%`, background: level.color }} />
-            </div>
-            <div style={{ textAlign: "right", fontSize: 11, color: "#aaa", marginTop: 4 }}>
-              {points} / {level.next}
+          {/* Top row: logo + level badge */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 700, letterSpacing: 1 }}>MEMBER CARD</div>
+            <div style={{ background: "rgba(255,255,255,0.22)", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 800, color: "white", letterSpacing: 1 }}>
+              {level.emoji} {level.name}
             </div>
           </div>
-        )}
 
-        <div style={s.divider} />
+          {/* Profile */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 22 }}>
+            {profile?.pictureUrl && (
+              <img src={profile.pictureUrl} alt="" style={{ width: 66, height: 66, borderRadius: "50%", border: `3px solid rgba(255,255,255,0.8)`, boxShadow: "0 4px 12px rgba(0,0,0,0.3)", objectFit: "cover", flexShrink: 0 }} />
+            )}
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 20, color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.3)", lineHeight: 1.2 }}>{name}</div>
+              {member?.company && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>🏢 {member.company}</div>}
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 3 }}>📱 {member?.phone}</div>
+            </div>
+          </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontSize: 13, color: "#777" }}>
-          <span>📅 สมัครเมื่อ</span>
-          <span>{member?.created_at ? formatDate(member.created_at) : "-"}</span>
+          {/* Divider */}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.25)", marginBottom: 18 }} />
+
+          {/* Points */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 1, marginBottom: 4 }}>แต้มสะสม</div>
+              <div style={{ fontSize: 52, fontWeight: 900, color: "white", lineHeight: 1, textShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                {points.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>POINTS</div>
+            </div>
+            {member?.birthday && (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>วันเกิด</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+                  🎂 {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Progress bar */}
+          {level.next && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.75)", marginBottom: 6 }}>
+                <span>{level.name}</span>
+                <span>อีก {(level.next - points).toLocaleString()} แต้ม → {level.next >= 10000 ? "GOLD" : "SILVER"}</span>
+              </div>
+              <div style={{ height: 8, background: "rgba(255,255,255,0.25)", borderRadius: 10, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progress}%`, background: "rgba(255,255,255,0.85)", borderRadius: 10, transition: "width 0.8s ease" }} />
+              </div>
+              <div style={{ textAlign: "right", fontSize: 10, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
+                {points.toLocaleString()} / {level.next.toLocaleString()}
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 18, fontSize: 11, color: "rgba(255,255,255,0.55)", textAlign: "right" }}>
+            สมัครเมื่อ {member?.created_at ? formatDate(member.created_at) : "-"}
+          </div>
         </div>
 
-        <div style={s.divider} />
-
-        <button
-          onClick={() => {
-            setFirstName(member?.first_name ?? "");
-            setLastName(member?.last_name ?? "");
-            setPhone(member?.phone ?? "");
-            setCompany(member?.company ?? "");
-            setBirthday(member?.birthday ? member.birthday.substring(0, 10) : "");
-            setError("");
-            setEditing(true);
-          }}
-          style={{ ...s.btn, background: "transparent", color: "#1976D2", border: "1.5px solid #1976D2", fontSize: 14 }}>
-          ✏️ แก้ไขข้อมูล
-        </button>
+        {/* Action buttons */}
+        <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+          <button
+            onClick={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
+            style={{ flex: 1, padding: "13px", background: "white", color: "#555", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+            {txLoading ? "⏳ โหลด..." : txOpen ? "▲ ซ่อนประวัติ" : "📋 ประวัติแต้ม"}
+          </button>
+          <button
+            onClick={() => {
+              setFirstName(member?.first_name ?? "");
+              setLastName(member?.last_name ?? "");
+              setPhone(member?.phone ?? "");
+              setCompany(member?.company ?? "");
+              setBirthday(member?.birthday ? member.birthday.substring(0, 10) : "");
+              setError("");
+              setEditing(true);
+            }}
+            style={{ flex: 1, padding: "13px", background: "white", color: "#1976D2", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.10)", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+            ✏️ แก้ไขข้อมูล
+          </button>
+        </div>
       </div>
 
       {/* ประวัติการสะสมแต้ม */}
-      <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: 16 }}>
-        <button
-          onClick={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
-          style={{ ...s.btn, width: "100%", background: "white", color: "#555", border: "1.5px solid #ddd", fontSize: 14 }}>
-          {txLoading ? "กำลังโหลด..." : txOpen ? "▲ ซ่อนประวัติ" : "📋 ดูประวัติการสะสมแต้ม"}
-        </button>
-
-        {txOpen && (
-          <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", marginTop: 10, overflow: "hidden" }}>
+      {txOpen && (
+        <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: 10 }}>
+          <div style={{ background: "white", borderRadius: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", overflow: "hidden" }}>
             {txList.length === 0 ? (
               <div style={{ textAlign: "center", padding: "28px 16px", color: "#aaa", fontSize: 14 }}>
                 ยังไม่มีประวัติการสะสมแต้ม
@@ -373,10 +402,10 @@ export default function LiffPage() {
               })
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div style={{ fontSize: 12, color: "#aaa", marginTop: 16, textAlign: "center" }}>
+      <div style={{ fontSize: 12, color: "#aaa", marginTop: 20, marginBottom: 8, textAlign: "center" }}>
         ทุก 100 บาท = 1 แต้ม · สะสมแต้มแลกของรางวัล
       </div>
     </div>
