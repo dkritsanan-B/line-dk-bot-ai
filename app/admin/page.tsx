@@ -131,15 +131,21 @@ export default function AdminPage() {
         </div>
         <div style={s.statCard}>
           <div style={s.statNum}>
-            {users.filter(u => u.points >= 2000).length}
+            {users.filter(u => u.points >= 10000).length}
           </div>
-          <div style={s.statLabel}>ระดับ GOLD</div>
+          <div style={s.statLabel}>🥇 GOLD (10,000+)</div>
         </div>
         <div style={s.statCard}>
           <div style={s.statNum}>
-            {users.filter(u => u.points >= 500 && u.points < 2000).length}
+            {users.filter(u => u.points >= 3001 && u.points < 10000).length}
           </div>
-          <div style={s.statLabel}>ระดับ SILVER</div>
+          <div style={s.statLabel}>🥈 SILVER (3,001-10,000)</div>
+        </div>
+        <div style={s.statCard}>
+          <div style={s.statNum}>
+            {users.filter(u => u.points < 3001).length}
+          </div>
+          <div style={s.statLabel}>🥉 BRONZE (0-3,000)</div>
         </div>
       </div>
 
@@ -179,8 +185,8 @@ export default function AdminPage() {
               <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
             )}
             {users.map((u, i) => {
-              const level = u.points >= 2000 ? "🥇 GOLD" : u.points >= 500 ? "🥈 SILVER" : "WELCOME";
-              const levelColor = u.points >= 2000 ? "#F9A825" : u.points >= 500 ? "#757575" : "#1976D2";
+              const level = u.points >= 10000 ? "🥇 GOLD" : u.points >= 3001 ? "🥈 SILVER" : "🥉 BRONZE";
+              const levelColor = u.points >= 10000 ? "#F9A825" : u.points >= 3001 ? "#757575" : "#8D6E63";
               return (
                 <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
                   <td style={s.td}>{i + 1}</td>
@@ -225,7 +231,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   statsRow: {
     width: "100%", maxWidth: 1100,
-    display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+    display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
     gap: 12, marginBottom: 20,
   },
   statCard: {

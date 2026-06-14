@@ -20,9 +20,9 @@ interface Member {
 }
 
 function getLevel(points: number) {
-  if (points >= 2000) return { name: "GOLD", color: "#F9A825", bg: "#FFF8E1", next: null, target: 2000 };
-  if (points >= 500)  return { name: "SILVER", color: "#757575", bg: "#F5F5F5", next: 2000, target: 500 };
-  return                     { name: "WELCOME", color: "#1976D2", bg: "#E3F2FD", next: 500, target: 0 };
+  if (points >= 10000) return { name: "GOLD",   color: "#F9A825", bg: "#FFF8E1", next: null,  target: 10000 };
+  if (points >= 3001)  return { name: "SILVER",  color: "#757575", bg: "#F5F5F5", next: 10000, target: 3001 };
+  return                      { name: "BRONZE",  color: "#8D6E63", bg: "#EFEBE9", next: 3001,  target: 0 };
 }
 
 function formatDate(iso: string) {
@@ -276,7 +276,7 @@ export default function LiffPage() {
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888", marginBottom: 6 }}>
               <span>{level.name}</span>
               <span>อีก {(level.next - points).toLocaleString()} แต้ม → {
-                level.next >= 2000 ? "GOLD" : "SILVER"
+                level.next >= 10000 ? "GOLD" : "SILVER"
               }</span>
             </div>
             <div style={s.progressBg}>
