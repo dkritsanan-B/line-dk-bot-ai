@@ -4,17 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
-
-async function pushMessage(lineUserId: string, text: string) {
-  await fetch(LINE_PUSH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to: lineUserId, messages: [{ type: "text", text }] }),
-  });
-}
-
 export async function GET(req: NextRequest) {
   // Vercel Cron ส่ง Authorization header มาให้
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -52,15 +41,6 @@ export async function GET(req: NextRequest) {
       VALUES (${row.user_id}, 0, ${toExpire}, 'expire', 'คะแนนหมดอายุ 1 ปี')
     `;
     await sql`UPDATE transactions SET expired = TRUE WHERE id = ${row.id}`;
-
-    // แจ้งเตือนลูกค้า
-    if (row.line_user_id) {
-      const name = row.first_name ?? "คุณ";
-      await pushMessage(
-        row.line_user_id as string,
-        `⚠️ แจ้งเตือนจาก DK Steel and Tools\n\n${name} คะแนนสะสม ${toExpire} แต้มของคุณได้หมดอายุแล้วค่ะ\n\nสะสมแต้มใหม่ได้ทุกการซื้อสินค้า ทุก 100 บาท = 1 แต้ม 🌟`
-      );
-    }
 
     totalExpired += toExpire;
     processed.push(row.id as number);

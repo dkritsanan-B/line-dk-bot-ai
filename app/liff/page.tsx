@@ -28,6 +28,11 @@ interface Member {
   created_at: string;
 }
 
+interface Expiry {
+  earliest_expiry: string | null;
+  expiring_points: number | null;
+}
+
 function getLevel(points: number) {
   if (points >= 10000) return {
     name: "GOLD", emoji: "🥇", color: "#F57F17", textColor: "#FFF8E1",
@@ -55,6 +60,7 @@ function formatDate(iso: string) {
 export default function LiffPage() {
   const [profile, setProfile]     = useState<Profile | null>(null);
   const [member, setMember]       = useState<Member | null>(null);
+  const [expiry, setExpiry]       = useState<Expiry | null>(null);
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [phone, setPhone]         = useState("");
   const [firstName, setFirstName] = useState("");
@@ -83,7 +89,7 @@ export default function LiffPage() {
         const res  = await fetch(`/api/member?lineUserId=${p.userId}`);
         const data = await res.json();
         setRegistered(data.registered);
-        if (data.registered) setMember(data.user);
+        if (data.registered) { setMember(data.user); setExpiry(data.expiry ?? null); }
       } catch {
         setError("กรุณาเปิดใน LINE เท่านั้นค่ะ");
       } finally {
@@ -366,7 +372,26 @@ export default function LiffPage() {
             </div>
           )}
 
-          <div style={{ marginTop: 14, fontSize: 11, color: "rgba(255,255,255,0.5)", textAlign: "right" }}>
+          {expiry?.earliest_expiry && (() => {
+            const daysLeft = Math.ceil((new Date(expiry.earliest_expiry).getTime() - Date.now()) / 86400000);
+            const expStr = new Date(expiry.earliest_expiry).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+            const urgent = daysLeft <= 30;
+            return (
+              <div style={{ marginTop: 14, background: urgent ? "rgba(255,80,80,0.25)" : "rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{urgent ? "🔴" : "⏰"}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: urgent ? "#FFB3B3" : "rgba(255,255,255,0.7)" }}>
+                    คะแนนหมดอายุในอีก <span style={{ fontWeight: 800, color: urgent ? "#FF8080" : "#FFD700" }}>{daysLeft} วัน</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                    วันหมดอายุ: {expStr}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.5)", textAlign: "right" }}>
             สมัครเมื่อ {member?.created_at ? formatDate(member.created_at) : "-"}
           </div>
         </div>
