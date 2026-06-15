@@ -217,9 +217,10 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
         },
         {
           type: "button",
-          style: "secondary",
+          style: "primary",
           height: "sm",
-          action: { type: "uri", label: "💬 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` },
+          color: "#06C755",
+          action: { type: "uri", label: "🟢 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` },
         },
         {
           type: "box",
