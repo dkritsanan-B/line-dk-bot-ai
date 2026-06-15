@@ -158,7 +158,7 @@ const SALES_STAFF = [
   { name: "คุณมีน",  phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004" },
 ];
 
-const HERO_URL = "https://line-dk-bot-ai.vercel.app/herobanner.png";
+const HERO_URL = "https://line-dk-bot-ai.vercel.app/herobanner2.png";
 const BRAND_COLOR = "#2E3192";
 
 async function sendFlexSalesContact(replyToken: string): Promise<void> {
