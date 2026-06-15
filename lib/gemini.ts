@@ -40,22 +40,24 @@ ${qa || "(ไม่มีข้อมูล)"}
 คำถามลูกค้า: ${userMessage}`;
 }
 
+const MODEL = "gemini-1.5-flash";
+
 export async function generateQuizQuestion(): Promise<{ question: string; answer: string } | null> {
   const prompt = `สร้างคำถามความรู้ทั่วไปภาษาไทย 1 ข้อ ระดับปานกลาง สนุกน่าสนใจ
 คำตอบต้องสั้น ไม่เกิน 5 คำ
 ตอบ JSON รูปแบบนี้เท่านั้น ห้ามมีข้อความอื่น:
 {"question":"คำถามที่นี่","answer":"คำตอบที่นี่"}`;
 
-  const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { temperature: 1.0, maxOutputTokens: 512 },
-  });
-
-  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-  const match = text.match(/\{[\s\S]*?\}/);
-  if (!match) return null;
   try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { temperature: 1.0, maxOutputTokens: 512 },
+    });
+
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const match = text.match(/\{[\s\S]*?\}/);
+    if (!match) return null;
     const parsed = JSON.parse(match[0]);
     if (parsed.question && parsed.answer) return parsed as { question: string; answer: string };
     return null;
@@ -71,16 +73,16 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 ผู้เล่นตอบถูกหรือไม่? (ยอมรับคำตอบใกล้เคียง สะกดผิดเล็กน้อย หรือเป็นคำย่อที่รู้จักกัน)
 ตอบ JSON เท่านั้น: {"correct":true} หรือ {"correct":false}`;
 
-  const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { temperature: 0, maxOutputTokens: 64 },
-  });
-
-  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-  const match = text.match(/\{[\s\S]*?\}/);
-  if (!match) return false;
   try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { temperature: 0, maxOutputTokens: 64 },
+    });
+
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const match = text.match(/\{[\s\S]*?\}/);
+    if (!match) return false;
     return JSON.parse(match[0]).correct === true;
   } catch {
     return false;
@@ -88,24 +90,24 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 }
 
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
-  const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: buildPrompt(faq, userMessage) }] }],
-    config: {
-      temperature: 1.0,
-      maxOutputTokens: 1024,
-    },
-  });
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{ role: "user", parts: [{ text: buildPrompt(faq, userMessage) }] }],
+      config: {
+        temperature: 1.0,
+        maxOutputTokens: 1024,
+      },
+    });
 
-  const candidate = result.candidates?.[0];
-  const finishReason = candidate?.finishReason;
-  const candidatesTokenCount = result.usageMetadata?.candidatesTokenCount ?? 0;
+    const candidate = result.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    console.log(`[gemini] model=${MODEL} finishReason=${finishReason}`);
 
-  console.log(`[gemini] finishReason=${finishReason} candidates=${candidatesTokenCount}`);
-
-  if (finishReason === "MAX_TOKENS") {
+    if (finishReason === "MAX_TOKENS") return DEFAULT_REPLY;
+    return candidate?.content?.parts?.[0]?.text?.trim() ?? DEFAULT_REPLY;
+  } catch (err) {
+    console.error("[gemini] error:", err);
     return DEFAULT_REPLY;
   }
-
-  return candidate?.content?.parts?.[0]?.text?.trim() ?? DEFAULT_REPLY;
 }
