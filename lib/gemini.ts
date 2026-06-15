@@ -9,15 +9,39 @@ export const DEFAULT_REPLY =
   "คุณลัย 095-023-6382\n" +
   "คุณมีน 094-629-3510";
 
+function parseCSV(csv: string): string[][] {
+  const rows: string[][] = [];
+  let field = "";
+  let fields: string[] = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < csv.length; i++) {
+    const ch = csv[i];
+    const next = csv[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { fields.push(field); field = ""; }
+      else if (ch === '\r' && next === '\n') { fields.push(field); rows.push(fields); fields = []; field = ""; i++; }
+      else if (ch === '\n') { fields.push(field); rows.push(fields); fields = []; field = ""; }
+      else { field += ch; }
+    }
+  }
+  if (field || fields.length > 0) { fields.push(field); if (fields.some(f => f)) rows.push(fields); }
+
+  return rows;
+}
+
 function csvToQA(csv: string): string {
-  return csv
-    .split("\n")
+  return parseCSV(csv)
     .slice(1)
-    .filter(line => line.trim())
-    .map(line => {
-      const parts = line.split(",");
-      const question = parts[1]?.trim() ?? "";
-      const answer = parts.slice(2).join(",").trim();
+    .map(fields => {
+      const question = fields[1]?.trim() ?? "";
+      const answer = fields.slice(2).join(",").trim();
       return question && answer ? `ถาม: ${question}\nตอบ: ${answer}` : "";
     })
     .filter(Boolean)
