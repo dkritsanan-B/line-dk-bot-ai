@@ -40,7 +40,7 @@ ${qa || "(ไม่มีข้อมูล)"}
 คำถามลูกค้า: ${userMessage}`;
 }
 
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-2.5-flash";
 
 export async function generateQuizQuestion(): Promise<{ question: string; answer: string } | null> {
   const prompt = `สร้างคำถามความรู้ทั่วไปภาษาไทย 1 ข้อ ระดับปานกลาง สนุกน่าสนใจ
