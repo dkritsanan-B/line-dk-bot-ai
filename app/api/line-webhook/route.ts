@@ -152,11 +152,10 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
 
 // ── ติดต่อฝ่ายขาย: Flex Message Carousel ────────────────────────
 const SALES_STAFF = [
-  { name: "คุณเก๋",   phone: "094-651-4309", color: "#E53935" },
-  { name: "คุณหญิง", phone: "088-760-8470", color: "#8E24AA" },
-  { name: "คุณแพรว", phone: "065-209-4955", color: "#1E88E5" },
-  { name: "คุณลัย",  phone: "095-023-6382", color: "#00897B" },
-  { name: "คุณมีน",  phone: "094-629-3510", color: "#F4511E" },
+  { name: "คุณเก๋",   phone: "094-651-4309", color: "#E53935", lineId: "0946514309" },
+  { name: "คุณแพรว", phone: "065-209-4955", color: "#1E88E5", lineId: "0652094955" },
+  { name: "คุณลัย",  phone: "095-023-6382", color: "#00897B", lineId: "0950236382" },
+  { name: "คุณมีน",  phone: "094-629-3510", color: "#F4511E", lineId: "somdk5004" },
 ];
 
 async function sendFlexSalesContact(replyToken: string): Promise<void> {
@@ -213,7 +212,7 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
           type: "button",
           style: "secondary",
           height: "sm",
-          action: { type: "uri", label: "➕ แอดไลน์", uri: "line://nv/addFriendByPhoneNumber" },
+          action: { type: "uri", label: "➕ แอดไลน์", uri: `https://line.me/ti/p/~${s.lineId}` },
         },
       ],
     },
