@@ -89,6 +89,24 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
   }
 }
 
+export async function explainAnswer(question: string, answer: string): Promise<string> {
+  const prompt = `คำถาม: "${question}"
+คำตอบที่ถูกต้อง: "${answer}"
+
+อธิบายสั้นๆ ว่าทำไมคำตอบนี้ถึงถูกต้อง ภาษาไทย เป็นกันเอง 1-2 ประโยค ใส่ emoji น่ารัก`;
+
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { temperature: 0.7, maxOutputTokens: 256 },
+    });
+    return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
   try {
     const result = await ai.models.generateContent({

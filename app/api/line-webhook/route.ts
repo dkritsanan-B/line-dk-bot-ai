@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
-import { askGemini, DEFAULT_REPLY, generateQuizQuestion, checkQuizAnswer } from "@/lib/gemini";
+import { askGemini, DEFAULT_REPLY, generateQuizQuestion, checkQuizAnswer, explainAnswer } from "@/lib/gemini";
 import { getUserByLineId } from "@/lib/points";
 import {
   migrateQuizDB, getQuizSession, ensureSession,
@@ -91,7 +91,10 @@ async function handleQuizAnswer(
       msg += `\n\n🎉 เล่นครบแล้วค่ะ มาเล่นใหม่ได้พรุ่งนี้นะคะ 😊`;
     }
   } else {
-    msg += `❌ ยังไม่ถูกนะคะ\n✨ คำตอบที่ถูกต้องคือ "${current_answer}"\n\n`;
+    const explanation = await explainAnswer(current_question!, current_answer!);
+    msg += `❌ ยังไม่ถูกนะคะ\n✨ คำตอบที่ถูกต้องคือ "${current_answer}"\n`;
+    if (explanation) msg += `💡 ${explanation}\n`;
+    msg += "\n";
 
     if (questions_asked < MAX_QUESTIONS) {
       const next = await generateQuizQuestion();
