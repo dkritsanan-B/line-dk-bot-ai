@@ -47,7 +47,7 @@ export async function generateQuizQuestion(): Promise<{ question: string; answer
 {"question":"คำถามที่นี่","answer":"คำตอบที่นี่"}`;
 
   const result = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: { temperature: 1.0, maxOutputTokens: 512 },
   });
@@ -72,7 +72,7 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 ตอบ JSON เท่านั้น: {"correct":true} หรือ {"correct":false}`;
 
   const result = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: { temperature: 0, maxOutputTokens: 64 },
   });
@@ -89,7 +89,7 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
   const result = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: buildPrompt(faq, userMessage) }] }],
     config: {
       temperature: 1.0,
