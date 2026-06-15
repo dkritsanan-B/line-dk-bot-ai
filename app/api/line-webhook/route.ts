@@ -100,7 +100,7 @@ async function handleQuizAnswer(
       const next = await generateQuizQuestion();
       if (next) {
         await startQuestion(userId, next.question, next.answer);
-        msg += `📝 คำถามที่ ${questions_asked + 1}/${MAX_QUESTIONS}:\n\n${next.question}\n\n💡 พิมพ์คำตอบได้เลยค่ะ`;
+        msg += `📝 คำถามที่ ${questions_asked + 1}/${MAX_QUESTIONS}:\n\n${next.question}\n\n✏️ พิมพ์คำตอบได้เลยค่ะ`;
       } else {
         msg += `พิมพ์ "${QUIZ_TRIGGER}" เพื่อเล่นต่อค่ะ`;
       }
@@ -318,13 +318,7 @@ async function handleMessage(
   }
 
   // Gemini FAQ
-  let reply: string;
-  try {
-    reply = await askGemini(faq, text);
-  } catch (err) {
-    console.error("[gemini] error:", err);
-    reply = DEFAULT_REPLY;
-  }
+  const reply = await askGemini(faq, text);
   await sendReply(replyToken, reply).catch((e) => console.error("[line] sendReply error", e));
 }
 
