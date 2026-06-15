@@ -5,7 +5,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 export const DEFAULT_REPLY =
   "ขอโทษนะคะ เรื่องนี้น้อง DK ยังไม่มีข้อมูล รบกวนโทรหาพนักงานขายได้เลยนะคะ 😊\n" +
   "คุณเก๋ 094-651-4309\n" +
-  "คุณหญิง 088-760-8470\n" +
   "คุณแพรว 065-209-4955\n" +
   "คุณลัย 095-023-6382\n" +
   "คุณมีน 094-629-3510";
@@ -22,7 +21,6 @@ function buildPrompt(faq: string, userMessage: string): string {
 - ถ้าไม่มีข้อมูลในคำถามนั้น ให้ตอบว่า:
   "ขอโทษนะคะ เรื่องนี้น้อง DK ยังไม่มีข้อมูล รบกวนโทรหาพนักงานขายได้เลยนะคะ 😊
    คุณเก๋ 094-651-4309
-   คุณหญิง 088-760-8470
    คุณแพรว 065-209-4955
    คุณลัย 095-023-6382
    คุณมีน 094-629-3510"
@@ -44,14 +42,6 @@ ${userMessage}
 </question>`;
 }
 
-function extractText(result: Awaited<ReturnType<typeof ai.models.generateContent>>): string {
-  const parts = result.candidates?.[0]?.content?.parts ?? [];
-  // Gemini 2.5 Flash มี thinking parts — ใช้ part สุดท้ายที่ไม่ใช่ thought
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nonThought = (parts as any[]).filter(p => !p.thought);
-  return (nonThought.at(-1)?.text ?? parts.at(-1)?.text ?? "").trim();
-}
-
 export async function generateQuizQuestion(): Promise<{ question: string; answer: string } | null> {
   const prompt = `สร้างคำถามความรู้ทั่วไปภาษาไทย 1 ข้อ ระดับปานกลาง สนุกน่าสนใจ
 คำตอบต้องสั้น ไม่เกิน 5 คำ
@@ -59,12 +49,12 @@ export async function generateQuizQuestion(): Promise<{ question: string; answer
 {"question":"คำถามที่นี่","answer":"คำตอบที่นี่"}`;
 
   const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { temperature: 1.0, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } },
+    config: { temperature: 1.0, maxOutputTokens: 512 },
   });
 
-  const text = extractText(result);
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
   const match = text.match(/\{[\s\S]*?\}/);
   if (!match) return null;
   try {
@@ -84,12 +74,12 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 ตอบ JSON เท่านั้น: {"correct":true} หรือ {"correct":false}`;
 
   const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } },
+    config: { temperature: 0, maxOutputTokens: 64 },
   });
 
-  const text = extractText(result);
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
   const match = text.match(/\{[\s\S]*?\}/);
   if (!match) return false;
   try {
@@ -101,7 +91,7 @@ export async function checkQuizAnswer(question: string, correctAnswer: string, u
 
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
   const result = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     contents: [{ role: "user", parts: [{ text: buildPrompt(faq, userMessage) }] }],
     config: {
       temperature: 1.0,
@@ -111,12 +101,9 @@ export async function askGemini(faq: string, userMessage: string): Promise<strin
 
   const candidate = result.candidates?.[0];
   const finishReason = candidate?.finishReason;
-  const thoughtsTokenCount = result.usageMetadata?.thoughtsTokenCount ?? 0;
   const candidatesTokenCount = result.usageMetadata?.candidatesTokenCount ?? 0;
 
-  console.log(
-    `[gemini] finishReason=${finishReason} thoughts=${thoughtsTokenCount} candidates=${candidatesTokenCount}`
-  );
+  console.log(`[gemini] finishReason=${finishReason} candidates=${candidatesTokenCount}`);
 
   if (finishReason === "MAX_TOKENS") {
     return DEFAULT_REPLY;
