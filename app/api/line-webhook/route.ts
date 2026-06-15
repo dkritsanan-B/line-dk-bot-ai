@@ -228,9 +228,8 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
           margin: "md",
           spacing: "sm",
           contents: [
-            { type: "text", text: "🚚 จัดส่งทั่วประเทศ", size: "xxs", color: "#888888", flex: 1 },
-            { type: "text", text: "🏆 มาตรฐาน มอก.", size: "xxs", color: "#888888", flex: 1 },
-            { type: "text", text: "💰 ราคายุติธรรม", size: "xxs", color: "#888888", flex: 1 },
+            { type: "text", text: "🏆 มาตรฐาน มอก.", size: "xs", color: "#888888", flex: 1, align: "center" },
+            { type: "text", text: "💰 ราคายุติธรรม", size: "xs", color: "#888888", flex: 1, align: "center" },
           ],
         },
       ],
