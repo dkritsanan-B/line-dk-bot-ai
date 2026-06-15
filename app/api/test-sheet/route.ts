@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 import { getFaqContent } from "@/lib/sheet";
+import { askGemini } from "@/lib/gemini";
 
-export async function GET() {
-  const url = process.env.SHEET_CSV_URL ?? "(not set)";
-  const content = await getFaqContent();
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const question = searchParams.get("q") ?? "สินค้าอะไรบ้าง";
+
+  const faq = await getFaqContent();
+  const answer = await askGemini(faq, question);
+
   return NextResponse.json({
-    url_set: url !== "(not set)",
-    url_prefix: url.slice(0, 60),
-    content_length: content.length,
-    content_preview: content.slice(0, 300),
+    question,
+    faq_length: faq.length,
+    faq_preview: faq.slice(0, 300),
+    gemini_answer: answer,
   });
 }
