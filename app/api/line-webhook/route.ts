@@ -152,15 +152,14 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
 
 // ── ติดต่อฝ่ายขาย: Flex Message Carousel ────────────────────────
 const SALES_STAFF = [
-  { name: "คุณเก๋",   initial: "ก", phone: "094-651-4309", tel: "0946514309", lineId: "0946514309" },
-  { name: "คุณแพรว", initial: "แ", phone: "065-209-4955", tel: "0652094955", lineId: "0652094955" },
-  { name: "คุณลัย",  initial: "ล", phone: "095-023-6382", tel: "0950236382", lineId: "0950236382" },
-  { name: "คุณมีน",  initial: "ม", phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004" },
+  { name: "คุณเก๋",   phone: "094-651-4309", tel: "0946514309", lineId: "0946514309" },
+  { name: "คุณแพรว", phone: "065-209-4955", tel: "0652094955", lineId: "0652094955" },
+  { name: "คุณลัย",  phone: "095-023-6382", tel: "0950236382", lineId: "0950236382" },
+  { name: "คุณมีน",  phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004" },
 ];
 
 const HERO_URL = "https://line-dk-bot-ai.vercel.app/herobanner.png";
 const BRAND_COLOR = "#2E3192";
-const BRAND_YELLOW = "#FFF200";
 
 async function sendFlexSalesContact(replyToken: string): Promise<void> {
   const bubbles = SALES_STAFF.map((s) => ({
@@ -175,37 +174,30 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
     },
     body: {
       type: "box",
-      layout: "vertical",
-      paddingAll: "20px",
+      layout: "horizontal",
+      paddingAll: "16px",
       spacing: "md",
+      alignItems: "center",
       contents: [
         {
           type: "box",
           layout: "vertical",
+          width: "60px",
+          height: "60px",
+          cornerRadius: "30px",
+          backgroundColor: BRAND_COLOR,
+          justifyContent: "center",
           alignItems: "center",
+          contents: [{ type: "text", text: "👤", size: "xl", align: "center" }],
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          spacing: "xs",
           contents: [
-            {
-              type: "box",
-              layout: "vertical",
-              width: "72px",
-              height: "72px",
-              cornerRadius: "100px",
-              backgroundColor: BRAND_COLOR,
-              justifyContent: "center",
-              alignItems: "center",
-              contents: [
-                {
-                  type: "text",
-                  text: s.initial,
-                  size: "xxl",
-                  weight: "bold",
-                  color: BRAND_YELLOW,
-                },
-              ],
-            },
-            { type: "text", text: s.name, size: "xl", weight: "bold", margin: "md" },
-            { type: "text", text: "ฝ่ายขาย", size: "sm", color: "#888888" },
-            { type: "text", text: s.phone, size: "md", margin: "sm", color: "#555555" },
+            { type: "text", text: s.name, size: "lg", weight: "bold", color: "#1A1A1A" },
+            { type: "text", text: "ฝ่ายขาย", size: "xs", color: "#888888" },
+            { type: "text", text: s.phone, size: "sm", color: "#555555" },
           ],
         },
       ],
@@ -214,31 +206,30 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
       type: "box",
       layout: "vertical",
       spacing: "sm",
-      paddingAll: "16px",
+      paddingAll: "12px",
       contents: [
         {
           type: "button",
           style: "primary",
-          height: "md",
+          height: "sm",
           color: BRAND_COLOR,
           action: { type: "uri", label: `📞 โทรหา${s.name}`, uri: `tel:${s.tel}` },
         },
         {
           type: "button",
           style: "secondary",
-          height: "md",
+          height: "sm",
           action: { type: "uri", label: "💬 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` },
         },
-        { type: "separator", margin: "lg" },
         {
           type: "box",
-          layout: "vertical",
+          layout: "horizontal",
           margin: "md",
-          spacing: "xs",
+          spacing: "sm",
           contents: [
-            { type: "text", text: "🚚 จัดส่งทั่วประเทศ", size: "xs", color: "#666666" },
-            { type: "text", text: "🏆 สินค้าคุณภาพ มาตรฐาน", size: "xs", color: "#666666" },
-            { type: "text", text: "💰 ราคายุติธรรม", size: "xs", color: "#666666" },
+            { type: "text", text: "🚚 จัดส่งทั่วประเทศ", size: "xxs", color: "#888888", flex: 1 },
+            { type: "text", text: "🏆 มาตรฐาน มอก.", size: "xxs", color: "#888888", flex: 1 },
+            { type: "text", text: "💰 ราคายุติธรรม", size: "xxs", color: "#888888", flex: 1 },
           ],
         },
       ],
