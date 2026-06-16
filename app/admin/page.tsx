@@ -91,6 +91,27 @@ export default function AdminPage() {
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editValue, setEditValue]   = useState("");
 
+  // audit log
+  interface AuditRow { id: number; action: string; detail: string; created_at: string; first_name: string | null; last_name: string | null; phone: string | null; }
+  interface ClearedTx { id: number; type: string; points_earned: number; purchase_amount: number; note: string | null; created_at: string; }
+  const [auditOpen, setAuditOpen]       = useState(false);
+  const [auditLogs, setAuditLogs]       = useState<AuditRow[]>([]);
+  const [auditCleared, setAuditCleared] = useState<ClearedTx[]>([]);
+  const [auditPhone, setAuditPhone]     = useState("");
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  async function fetchAuditLog(phone = auditPhone) {
+    setAuditLoading(true);
+    try {
+      const res  = await fetch(`/api/admin/audit-log?phone=${encodeURIComponent(phone)}`, {
+        headers: { "x-admin-password": savedPw },
+      });
+      const data = await res.json();
+      setAuditLogs(data.logs ?? []);
+      setAuditCleared(data.cleared ?? []);
+    } finally { setAuditLoading(false); }
+  }
+
   // เคลียร์ประวัติสมาชิก
   const [clrPhone, setClrPhone]     = useState("");
   const [clrPw, setClrPw]           = useState("");
@@ -639,6 +660,117 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* ── Audit Log (แอบๆ) ── */}
+      <div style={{ width: "100%", maxWidth: 1100, marginTop: 40, textAlign: "center" }}>
+        <span
+          onClick={() => { setAuditOpen(o => !o); if (!auditOpen) fetchAuditLog(""); }}
+          style={{ fontSize: 12, color: "#bbb", cursor: "pointer", userSelect: "none", letterSpacing: 1 }}>
+          · · · system log · · ·
+        </span>
+      </div>
+
+      {auditOpen && (
+        <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, color: "#555" }}>🔍 Audit Log</div>
+
+          {/* ค้นหา cleared transactions */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+            <input type="tel" inputMode="numeric" maxLength={10} placeholder="กรอกเบอร์เพื่อดูประวัติที่ถูกลบ"
+              value={auditPhone}
+              onChange={e => setAuditPhone(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={e => e.key === "Enter" && fetchAuditLog()}
+              style={{ ...s.input, maxWidth: 280, marginBottom: 0 }} />
+            <button onClick={() => fetchAuditLog()} disabled={auditLoading}
+              style={{ ...s.btn, fontSize: 13, padding: "10px 16px" }}>
+              {auditLoading ? "..." : "🔍 ค้นหา"}
+            </button>
+            {auditPhone && (
+              <button onClick={() => { setAuditPhone(""); fetchAuditLog(""); }}
+                style={{ ...s.btn, background: "#eee", color: "#555", fontSize: 13, padding: "10px 16px" }}>
+                ล้าง
+              </button>
+            )}
+          </div>
+
+          {/* Cleared Transactions */}
+          {auditPhone && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#e53935", marginBottom: 8 }}>
+                ประวัติที่ถูกลบ {auditPhone ? `(เบอร์ ${auditPhone})` : ""}
+              </div>
+              {auditCleared.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#aaa" }}>ไม่มีรายการที่ถูกลบ</div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={s.table}>
+                    <thead>
+                      <tr style={{ background: "#fff3f3" }}>
+                        {["#", "ประเภท", "วันที่", "แต้ม", "ยอดซื้อ (บาท)", "หมายเหตุ"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditCleared.map((t, i) => {
+                        const isRedeem = t.type === "redeem";
+                        const dt = new Date(t.created_at);
+                        return (
+                          <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                            <td style={s.td}>{i + 1}</td>
+                            <td style={s.td}>
+                              <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 20, background: isRedeem ? "#FFE0B2" : "#E3F2FD", color: isRedeem ? "#e65100" : "#1565C0", fontWeight: 600 }}>
+                                {isRedeem ? "🎁 แลกรางวัล" : "⭐ เพิ่มแต้ม"}
+                              </span>
+                            </td>
+                            <td style={s.td}>{dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })} {dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td style={{ ...s.td, color: isRedeem ? "#e53935" : "#2e7d32", fontWeight: 700 }}>
+                              {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
+                            </td>
+                            <td style={{ ...s.td, textAlign: "right" }}>{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td>
+                            <td style={{ ...s.td, color: "#888" }}>{t.note ?? "-"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Audit Log Table */}
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 8 }}>บันทึกการดำเนินการ admin</div>
+          {auditLogs.length === 0 ? (
+            <div style={{ fontSize: 13, color: "#aaa" }}>ไม่มีบันทึก</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={s.table}>
+                <thead>
+                  <tr style={{ background: "#f5f7fa" }}>
+                    {["#", "วันเวลา", "Action", "รายละเอียด"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log, i) => (
+                    <tr key={log.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                      <td style={s.td}>{i + 1}</td>
+                      <td style={{ ...s.td, color: "#888", fontSize: 12 }}>
+                        {new Date(log.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}{" "}
+                        {new Date(log.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td style={s.td}>
+                        <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 20, background: "#FCE4EC", color: "#b71c1c", fontWeight: 600 }}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td style={{ ...s.td, color: "#555", maxWidth: 400 }}>{log.detail}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── ประวัติการเพิ่มแต้ม ── */}
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
