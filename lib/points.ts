@@ -65,6 +65,18 @@ export async function migrateDB() {
     WHERE type = 'earn' AND expires_at IS NULL
   `;
   await sql`
+    CREATE TABLE IF NOT EXISTS rewards (
+      id              SERIAL PRIMARY KEY,
+      name            TEXT NOT NULL,
+      description     TEXT,
+      points_required INT NOT NULL,
+      image_url       TEXT,
+      stock           INT,
+      active          BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
     CREATE TABLE IF NOT EXISTS audit_log (
       id            SERIAL PRIMARY KEY,
       action        TEXT NOT NULL,

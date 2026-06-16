@@ -356,9 +356,15 @@ export default function AdminPage() {
           <div style={{ fontSize: 20, fontWeight: 800 }}>🏗️ DK Admin Panel</div>
           <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>ข้อมูลสมาชิกทั้งหมด</div>
         </div>
-        <button onClick={() => exportCSV(users)} style={s.exportBtn}>
-          ⬇️ Export CSV
-        </button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <a href="/admin/rewards"
+            style={{ padding: "9px 16px", background: "rgba(255,255,255,0.15)", color: "white", borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: "none", border: "1.5px solid rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>
+            🎁 ของรางวัล
+          </a>
+          <button onClick={() => exportCSV(users)} style={s.exportBtn}>
+            ⬇️ Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
