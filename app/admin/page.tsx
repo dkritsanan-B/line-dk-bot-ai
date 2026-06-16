@@ -246,6 +246,7 @@ export default function AdminPage() {
       setUsers(data.users ?? []);
       setAuthed(true);
       setSavedPw(pw);
+      sessionStorage.setItem("admin_pw", pw);
     } catch { setError("เชื่อมต่อ API ไม่ได้ — กรุณาตรวจสอบ Vercel deployment"); }
     finally { setLoading(false); }
   }, []);

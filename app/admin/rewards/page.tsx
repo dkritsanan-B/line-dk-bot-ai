@@ -18,11 +18,10 @@ const EMPTY: Omit<Reward, "id" | "created_at"> = {
 };
 
 export default function RewardsAdminPage() {
-  const [password, setPassword] = useState("");
   const [authed, setAuthed]     = useState(false);
   const [savedPw, setSavedPw]   = useState("");
   const [rewards, setRewards]   = useState<Reward[]>([]);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
 
   // form สำหรับ add / edit
@@ -32,11 +31,17 @@ export default function RewardsAdminPage() {
   const [saving, setSaving]     = useState(false);
   const [formError, setFormError] = useState("");
 
+  useEffect(() => {
+    const pw = sessionStorage.getItem("admin_pw") ?? "";
+    if (!pw) { window.location.href = "/admin"; return; }
+    fetchRewards(pw);
+  }, []);
+
   async function fetchRewards(pw: string) {
     setLoading(true); setError("");
     try {
       const res  = await fetch("/api/admin/rewards", { headers: { "x-admin-password": pw } });
-      if (res.status === 401) { setError("รหัสผ่านไม่ถูกต้อง"); setLoading(false); return; }
+      if (res.status === 401) { window.location.href = "/admin"; return; }
       const data = await res.json();
       setRewards(data.rewards ?? []);
       setAuthed(true); setSavedPw(pw);
@@ -99,19 +104,8 @@ export default function RewardsAdminPage() {
 
   if (!authed) return (
     <div style={s.page}>
-      <div style={s.loginCard}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>🎁</div>
-        <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>จัดการของรางวัล</div>
-        <div style={{ color: "#888", fontSize: 13, marginBottom: 20 }}>DK Steel and Tools</div>
-        <input type="password" placeholder="รหัสผ่าน Admin"
-          value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchRewards(password)}
-          style={s.input} autoFocus />
-        {error && <div style={{ color: "#e53935", fontSize: 13, margin: "6px 0" }}>{error}</div>}
-        <button onClick={() => fetchRewards(password)} disabled={loading} style={s.btn}>
-          {loading ? "กำลังโหลด..." : "เข้าสู่ระบบ"}
-        </button>
-        <a href="/admin" style={{ marginTop: 14, fontSize: 13, color: "#888", textDecoration: "none" }}>← กลับหน้า Admin</a>
+      <div style={{ textAlign: "center", padding: 80, color: "#aaa" }}>
+        {error ? <div style={{ color: "#e53935" }}>{error}</div> : "กำลังโหลด..."}
       </div>
     </div>
   );
@@ -263,12 +257,6 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: "Leelawadee UI, Tahoma, sans-serif",
     display: "flex", flexDirection: "column", alignItems: "center",
     paddingBottom: 48,
-  },
-  loginCard: {
-    marginTop: 120, background: "white", borderRadius: 20,
-    boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-    padding: "40px 32px", width: "100%", maxWidth: 340,
-    display: "flex", flexDirection: "column", alignItems: "center",
   },
   header: {
     width: "100%", background: "linear-gradient(135deg, #0D1B5E 0%, #1565C0 100%)",
