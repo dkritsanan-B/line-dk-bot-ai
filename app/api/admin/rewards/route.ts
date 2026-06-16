@@ -24,9 +24,13 @@ async function ensureTable() {
 
 export async function GET(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await ensureTable();
-  const rows = await sql`SELECT * FROM rewards ORDER BY active DESC, points_required ASC`;
-  return NextResponse.json({ rewards: rows });
+  try {
+    await ensureTable();
+    const rows = await sql`SELECT * FROM rewards ORDER BY active DESC, points_required ASC`;
+    return NextResponse.json({ rewards: rows });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

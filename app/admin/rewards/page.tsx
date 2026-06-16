@@ -43,9 +43,9 @@ export default function RewardsAdminPage() {
       const res  = await fetch("/api/admin/rewards", { headers: { "x-admin-password": pw } });
       if (res.status === 401) { window.location.href = "/admin"; return; }
       const text = await res.text();
-      let data: { rewards?: Reward[] };
-      try { data = JSON.parse(text); } catch { setError(`API error: ${text.substring(0, 200)}`); return; }
-      if (!res.ok) { setError(data.rewards ? "" : `Error ${res.status}`); return; }
+      let data: { rewards?: Reward[]; error?: string };
+      try { data = JSON.parse(text); } catch { setError(`HTTP ${res.status} — ${text.substring(0, 300) || "(empty body)"}`); return; }
+      if (!res.ok) { setError(`Error ${res.status}: ${data.error ?? text}`); return; }
       setRewards(data.rewards ?? []);
       setAuthed(true); setSavedPw(pw);
     } catch (e) { setError(`เชื่อมต่อไม่ได้: ${String(e)}`); }
