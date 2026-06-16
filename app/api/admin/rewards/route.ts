@@ -20,13 +20,15 @@ async function ensureTable() {
   await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS image_url       TEXT`;
   await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS stock           INT`;
   await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS active          BOOLEAN NOT NULL DEFAULT TRUE`;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS sort_order      INT`;
+  await sql`UPDATE rewards SET sort_order = id WHERE sort_order IS NULL`;
 }
 
 export async function GET(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await ensureTable();
-    const rows = await sql`SELECT * FROM rewards ORDER BY active DESC, points_required ASC`;
+    const rows = await sql`SELECT * FROM rewards ORDER BY sort_order ASC NULLS LAST, id ASC`;
     return NextResponse.json({ rewards: rows });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -68,6 +70,19 @@ export async function PATCH(req: NextRequest) {
       RETURNING *
     `;
     return NextResponse.json({ reward: rows[0] });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { order } = await req.json() as { order: { id: number; sort_order: number }[] };
+    for (const item of order) {
+      await sql`UPDATE rewards SET sort_order = ${item.sort_order} WHERE id = ${item.id}`;
+    }
+    return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

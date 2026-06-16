@@ -9,7 +9,7 @@ export async function GET() {
       SELECT id, name, description, points_required, image_url, stock
       FROM rewards
       WHERE active = TRUE
-      ORDER BY points_required ASC
+      ORDER BY sort_order ASC NULLS LAST, id ASC
     `;
     return NextResponse.json({ rewards: rows });
   } catch {

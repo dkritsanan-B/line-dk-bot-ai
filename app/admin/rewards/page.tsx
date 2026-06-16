@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface Reward {
   id: number;
@@ -31,6 +31,8 @@ export default function RewardsAdminPage() {
   const [saving, setSaving]     = useState(false);
   const [formError, setFormError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver]   = useState<number | null>(null);
+  const dragIndex                 = useRef<number | null>(null);
 
   useEffect(() => {
     const pw = sessionStorage.getItem("admin_pw") ?? "";
@@ -90,6 +92,28 @@ export default function RewardsAdminPage() {
       setFormOpen(false); setEditId(null); setForm({ ...EMPTY });
     } catch (e) { setFormError(`เกิดข้อผิดพลาด: ${String(e)}`); }
     finally { setSaving(false); }
+  }
+
+  async function saveOrder(list: Reward[]) {
+    const order = list.map((r, i) => ({ id: r.id, sort_order: i }));
+    await fetch("/api/admin/rewards", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+      body: JSON.stringify({ order }),
+    });
+  }
+
+  function handleDrop(dropIndex: number) {
+    if (dragIndex.current === null || dragIndex.current === dropIndex) {
+      setDragOver(null); return;
+    }
+    const next = [...rewards];
+    const [moved] = next.splice(dragIndex.current, 1);
+    next.splice(dropIndex, 0, moved);
+    setRewards(next);
+    setDragOver(null);
+    dragIndex.current = null;
+    saveOrder(next);
   }
 
   async function handleDelete(id: number, name: string) {
@@ -233,24 +257,46 @@ export default function RewardsAdminPage() {
             <div>ยังไม่มีของรางวัล กด "+ เพิ่มของรางวัล" เพื่อเริ่ม</div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {rewards.map(r => (
-              <div key={r.id} style={{ background: "white", borderRadius: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.07)", padding: "16px 20px", display: "flex", gap: 16, alignItems: "center", opacity: r.active ? 1 : 0.55, border: r.active ? "1.5px solid #e8f0fe" : "1.5px dashed #ddd" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", marginBottom: 4 }}>
+              จับที่ ≡ แล้วลากเพื่อจัดลำดับ
+            </div>
+            {rewards.map((r, i) => (
+              <div key={r.id}
+                draggable
+                onDragStart={() => { dragIndex.current = i; }}
+                onDragOver={e => { e.preventDefault(); setDragOver(i); }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={() => handleDrop(i)}
+                onDragEnd={() => { setDragOver(null); dragIndex.current = null; }}
+                style={{
+                  background: "white", borderRadius: 14,
+                  boxShadow: dragOver === i ? "0 0 0 2.5px #1976D2" : "0 2px 10px rgba(0,0,0,0.07)",
+                  padding: "14px 16px", display: "flex", gap: 12, alignItems: "center",
+                  opacity: r.active ? 1 : 0.55,
+                  border: dragOver === i ? "1.5px solid #1976D2" : r.active ? "1.5px solid #e8f0fe" : "1.5px dashed #ddd",
+                  transform: dragOver === i ? "scale(1.01)" : "none",
+                  transition: "box-shadow 0.15s, border 0.15s, transform 0.15s",
+                  cursor: "grab",
+                }}>
+
+                {/* Drag handle */}
+                <div style={{ fontSize: 20, color: "#bbb", cursor: "grab", flexShrink: 0, userSelect: "none", paddingRight: 4 }}>≡</div>
 
                 {/* รูป */}
-                <div style={{ width: 68, height: 68, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 60, height: 60, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {r.image_url ? (
-                    <img src={r.image_url} alt={r.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={r.image_url} alt={r.name} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 4 }} />
                   ) : (
-                    <span style={{ fontSize: 28 }}>🎁</span>
+                    <span style={{ fontSize: 24 }}>🎁</span>
                   )}
                 </div>
 
                 {/* ข้อมูล */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#222" }}>{r.name}</div>
-                  {r.description && <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{r.description}</div>}
-                  <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                  {r.description && <div style={{ fontSize: 13, color: "#666", marginTop: 1 }}>{r.description}</div>}
+                  <div style={{ display: "flex", gap: 10, marginTop: 5, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#1976D2" }}>⭐ {r.points_required.toLocaleString()} แต้ม</span>
                     <span style={{ fontSize: 13, color: "#888" }}>
                       คงเหลือ: {r.stock !== null ? <strong style={{ color: r.stock === 0 ? "#e53935" : "#333" }}>{r.stock}</strong> : "ไม่จำกัด"}
@@ -264,15 +310,15 @@ export default function RewardsAdminPage() {
                 {/* ปุ่ม */}
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button onClick={() => toggleActive(r)}
-                    style={{ padding: "7px 14px", borderRadius: 8, border: "1.5px solid #ddd", background: "white", cursor: "pointer", fontSize: 13, color: "#555", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                    style={{ padding: "7px 12px", borderRadius: 8, border: "1.5px solid #ddd", background: "white", cursor: "pointer", fontSize: 13, color: "#555", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
                     {r.active ? "ปิด" : "เปิด"}
                   </button>
                   <button onClick={() => openEdit(r)}
-                    style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#E3F2FD", cursor: "pointer", fontSize: 13, color: "#1565C0", fontWeight: 600, fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                    style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: "#E3F2FD", cursor: "pointer", fontSize: 13, color: "#1565C0", fontWeight: 600, fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
                     แก้ไข
                   </button>
                   <button onClick={() => handleDelete(r.id, r.name)}
-                    style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#FFEBEE", cursor: "pointer", fontSize: 13, color: "#c62828", fontWeight: 600, fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                    style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: "#FFEBEE", cursor: "pointer", fontSize: 13, color: "#c62828", fontWeight: 600, fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
                     ลบ
                   </button>
                 </div>
