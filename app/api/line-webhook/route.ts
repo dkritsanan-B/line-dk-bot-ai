@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
 import { askGemini, generateQuizQuestion, checkQuizAnswer, explainAnswer } from "@/lib/gemini";
-import { getUserByLineId } from "@/lib/points";
+import { getUserByLineId, getEffectiveTier, getNextTier, TIERS } from "@/lib/points";
 import {
   migrateQuizDB, getQuizSession, ensureSession,
   startQuestion, clearQuestion, awardQuizPoint, QuizSession,
@@ -297,8 +297,24 @@ async function handleMessage(
 
   if (trimmed === "คะแนน" || trimmed === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
     if (user) {
-      await sendReply(replyToken, `แต้มสะสมของคุณ: ${user.points} แต้มค่ะ 🌟\nทุก 100 บาท = 1 แต้ม`)
-        .catch((e) => console.error("[line] sendReply error", e));
+      const tier = getEffectiveTier(user.total_earned ?? 0, user.points, user.last_purchase_at ?? null);
+      const baseTier = TIERS.find(t => (user.total_earned ?? 0) >= t.min) ?? TIERS[TIERS.length - 1];
+      const isInactive = tier.name !== baseTier.name;
+      const next = getNextTier(tier);
+      let msg = `${tier.emoji} ${tier.name} Member\n`;
+      msg += `แต้มคงเหลือ: ${user.points.toLocaleString()} แต้ม\n`;
+      if (isInactive) {
+        msg += `\n⚠️ ระดับจริง: ${baseTier.emoji} ${baseTier.name}\nกลับมาซื้อเพื่อฟื้นระดับทันทีค่ะ\n`;
+      }
+      if (next) {
+        const pointsForNext = isInactive ? user.total_earned ?? 0 : user.total_earned ?? 0;
+        const needed = next.min - pointsForNext;
+        if (needed > 0) msg += `\nอีก ${needed.toLocaleString()} แต้ม ถึง ${next.emoji} ${next.name}`;
+      } else {
+        msg += `\n🏆 คุณอยู่ในระดับสูงสุดแล้วค่ะ!`;
+      }
+      msg += `\n\nทุก 100 บาท = 1 แต้มค่ะ 🌟`;
+      await sendReply(replyToken, msg).catch((e) => console.error("[line] sendReply error", e));
     } else {
       await sendReplyButton(
         replyToken,

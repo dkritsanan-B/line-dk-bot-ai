@@ -26,6 +26,8 @@ interface Member {
   company: string | null;
   birthday: string | null;
   points: number;
+  total_earned: number;
+  last_purchase_at: string | null;
   created_at: string;
 }
 
@@ -34,22 +36,33 @@ interface Expiry {
   expiring_points: number | null;
 }
 
-function getLevel(points: number) {
-  if (points >= 10000) return {
-    name: "GOLD", emoji: "🥇", color: "#F57F17", textColor: "#FFF8E1",
-    cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)",
-    ring: "#FFD600", next: null, target: 10000,
-  };
-  if (points >= 3001) return {
-    name: "SILVER", emoji: "🥈", color: "#546E7A", textColor: "#ECEFF1",
-    cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)",
-    ring: "#B0BEC5", next: 10000, target: 3001,
-  };
-  return {
-    name: "BRONZE", emoji: "🥉", color: "#6D4C41", textColor: "#FFF8F5",
-    cardGrad: "linear-gradient(135deg, #6D4C41 0%, #A1887F 50%, #D7A27C 100%)",
-    ring: "#D7A27C", next: 3001, target: 0,
-  };
+const TIERS = [
+  { name: "Diamond",  emoji: "💎", min: 10000, cardGrad: "linear-gradient(135deg, #0D47A1 0%, #1565C0 45%, #82B1FF 100%)" },
+  { name: "Platinum", emoji: "🔱", min: 4000,  cardGrad: "linear-gradient(135deg, #37474F 0%, #607D8B 45%, #CFD8DC 100%)" },
+  { name: "Gold",     emoji: "🥇", min: 1000,  cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)" },
+  { name: "Silver",   emoji: "🥈", min: 300,   cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)" },
+  { name: "Bronze",   emoji: "🥉", min: 100,   cardGrad: "linear-gradient(135deg, #6D4C41 0%, #A1887F 50%, #D7A27C 100%)" },
+  { name: "Welcome",  emoji: "👋", min: 0,     cardGrad: "linear-gradient(135deg, #455A64 0%, #607D8B 50%, #90A4AE 100%)" },
+];
+
+function getTierFromPoints(points: number) {
+  return TIERS.find(t => points >= t.min) ?? TIERS[TIERS.length - 1];
+}
+
+function getEffectiveTier(totalEarned: number, currentPoints: number, lastPurchaseAt: string | null) {
+  const isActive = lastPurchaseAt !== null &&
+    Date.now() - new Date(lastPurchaseAt).getTime() < 365 * 24 * 60 * 60 * 1000;
+  return getTierFromPoints(isActive ? totalEarned : currentPoints);
+}
+
+function getNextTier(tier: typeof TIERS[number]) {
+  const idx = TIERS.findIndex(t => t.name === tier.name);
+  return idx > 0 ? TIERS[idx - 1] : null;
+}
+
+function monthsSince(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (30 * 24 * 60 * 60 * 1000));
 }
 
 function formatDate(iso: string) {
@@ -272,9 +285,16 @@ export default function LiffPage() {
   );
 
   /* ── การ์ดสมาชิก (Premium) ── */
-  const level = getLevel(member?.points ?? 0);
+  const totalEarned = member?.total_earned ?? 0;
   const points = member?.points ?? 0;
-  const progress = level.next ? Math.min(100, ((points - level.target) / (level.next - level.target)) * 100) : 100;
+  const lastPurchaseAt = member?.last_purchase_at ?? null;
+  const tier = getEffectiveTier(totalEarned, points, lastPurchaseAt);
+  const baseTier = getTierFromPoints(totalEarned);
+  const isInactive = tier.name !== baseTier.name;
+  const months = monthsSince(lastPurchaseAt);
+  const isNearDrop = months !== null && months >= 11 && months < 12;
+  const nextTier = getNextTier(tier);
+  const progress = nextTier ? Math.min(100, ((totalEarned - tier.min) / (nextTier.min - tier.min)) * 100) : 100;
   const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
   const formattedPhone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
 
@@ -288,7 +308,7 @@ export default function LiffPage() {
 
       {/* Premium Card */}
       <div style={{ width: "calc(100% - 32px)", maxWidth: 420, marginTop: -52, position: "relative", zIndex: 1 }}>
-        <div style={{ background: level.cardGrad, borderRadius: 26, padding: "24px 22px 22px", boxShadow: "0 16px 48px rgba(0,0,0,0.28)", position: "relative", overflow: "hidden", minHeight: 260 }}>
+        <div style={{ background: tier.cardGrad, borderRadius: 26, padding: "24px 22px 22px", boxShadow: "0 16px 48px rgba(0,0,0,0.28)", position: "relative", overflow: "hidden", minHeight: 260 }}>
 
           {/* Construction crane silhouette */}
           <svg style={{ position: "absolute", right: -8, bottom: -4, width: 170, height: 210, opacity: 0.13 }} viewBox="0 0 170 210" fill="white" xmlns="http://www.w3.org/2000/svg">
@@ -316,7 +336,7 @@ export default function LiffPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 700, letterSpacing: 2 }}>MEMBER CARD</div>
             <div style={{ background: "rgba(255,255,255,0.25)", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 800, color: "white", letterSpacing: 1, backdropFilter: "blur(4px)" }}>
-              {level.emoji} {level.name}
+              {tier.emoji} {tier.name}
             </div>
           </div>
 
@@ -362,15 +382,19 @@ export default function LiffPage() {
           </div>
 
           {/* Progress bar */}
-          {level.next && (
+          {nextTier ? (
             <div style={{ marginTop: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>
-                <span>{level.name}</span>
-                <span>อีก {(level.next - points).toLocaleString()} แต้ม → {level.next >= 10000 ? "GOLD" : "SILVER"}</span>
+                <span>{tier.emoji} {tier.name}</span>
+                <span>อีก {(nextTier.min - totalEarned).toLocaleString()} แต้ม → {nextTier.emoji} {nextTier.name}</span>
               </div>
               <div style={{ height: 7, background: "rgba(255,255,255,0.22)", borderRadius: 10, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${progress}%`, background: "rgba(255,255,255,0.85)", borderRadius: 10, transition: "width 0.8s ease" }} />
               </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 16, fontSize: 12, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
+              🏆 คุณอยู่ในระดับสูงสุดแล้วค่ะ ขอบคุณที่ไว้วางใจ DK!
             </div>
           )}
 
@@ -378,6 +402,33 @@ export default function LiffPage() {
             สมัครเมื่อ {member?.created_at ? formatDate(member.created_at) : "-"}
           </div>
         </div>
+
+        {/* Inactive warning — ระดับลดเนื่องจากไม่ซื้อ */}
+        {isInactive && (
+          <div style={{ marginTop: 12, background: "#FFF3E0", border: "1px solid #FFCC80", borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#E65100", marginBottom: 4 }}>
+              🔴 ระดับลดชั่วคราว
+            </div>
+            <div style={{ fontSize: 13, color: "#BF360C" }}>
+              ระดับจริงของคุณคือ {baseTier.emoji} <b>{baseTier.name}</b><br />
+              กลับมาซื้อสินค้าเพื่อฟื้นระดับ <b>{baseTier.name}</b> ทันทีค่ะ ไม่ต้องสะสมใหม่ 😊
+            </div>
+          </div>
+        )}
+
+        {/* Near-drop warning — เดือนที่ 11 */}
+        {!isInactive && isNearDrop && (
+          <div style={{ marginTop: 12, background: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#F57F17", marginBottom: 4 }}>
+              ⚠️ ระดับใกล้ลด
+            </div>
+            <div style={{ fontSize: 13, color: "#E65100" }}>
+              คุณไม่ได้ซื้อสินค้ามา {months} เดือนแล้วค่ะ<br />
+              อีก {12 - (months ?? 0)} เดือน ระดับ {tier.emoji} <b>{tier.name}</b> จะลดลง<br />
+              แวะมาซื้อสินค้าเพื่อรักษาระดับของคุณนะคะ 🛒
+            </div>
+          </div>
+        )}
 
         {/* Expiry box สีเหลือง */}
         {expiry?.earliest_expiry && (expiry.expiring_points ?? 0) > 0 && (() => {

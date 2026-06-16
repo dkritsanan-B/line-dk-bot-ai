@@ -70,5 +70,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, notified });
+  // แจ้งเตือนสมาชิกที่ไม่ซื้อสินค้า 11 เดือน (เหลืออีก 1 เดือนก่อนระดับลด)
+  const inactiveUsers = await sql`
+    SELECT id, line_user_id, first_name, last_purchase_at
+    FROM users
+    WHERE line_user_id IS NOT NULL
+      AND last_purchase_at IS NOT NULL
+      AND last_purchase_at <= NOW() - INTERVAL '11 months'
+      AND last_purchase_at >  NOW() - INTERVAL '12 months'
+      AND notified_inactive_11m = FALSE
+  `;
+
+  for (const row of inactiveUsers) {
+    const sent = await pushMessage(
+      row.line_user_id as string,
+      `⚠️ แจ้งเตือนจาก DK Steel and Tools\n\nสวัสดีค่ะ ${row.first_name ?? "คุณ"}\n\nคุณไม่ได้ซื้อสินค้ามา 11 เดือนแล้วค่ะ\nหากไม่มีการซื้อภายใน 1 เดือน ระดับสมาชิกของคุณจะลดลงนะคะ\n\n🛒 แวะมาซื้อสินค้าเพื่อรักษาระดับสมาชิกของคุณได้เลยค่ะ 😊`,
+    );
+    if (sent) {
+      await sql`
+        UPDATE users SET notified_inactive_11m = TRUE WHERE id = ${row.id as number}
+      `;
+    }
+  }
+
+  return NextResponse.json({ ok: true, notified, inactiveNotified: inactiveUsers.length });
 }

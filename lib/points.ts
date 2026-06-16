@@ -1,6 +1,32 @@
 import { sql } from "./db";
 
-const POINTS_PER_BAHT = 100; // 100 บาท = 1 แต้ม
+const POINTS_PER_BAHT = 100;
+
+export const TIERS = [
+  { name: "Diamond",  emoji: "💎", min: 10000, cardGrad: "linear-gradient(135deg, #0D47A1 0%, #1565C0 45%, #82B1FF 100%)" },
+  { name: "Platinum", emoji: "🔱", min: 4000,  cardGrad: "linear-gradient(135deg, #37474F 0%, #607D8B 45%, #CFD8DC 100%)" },
+  { name: "Gold",     emoji: "🥇", min: 1000,  cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)" },
+  { name: "Silver",   emoji: "🥈", min: 300,   cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)" },
+  { name: "Bronze",   emoji: "🥉", min: 100,   cardGrad: "linear-gradient(135deg, #6D4C41 0%, #A1887F 50%, #D7A27C 100%)" },
+  { name: "Welcome",  emoji: "👋", min: 0,     cardGrad: "linear-gradient(135deg, #455A64 0%, #607D8B 50%, #90A4AE 100%)" },
+] as const;
+
+export type Tier = typeof TIERS[number];
+
+export function getTierFromPoints(points: number): Tier {
+  return TIERS.find(t => points >= t.min) ?? TIERS[TIERS.length - 1];
+}
+
+export function getEffectiveTier(totalEarned: number, currentPoints: number, lastPurchaseAt: string | null): Tier {
+  const isActive = lastPurchaseAt !== null &&
+    Date.now() - new Date(lastPurchaseAt).getTime() < 365 * 24 * 60 * 60 * 1000;
+  return getTierFromPoints(isActive ? totalEarned : currentPoints);
+}
+
+export function getNextTier(tier: Tier): Tier | null {
+  const idx = TIERS.findIndex(t => t.name === tier.name);
+  return idx > 0 ? TIERS[idx - 1] : null;
+}
 
 export interface User {
   id: number;
@@ -12,26 +38,60 @@ export interface User {
   company: string | null;
   birthday: string | null;
   points: number;
+  total_earned: number;
+  last_purchase_at: string | null;
   created_at: string;
 }
 
 export async function migrateDB() {
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name  TEXT`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name   TEXT`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS company     TEXT`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday    DATE`;
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id TEXT`;
-  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
-  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'earn'`;
-  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note TEXT`;
-  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
-  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expired BOOLEAN NOT NULL DEFAULT FALSE`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name             TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name              TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS company                TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday               DATE`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id            TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_earned           INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_purchase_at       TIMESTAMPTZ`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notified_inactive_11m  BOOLEAN NOT NULL DEFAULT FALSE`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type        TEXT NOT NULL DEFAULT 'earn'`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note        TEXT`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at  TIMESTAMPTZ`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expired     BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS notified_1m BOOLEAN NOT NULL DEFAULT FALSE`;
-  // ตั้ง expires_at ให้ transaction เก่าที่ยังไม่มีค่า
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cleared     BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`
     UPDATE transactions
     SET expires_at = created_at + INTERVAL '1 year'
     WHERE type = 'earn' AND expires_at IS NULL
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id            SERIAL PRIMARY KEY,
+      action        TEXT NOT NULL,
+      target_user_id INT,
+      detail        TEXT,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  // migrate total_earned จาก transactions เดิม
+  await sql`
+    UPDATE users u
+    SET total_earned = COALESCE((
+      SELECT SUM(t.points_earned)
+      FROM transactions t
+      WHERE t.user_id = u.id AND t.type = 'earn' AND t.cleared = FALSE
+    ), 0)
+    WHERE total_earned = 0
+  `;
+  // migrate last_purchase_at จาก transactions เดิม
+  await sql`
+    UPDATE users u
+    SET last_purchase_at = (
+      SELECT MAX(t.created_at)
+      FROM transactions t
+      WHERE t.user_id = u.id AND t.type = 'earn' AND t.cleared = FALSE
+    )
+    WHERE last_purchase_at IS NULL
   `;
 }
 
@@ -86,7 +146,14 @@ export async function addPoints(
   const pointsEarned = Math.floor(purchaseAmount / POINTS_PER_BAHT);
   if (pointsEarned <= 0) return null;
 
-  await sql`UPDATE users SET points = points + ${pointsEarned} WHERE phone = ${phone}`;
+  await sql`
+    UPDATE users SET
+      points               = points + ${pointsEarned},
+      total_earned         = total_earned + ${pointsEarned},
+      last_purchase_at     = NOW(),
+      notified_inactive_11m = FALSE
+    WHERE phone = ${phone}
+  `;
   await sql`
     INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
     VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned}, 'earn', ${note ?? null}, NOW() + INTERVAL '1 year')
