@@ -30,6 +30,7 @@ export default function RewardsAdminPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving]     = useState(false);
   const [formError, setFormError] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const pw = sessionStorage.getItem("admin_pw") ?? "";
@@ -52,6 +53,19 @@ export default function RewardsAdminPage() {
     finally { setLoading(false); }
   }
 
+  async function handleUpload(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res  = await fetch("/api/admin/upload", { method: "POST", headers: { "x-admin-password": savedPw }, body: fd });
+      const data = await res.json();
+      if (!res.ok) { setFormError(`อัพโหลดรูปไม่ได้: ${data.error}`); return; }
+      setForm(f => ({ ...f, image_url: data.url }));
+    } catch { setFormError("อัพโหลดรูปไม่ได้"); }
+    finally { setUploading(false); }
+  }
+
   async function handleSave() {
     if (!form.name.trim()) { setFormError("กรุณากรอกชื่อของรางวัล"); return; }
     if (!form.points_required || form.points_required <= 0) { setFormError("กรุณากรอกแต้มที่ใช้แลก"); return; }
@@ -65,15 +79,16 @@ export default function RewardsAdminPage() {
         description: form.description?.trim() || null,
         ...(editId ? { id: editId } : {}),
       };
-      const res = await fetch("/api/admin/rewards", {
+      const res  = await fetch("/api/admin/rewards", {
         method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { setFormError("เกิดข้อผิดพลาด"); return; }
+      const data = await res.json();
+      if (!res.ok) { setFormError(`เกิดข้อผิดพลาด: ${data.error}`); return; }
       await fetchRewards(savedPw);
       setFormOpen(false); setEditId(null); setForm({ ...EMPTY });
-    } catch { setFormError("เกิดข้อผิดพลาด"); }
+    } catch (e) { setFormError(`เกิดข้อผิดพลาด: ${String(e)}`); }
     finally { setSaving(false); }
   }
 
@@ -168,10 +183,25 @@ export default function RewardsAdminPage() {
                   style={s.input} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={s.label}>URL รูปภาพ (ถ้ามี)</label>
-                <input type="text" placeholder="https://..."
-                  value={form.image_url ?? ""} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
-                  style={s.input} />
+                <label style={s.label}>รูปภาพ (ถ้ามี)</label>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  {form.image_url && (
+                    <img src={form.image_url} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, border: "1.5px solid #ddd", flexShrink: 0 }} />
+                  )}
+                  <label style={{ flex: 1, border: "2px dashed #ccc", borderRadius: 10, padding: "12px 16px", cursor: "pointer", textAlign: "center", background: "#fafafa", display: "block" }}>
+                    <div style={{ fontSize: 13, color: "#666" }}>{uploading ? "⏳ กำลังอัพโหลด..." : form.image_url ? "📷 เปลี่ยนรูป" : "📷 อัพโหลดรูป"}</div>
+                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>JPG, PNG, WEBP</div>
+                    <input type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+                      disabled={uploading} />
+                  </label>
+                  {form.image_url && (
+                    <button type="button" onClick={() => setForm(f => ({ ...f, image_url: "" }))}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#FFEBEE", color: "#c62828", cursor: "pointer", fontSize: 13, fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                      ลบรูป
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14 }}>
