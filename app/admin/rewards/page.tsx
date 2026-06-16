@@ -40,6 +40,23 @@ export default function RewardsAdminPage() {
     fetchRewards(pw);
   }, []);
 
+  useEffect(() => {
+    if (!formOpen) return;
+    function onPaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) handleUpload(file);
+          break;
+        }
+      }
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [formOpen, savedPw]);
+
   async function fetchRewards(pw: string) {
     setLoading(true); setError("");
     try {
@@ -214,7 +231,7 @@ export default function RewardsAdminPage() {
                   )}
                   <label style={{ flex: 1, border: "2px dashed #ccc", borderRadius: 10, padding: "12px 16px", cursor: "pointer", textAlign: "center", background: "#fafafa", display: "block" }}>
                     <div style={{ fontSize: 13, color: "#666" }}>{uploading ? "⏳ กำลังอัพโหลด..." : form.image_url ? "📷 เปลี่ยนรูป" : "📷 อัพโหลดรูป"}</div>
-                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>JPG, PNG, WEBP</div>
+                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>คลิกเลือกไฟล์ หรือ Ctrl+V วางรูปได้เลย</div>
                     <input type="file" accept="image/*" style={{ display: "none" }}
                       onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
                       disabled={uploading} />
