@@ -72,10 +72,10 @@ export async function migrateDB() {
       points_required INT NOT NULL,
       image_url       TEXT,
       stock           INT,
-      active          BOOLEAN NOT NULL DEFAULT TRUE,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`;
   await sql`
     CREATE TABLE IF NOT EXISTS audit_log (
       id            SERIAL PRIMARY KEY,
