@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       (${search} = '' OR u.phone ILIKE ${"%" + search + "%"}
         OR u.first_name ILIKE ${"%" + search + "%"}
         OR u.last_name  ILIKE ${"%" + search + "%"})
+      AND t.cleared = FALSE
       AND (${dateFrom} = '' OR t.created_at >= ${dateFrom}::date)
       AND (${dateTo}   = '' OR t.created_at <  (${dateTo}::date + interval '1 day'))
     ORDER BY t.created_at DESC
