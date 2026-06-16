@@ -2,21 +2,36 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { migrateDB } from "@/lib/points";
 
 function auth(req: NextRequest) {
   return req.headers.get("x-admin-password") === process.env.ADMIN_PASSWORD;
 }
 
+async function ensureTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS rewards (
+      id              SERIAL PRIMARY KEY,
+      name            TEXT NOT NULL,
+      description     TEXT,
+      points_required INT NOT NULL,
+      image_url       TEXT,
+      stock           INT,
+      active          BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
 export async function GET(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await migrateDB();
+  await ensureTable();
   const rows = await sql`SELECT * FROM rewards ORDER BY active DESC, points_required ASC`;
   return NextResponse.json({ rewards: rows });
 }
 
 export async function POST(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await ensureTable();
   const { name, description, points_required, image_url, stock } = await req.json();
   if (!name || !points_required) return NextResponse.json({ error: "missing fields" }, { status: 400 });
   const rows = await sql`

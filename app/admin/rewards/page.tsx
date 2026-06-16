@@ -42,10 +42,13 @@ export default function RewardsAdminPage() {
     try {
       const res  = await fetch("/api/admin/rewards", { headers: { "x-admin-password": pw } });
       if (res.status === 401) { window.location.href = "/admin"; return; }
-      const data = await res.json();
+      const text = await res.text();
+      let data: { rewards?: Reward[] };
+      try { data = JSON.parse(text); } catch { setError(`API error: ${text.substring(0, 200)}`); return; }
+      if (!res.ok) { setError(data.rewards ? "" : `Error ${res.status}`); return; }
       setRewards(data.rewards ?? []);
       setAuthed(true); setSavedPw(pw);
-    } catch { setError("เชื่อมต่อไม่ได้"); }
+    } catch (e) { setError(`เชื่อมต่อไม่ได้: ${String(e)}`); }
     finally { setLoading(false); }
   }
 
@@ -105,7 +108,12 @@ export default function RewardsAdminPage() {
   if (!authed) return (
     <div style={s.page}>
       <div style={{ textAlign: "center", padding: 80, color: "#aaa" }}>
-        {error ? <div style={{ color: "#e53935" }}>{error}</div> : "กำลังโหลด..."}
+        {error ? (
+          <>
+            <div style={{ color: "#e53935", marginBottom: 16, fontSize: 14 }}>{error}</div>
+            <a href="/admin" style={{ fontSize: 13, color: "#1976D2" }}>← กลับหน้า Admin</a>
+          </>
+        ) : "กำลังโหลด..."}
       </div>
     </div>
   );
