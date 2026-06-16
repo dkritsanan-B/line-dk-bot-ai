@@ -12,14 +12,14 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS rewards (
       id              SERIAL PRIMARY KEY,
       name            TEXT NOT NULL,
-      description     TEXT,
       points_required INT NOT NULL,
-      image_url       TEXT,
-      stock           INT,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
-  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS description     TEXT`;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS image_url       TEXT`;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS stock           INT`;
+  await sql`ALTER TABLE rewards ADD COLUMN IF NOT EXISTS active          BOOLEAN NOT NULL DEFAULT TRUE`;
 }
 
 export async function GET(req: NextRequest) {
