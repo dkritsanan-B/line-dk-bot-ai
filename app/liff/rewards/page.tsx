@@ -15,25 +15,29 @@ interface Reward {
 }
 
 export default function RewardsPage() {
+  const [lineUserId, setLineUserId] = useState("");
   const [member, setMember]   = useState<Member | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
+  const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  const [redeemMsg, setRedeemMsg]     = useState<{ id: number; ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     async function init() {
       try {
-        let lineUserId = sessionStorage.getItem("liff_uid") ?? "";
-        if (!lineUserId) lineUserId = new URLSearchParams(window.location.search).get("uid") ?? "";
-        if (!lineUserId) {
+        let uid = sessionStorage.getItem("liff_uid") ?? "";
+        if (!uid) uid = new URLSearchParams(window.location.search).get("uid") ?? "";
+        if (!uid) {
           try {
             const liff = (await import("@line/liff")).default;
             await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-            if (liff.isLoggedIn()) { const p = await liff.getProfile(); lineUserId = p.userId; }
+            if (liff.isLoggedIn()) { const p = await liff.getProfile(); uid = p.userId; }
           } catch {}
         }
+        setLineUserId(uid);
 
         const [memberRes, rewardsRes] = await Promise.all([
-          lineUserId ? fetch(`/api/member?lineUserId=${lineUserId}`) : null,
+          uid ? fetch(`/api/member?lineUserId=${uid}`) : null,
           fetch("/api/rewards"),
         ]);
 
@@ -52,6 +56,29 @@ export default function RewardsPage() {
     }
     init();
   }, []);
+
+  async function handleRedeem(reward: Reward) {
+    if (!lineUserId) { setRedeemMsg({ id: reward.id, ok: false, text: "ไม่สามารถระบุตัวตนได้ กรุณาเปิดจาก LINE" }); return; }
+    setRedeemingId(reward.id);
+    setRedeemMsg(null);
+    try {
+      const res  = await fetch("/api/liff/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineUserId, rewardId: reward.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRedeemMsg({ id: reward.id, ok: false, text: data.error ?? "เกิดข้อผิดพลาด" });
+      } else {
+        setRedeemMsg({ id: reward.id, ok: true, text: `ส่งคำขอสำเร็จ! #REQ-${data.requestId} พนักงานจะยืนยันเร็วๆ นี้` });
+      }
+    } catch {
+      setRedeemMsg({ id: reward.id, ok: false, text: "เชื่อมต่อไม่ได้ กรุณาลองใหม่" });
+    } finally {
+      setRedeemingId(null);
+    }
+  }
 
   const userPoints = member?.points ?? 0;
 
@@ -82,9 +109,6 @@ export default function RewardsPage() {
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>
-        <div style={{ fontSize: 13, color: "#888", marginBottom: 16, textAlign: "center" }}>
-          📍 เปิดหน้าบัตรสมาชิกในแอปแสดงพนักงานเพื่อแลกของรางวัล
-        </div>
 
         {rewards.length === 0 ? (
           <div style={{ background: "white", borderRadius: 20, padding: "48px 20px", textAlign: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", marginBottom: 20 }}>
@@ -93,9 +117,11 @@ export default function RewardsPage() {
           </div>
         ) : (
           rewards.map(reward => {
-            const canRedeem = userPoints >= reward.points_required;
-            const lacking   = reward.points_required - userPoints;
+            const canRedeem  = userPoints >= reward.points_required;
+            const lacking    = reward.points_required - userPoints;
             const outOfStock = reward.stock !== null && reward.stock === 0;
+            const msg        = redeemMsg?.id === reward.id ? redeemMsg : null;
+            const isLoading  = redeemingId === reward.id;
             return (
               <div key={reward.id} style={{
                 background: "white", borderRadius: 20, marginBottom: 20,
@@ -141,19 +167,40 @@ export default function RewardsPage() {
                         : `ขาดอีก ${lacking.toLocaleString()} แต้ม`}
                     </div>
                   </div>
+
+                  {/* ปุ่มแลกเลย */}
+                  {canRedeem && !outOfStock && (
+                    <button
+                      onClick={() => handleRedeem(reward)}
+                      disabled={isLoading || msg?.ok === true}
+                      style={{
+                        marginTop: 14, width: "100%", padding: "14px 0",
+                        background: msg?.ok ? "#43A047" : "#1565C0",
+                        color: "white", border: "none", borderRadius: 14,
+                        fontSize: 16, fontWeight: 800, cursor: isLoading || msg?.ok ? "default" : "pointer",
+                        fontFamily: "Leelawadee UI, Tahoma, sans-serif",
+                        opacity: isLoading ? 0.7 : 1,
+                        transition: "background 0.2s",
+                      }}>
+                      {isLoading ? "⏳ กำลังส่งคำขอ..." : msg?.ok ? "✅ ส่งคำขอแล้ว" : "🎁 แลกเลย"}
+                    </button>
+                  )}
+
+                  {/* ข้อความผลลัพธ์ */}
+                  {msg && (
+                    <div style={{
+                      marginTop: 10, padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                      background: msg.ok ? "#E8F5E9" : "#FFEBEE",
+                      color: msg.ok ? "#2e7d32" : "#c62828",
+                    }}>
+                      {msg.ok ? "✅" : "❌"} {msg.text}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })
         )}
-
-        {/* แลกของรางวัลที่ร้าน */}
-        <div style={{ background: "white", borderRadius: 16, padding: "24px 20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", marginBottom: 16 }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🏪</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>สามารถเข้ามาแลกของรางวัลที่หน้าร้านได้เลย</div>
-          <div style={{ fontSize: 13, color: "#888" }}>เปิดหน้าบัตรสมาชิกในแอปแล้วแสดงให้พนักงานที่ร้านเพื่อแลกของรางวัล</div>
-          <div style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>เปิดบริการ จันทร์-เสาร์ 8:00-17:00 น.</div>
-        </div>
 
         {/* เงื่อนไข */}
         <div style={{ background: "white", borderRadius: 16, padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -163,7 +210,7 @@ export default function RewardsPage() {
             "คะแนนสะสมในอัตราปกติ คำนวณจากยอดซื้อสินค้าทุก 100 บาท ได้รับคะแนนสะสม 1 คะแนน คะแนนมีอายุ 1 ปี นับแต่วันที่ได้รับคะแนน",
             "การคำนวณคะแนนสะสม คำนวณจากยอดซื้อต่อใบเสร็จ โดยคำนวณคะแนนสะสมเป็นจำนวนเต็มเท่านั้น จำนวนเงินที่เหลือที่ไม่ครบ 100 บาทจะถูกตัดทิ้ง",
             "สมาชิกสามารถทราบคะแนนสะสมของตนเองได้ทันทีผ่านแอป LINE DK Steel and Tools",
-            "สมาชิกที่มีความประสงค์ใช้คะแนนสะสมเพื่อแลกของรางวัล สามารถดำเนินการได้ที่หน้าร้าน DK Steel and Tools",
+            "สมาชิกที่มีความประสงค์ใช้คะแนนสะสมเพื่อแลกของรางวัล สามารถกดปุ่ม \"แลกเลย\" ในหน้านี้ได้เลย พนักงานจะยืนยันและหักแต้มเมื่อลูกค้ามารับของที่ร้าน",
             "สมาชิกที่ต้องการแลกของรางวัล จะต้องเปิดหน้าบัตรสมาชิกในแอปเพื่อแสดงตัวตน และข้อมูลจะต้องตรงกับข้อมูลที่ลงทะเบียนสมาชิกไว้เท่านั้น",
             "คะแนนสะสมที่ทำการแลกของรางวัลไปแล้ว จะถูกหักลบจากยอดคะแนนคงเหลือของสมาชิกทันที และไม่สามารถโอนคะแนนกลับได้ในทุกกรณี",
             "เงื่อนไขเป็นไปตามที่บริษัทกำหนด บริษัทขอสงวนสิทธิ์ในการเปลี่ยนแปลงโดยไม่แจ้งให้ทราบล่วงหน้า",

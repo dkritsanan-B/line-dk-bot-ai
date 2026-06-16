@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 
 interface User {
@@ -94,11 +94,49 @@ export default function AdminPage() {
   // audit log
   interface AuditRow { id: number; action: string; detail: string; created_at: string; first_name: string | null; last_name: string | null; phone: string | null; }
   interface ClearedTx { id: number; type: string; points_earned: number; purchase_amount: number; note: string | null; created_at: string; }
+  interface RedemptionRow { id: number; status: string; points_required: number; created_at: string; confirmed_at: string | null; first_name: string | null; last_name: string | null; display_name: string | null; phone: string; line_user_id: string; reward_name: string; image_url: string | null; stock: number | null; }
+  const [redeemRows, setRedeemRows]         = useState<RedemptionRow[]>([]);
+  const [redeemLoading, setRedeemLoading]   = useState(false);
+  const [redeemError, setRedeemError]       = useState("");
+  const [redeemAction, setRedeemAction]     = useState<Record<number, boolean>>({});
+
   const [auditOpen, setAuditOpen]       = useState(false);
   const [auditLogs, setAuditLogs]       = useState<AuditRow[]>([]);
   const [auditCleared, setAuditCleared] = useState<ClearedTx[]>([]);
   const [auditPhone, setAuditPhone]     = useState("");
   const [auditLoading, setAuditLoading] = useState(false);
+
+  async function fetchRedemptions(pw = savedPw) {
+    setRedeemLoading(true); setRedeemError("");
+    try {
+      const res  = await fetch("/api/admin/redemptions", { headers: { "x-admin-password": pw } });
+      const data = await res.json();
+      if (!res.ok) { setRedeemError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setRedeemRows(data.requests ?? []);
+    } catch { setRedeemError("เชื่อมต่อไม่ได้"); }
+    finally { setRedeemLoading(false); }
+  }
+
+  async function handleRedeemAction(id: number, action: "confirm" | "cancel") {
+    if (!window.confirm(action === "confirm" ? `ยืนยันการแลก #REQ-${id} ?` : `ยกเลิกคำขอ #REQ-${id} ?`)) return;
+    setRedeemAction(prev => ({ ...prev, [id]: true }));
+    try {
+      const res  = await fetch("/api/admin/redemptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        body: JSON.stringify({ id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      fetchRedemptions();
+      fetchUsers(savedPw, search);
+    } finally { setRedeemAction(prev => ({ ...prev, [id]: false })); }
+  }
+
+  useEffect(() => {
+    if (authed && savedPw) fetchRedemptions(savedPw);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed]);
 
   async function fetchAuditLog(phone = auditPhone) {
     setAuditLoading(true);
@@ -474,6 +512,92 @@ export default function AdminPage() {
         {dpResult && (
           <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
             ✅ แลกของรางวัลสำเร็จ! <strong>{dpResult.name}</strong> ใช้ <strong>{dpResult.pointsDeducted} แต้ม</strong> — แต้มคงเหลือ: <strong>{dpResult.totalPoints.toLocaleString()} แต้ม</strong>
+          </div>
+        )}
+      </div>
+
+      {/* ── คำขอแลกของรางวัล (ลูกค้าส่งมาเอง) ── */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
+            📬 คำขอแลกของรางวัล
+            {redeemRows.filter(r => r.status === "pending").length > 0 && (
+              <span style={{ marginLeft: 8, background: "#e53935", color: "white", borderRadius: 20, padding: "2px 10px", fontSize: 13, fontWeight: 800 }}>
+                {redeemRows.filter(r => r.status === "pending").length} รายการใหม่
+              </span>
+            )}
+          </div>
+          <button onClick={() => fetchRedemptions()} disabled={redeemLoading}
+            style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
+            {redeemLoading ? "กำลังโหลด..." : "🔄 รีเฟรช"}
+          </button>
+        </div>
+
+        {redeemError && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>❌ {redeemError}</div>}
+
+        {redeemRows.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "24px 0", color: "#aaa", fontSize: 14 }}>ไม่มีคำขอ</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={s.table}>
+              <thead>
+                <tr style={{ background: "#f5f7fa" }}>
+                  {["#REQ", "สถานะ", "วันที่ร้องขอ", "ชื่อลูกค้า", "เบอร์", "ของรางวัล", "แต้ม", "การดำเนินการ"].map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {redeemRows.map((r, i) => {
+                  const name    = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-");
+                  const dt      = new Date(r.created_at);
+                  const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " " + dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                  const isPending   = r.status === "pending";
+                  const isConfirmed = r.status === "confirmed";
+                  const statusBg    = isPending ? "#FFF8E1" : isConfirmed ? "#E8F5E9" : "#FFEBEE";
+                  const statusColor = isPending ? "#E65100" : isConfirmed ? "#2e7d32" : "#b71c1c";
+                  const statusLabel = isPending ? "⏳ รอยืนยัน" : isConfirmed ? "✅ ยืนยันแล้ว" : "❌ ยกเลิก";
+                  const busy        = redeemAction[r.id];
+                  return (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                      <td style={{ ...s.td, fontWeight: 700, color: "#1565C0" }}>#{r.id}</td>
+                      <td style={s.td}>
+                        <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: statusBg, color: statusColor }}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td style={{ ...s.td, fontSize: 12, color: "#888" }}>{dateStr}</td>
+                      <td style={{ ...s.td, fontWeight: 600 }}>{name}</td>
+                      <td style={s.td}>{r.phone}</td>
+                      <td style={{ ...s.td, fontWeight: 600 }}>{r.reward_name}</td>
+                      <td style={{ ...s.td, fontWeight: 700, textAlign: "right", color: "#e65100" }}>{r.points_required.toLocaleString()}</td>
+                      <td style={{ ...s.td, whiteSpace: "nowrap" }}>
+                        {isPending ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => handleRedeemAction(r.id, "confirm")}
+                              disabled={busy}
+                              style={{ padding: "6px 14px", background: "#2e7d32", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                              {busy ? "..." : "✅ ยืนยัน"}
+                            </button>
+                            <button
+                              onClick={() => handleRedeemAction(r.id, "cancel")}
+                              disabled={busy}
+                              style={{ padding: "6px 14px", background: "#e53935", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
+                              {busy ? "..." : "❌ ยกเลิก"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "#aaa" }}>
+                            {isConfirmed && r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
