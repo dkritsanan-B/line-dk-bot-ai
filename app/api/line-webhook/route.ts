@@ -182,16 +182,26 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
       paddingAll: "0px",
       contents: [
         {
-          type: "image",
-          url: s.photo,
-          size: "full",
-          aspectRatio: "1:1",
-          aspectMode: "cover",
+          type: "box",
+          layout: "vertical",
+          paddingStart: "20px",
+          paddingEnd: "20px",
+          paddingTop: "12px",
+          contents: [{
+            type: "image",
+            url: s.photo,
+            size: "full",
+            aspectRatio: "10:9",
+            aspectMode: "cover",
+          }],
         },
         {
           type: "box",
           layout: "vertical",
-          paddingAll: "12px",
+          paddingTop: "8px",
+          paddingBottom: "4px",
+          paddingStart: "12px",
+          paddingEnd: "12px",
           spacing: "xs",
           contents: [
             { type: "text", text: s.name, size: "lg", weight: "bold", color: "#1A1A1A", align: "center" },
