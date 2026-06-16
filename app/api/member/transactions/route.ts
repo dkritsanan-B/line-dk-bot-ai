@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     FROM transactions t
     JOIN users u ON u.id = t.user_id
     WHERE u.line_user_id = ${lineUserId}
+      AND t.cleared = FALSE
     ORDER BY t.created_at DESC
     LIMIT 50
   `;

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const expiryRows = await sql`
     SELECT MIN(expires_at) AS earliest_expiry, SUM(points_earned)::int AS expiring_points
     FROM transactions
-    WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE AND expires_at IS NOT NULL
+    WHERE user_id = ${user.id} AND type = 'earn' AND expired = FALSE AND cleared = FALSE AND expires_at IS NOT NULL
   `;
   const expiry = expiryRows[0] ?? null;
 
