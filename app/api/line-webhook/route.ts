@@ -186,10 +186,9 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
         {
           type: "image",
           url: s.photo,
-          size: "60px",
+          size: "sm",
           aspectRatio: "1:1",
           aspectMode: "cover",
-          cornerRadius: "30px",
         },
         {
           type: "box",
