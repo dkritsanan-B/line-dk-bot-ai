@@ -359,7 +359,7 @@ export default function AdminPage() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <a href="/admin/rewards"
-            style={{ padding: "9px 16px", background: "rgba(255,255,255,0.15)", color: "white", borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: "none", border: "1.5px solid rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>
+            style={{ padding: "9px 18px", background: "white", color: "#1565C0", borderRadius: 10, fontSize: 14, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
             🎁 ของรางวัล
           </a>
           <button onClick={() => exportCSV(users)} style={s.exportBtn}>
