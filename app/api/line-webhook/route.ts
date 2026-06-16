@@ -387,9 +387,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (event.type === "message" && (event as LineTextEvent).message?.type === "text") {
         const { source, replyToken, message } = event as LineTextEvent;
         // ชั่วคราว: ถ้าข้อความมาจาก group → reply Group ID กลับ
-        if ((source as { type: string; groupId?: string }).type === "group") {
-          const groupId = (source as { type: string; groupId?: string }).groupId ?? "ไม่พบ";
-          await sendReply(replyToken, `Group ID: ${groupId}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const src = source as any;
+        if (src.type === "group") {
+          await sendReply(replyToken, `Group ID: ${src.groupId ?? "ไม่พบ"}`);
           return;
         }
         await handleMessage(source.userId, replyToken, message.text, faq);
