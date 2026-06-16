@@ -104,12 +104,12 @@ export default function RewardsPage() {
                 opacity: outOfStock ? 0.6 : 1,
               }}>
                 {/* รูปสินค้า */}
-                <div style={{ position: "relative", background: "#f8f8f8", minHeight: 180 }}>
+                <div style={{ position: "relative", background: "#f5f5f5", height: 220, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                   {reward.image_url ? (
                     <img src={reward.image_url} alt={reward.name}
-                      style={{ width: "100%", height: 240, objectFit: "cover", display: "block" }} />
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: "16px", display: "block" }} />
                   ) : (
-                    <div style={{ height: 180, display: "flex", justifyContent: "center", alignItems: "center", fontSize: 80 }}>🎁</div>
+                    <div style={{ fontSize: 80 }}>🎁</div>
                   )}
                   {outOfStock && (
                     <div style={{ position: "absolute", top: 12, right: 12, background: "#e53935", color: "white", borderRadius: 20, padding: "5px 14px", fontSize: 13, fontWeight: 700 }}>
