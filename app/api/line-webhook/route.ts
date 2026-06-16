@@ -154,11 +154,12 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
 }
 
 // ── ติดต่อฝ่ายขาย: Flex Message Carousel ────────────────────────
+const BASE_URL = "https://line-dk-bot-ai.vercel.app";
 const SALES_STAFF = [
-  { name: "คุณเก๋",   phone: "094-651-4309", tel: "0946514309", lineId: "0946514309" },
-  { name: "คุณแพรว", phone: "065-209-4955", tel: "0652094955", lineId: "0652094955" },
-  { name: "คุณลัย",  phone: "095-023-6382", tel: "0950236382", lineId: "0950236382" },
-  { name: "คุณมีน",  phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004" },
+  { name: "คุณเก๋",   phone: "094-651-4309", tel: "0946514309", lineId: "0946514309", photo: `${BASE_URL}/staff-gae.png` },
+  { name: "คุณแพรว", phone: "065-209-4955", tel: "0652094955", lineId: "0652094955", photo: `${BASE_URL}/staff-praew.png` },
+  { name: "คุณลัย",  phone: "095-023-6382", tel: "0950236382", lineId: "0950236382", photo: `${BASE_URL}/staff-lai.png` },
+  { name: "คุณมีน",  phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004",  photo: `${BASE_URL}/staff-meen.png` },
 ];
 
 const HERO_URL = "https://line-dk-bot-ai.vercel.app/herobanner2.png";
@@ -183,15 +184,12 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
       alignItems: "center",
       contents: [
         {
-          type: "box",
-          layout: "vertical",
-          width: "60px",
-          height: "60px",
+          type: "image",
+          url: s.photo,
+          size: "60px",
+          aspectRatio: "1:1",
+          aspectMode: "cover",
           cornerRadius: "30px",
-          backgroundColor: BRAND_COLOR,
-          justifyContent: "center",
-          alignItems: "center",
-          contents: [{ type: "text", text: "👤", size: "xl", align: "center" }],
         },
         {
           type: "box",
