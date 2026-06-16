@@ -532,7 +532,6 @@ export default function LiffPage() {
                 const isExpire = t.type === "expire";
                 const dt = new Date(t.created_at);
                 const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
-                const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
                 const icon  = isEarn ? "⭐" : isRedeem ? "🎁" : "⏳";
                 const label = isEarn ? "สะสมแต้ม" : isRedeem ? "แลกของรางวัล" : "คะแนนหมดอายุ";
                 const color = isEarn ? "#2E7D32" : isRedeem ? "#E53935" : "#9E9E9E";
@@ -542,7 +541,7 @@ export default function LiffPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{icon} {label}</div>
                       {t.note && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{t.note}</div>}
-                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{dateStr} · {timeStr}</div>
+                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{dateStr}</div>
                       {isEarn && t.expires_at && (
                         <div style={{ fontSize: 11, color: "#BF8000", marginTop: 2 }}>
                           หมดอายุ: {new Date(t.expires_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
