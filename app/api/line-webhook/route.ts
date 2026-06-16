@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
-import { askGemini, DEFAULT_REPLY, generateQuizQuestion, checkQuizAnswer, explainAnswer } from "@/lib/gemini";
+import { askGemini, generateQuizQuestion, checkQuizAnswer, explainAnswer } from "@/lib/gemini";
 import { getUserByLineId } from "@/lib/points";
 import {
   migrateQuizDB, getQuizSession, ensureSession,
@@ -185,7 +185,7 @@ async function sendFlexSalesContact(replyToken: string): Promise<void> {
           type: "image",
           url: s.photo,
           size: "full",
-          aspectRatio: "3:4",
+          aspectRatio: "1:1",
           aspectMode: "cover",
         },
         {
