@@ -91,6 +91,13 @@ export default function AdminPage() {
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editValue, setEditValue]   = useState("");
 
+  // เคลียร์ประวัติสมาชิก
+  const [clrPhone, setClrPhone]     = useState("");
+  const [clrPw, setClrPw]           = useState("");
+  const [clrLoading, setClrLoading] = useState(false);
+  const [clrResult, setClrResult]   = useState<{ name: string; clearedPoints: number } | null>(null);
+  const [clrError, setClrError]     = useState("");
+
   // ประวัติการเพิ่มแต้ม
   interface TxRow { id: number; purchase_amount: number; points_earned: number; type: string; note: string | null; created_at: string; phone: string; first_name: string | null; last_name: string | null; display_name: string | null; }
   const [txRows, setTxRows]         = useState<TxRow[]>([]);
@@ -256,6 +263,26 @@ export default function AdminPage() {
     XLSX.writeFile(wb, `dk-transactions-${date}.xlsx`);
   }
 
+  async function handleClearPoints() {
+    if (!/^0\d{9}$/.test(clrPhone)) { setClrError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
+    if (!clrPw) { setClrError("กรุณากรอกรหัสผ่านเพื่อยืนยัน"); return; }
+    if (!window.confirm(`ยืนยันจะเคลียร์ประวัติแต้มทั้งหมดของเบอร์ ${clrPhone} ?\nการกระทำนี้ไม่สามารถยกเลิกได้`)) return;
+    setClrLoading(true); setClrError(""); setClrResult(null);
+    try {
+      const res  = await fetch("/api/admin/clear-member-points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-password": clrPw },
+        body: JSON.stringify({ phone: clrPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setClrError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setClrResult(data);
+      setClrPhone(""); setClrPw("");
+      fetchUsers(savedPw, search);
+    } catch { setClrError("เกิดข้อผิดพลาด"); }
+    finally { setClrLoading(false); }
+  }
+
   async function fetchTransactions(q = txSearch, from = txFrom, to = txTo) {
     setTxLoading(true);
     try {
@@ -324,22 +351,16 @@ export default function AdminPage() {
           <div style={s.statLabel}>แต้มรวม</div>
         </div>
         <div style={s.statCard}>
-          <div style={s.statNum}>
-            {users.filter(u => u.points >= 10000).length}
-          </div>
-          <div style={s.statLabel}>🥇 GOLD (10,000+)</div>
+          <div style={s.statNum}>{users.filter(u => u.points >= 10000).length}</div>
+          <div style={s.statLabel}>💎 Diamond (10,000+)</div>
         </div>
         <div style={s.statCard}>
-          <div style={s.statNum}>
-            {users.filter(u => u.points >= 3001 && u.points < 10000).length}
-          </div>
-          <div style={s.statLabel}>🥈 SILVER (3,001-10,000)</div>
+          <div style={s.statNum}>{users.filter(u => u.points >= 4000 && u.points < 10000).length}</div>
+          <div style={s.statLabel}>🔱 Platinum (4,000+)</div>
         </div>
         <div style={s.statCard}>
-          <div style={s.statNum}>
-            {users.filter(u => u.points < 3001).length}
-          </div>
-          <div style={s.statLabel}>🥉 BRONZE (0-3,000)</div>
+          <div style={s.statNum}>{users.filter(u => u.points >= 1000 && u.points < 4000).length}</div>
+          <div style={s.statLabel}>🥇 Gold (1,000+)</div>
         </div>
       </div>
 
@@ -544,8 +565,8 @@ export default function AdminPage() {
               <tr><td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
             )}
             {users.map((u, i) => {
-              const level = u.points >= 10000 ? "🥇 GOLD" : u.points >= 3001 ? "🥈 SILVER" : "🥉 BRONZE";
-              const levelColor = u.points >= 10000 ? "#F9A825" : u.points >= 3001 ? "#757575" : "#8D6E63";
+              const level = u.points >= 10000 ? "💎 Diamond" : u.points >= 4000 ? "🔱 Platinum" : u.points >= 1000 ? "🥇 Gold" : u.points >= 300 ? "🥈 Silver" : u.points >= 100 ? "🥉 Bronze" : "👋 Welcome";
+              const levelColor = u.points >= 10000 ? "#1565C0" : u.points >= 4000 ? "#607D8B" : u.points >= 1000 ? "#F9A825" : u.points >= 300 ? "#78909C" : u.points >= 100 ? "#A1887F" : "#888888";
               const isEditing = editingId === u.id;
               return (
                 <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
@@ -585,6 +606,38 @@ export default function AdminPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* ── เคลียร์ประวัติสมาชิก ── */}
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🗑️ เคลียร์ประวัติแต้มสมาชิก</div>
+        <div style={{ fontSize: 13, color: "#e53935", marginBottom: 16 }}>⚠️ ลบประวัติทั้งหมดและรีเซ็ตแต้มเป็น 0 — ข้อมูลจะถูกซ่อน (soft delete) และบันทึก audit log</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
+            <input type="tel" inputMode="numeric" maxLength={10} placeholder="0812345678"
+              value={clrPhone}
+              onChange={e => { setClrPhone(e.target.value.replace(/\D/g, "")); setClrResult(null); setClrError(""); }}
+              style={{ ...s.input, width: 180, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>รหัสผ่าน Admin (ยืนยัน)</div>
+            <input type="password" placeholder="รหัสผ่าน"
+              value={clrPw}
+              onChange={e => { setClrPw(e.target.value); setClrResult(null); setClrError(""); }}
+              style={{ ...s.input, width: 180, marginBottom: 0 }} />
+          </div>
+          <button onClick={handleClearPoints} disabled={clrLoading}
+            style={{ ...s.btn, background: "#b71c1c", paddingBottom: 12, paddingTop: 12 }}>
+            {clrLoading ? "กำลังดำเนินการ..." : "🗑️ เคลียร์ประวัติ"}
+          </button>
+        </div>
+        {clrError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {clrError}</div>}
+        {clrResult && (
+          <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
+            ✅ เคลียร์ประวัติของ <strong>{clrResult.name}</strong> สำเร็จ — แต้มที่ถูกซ่อน: <strong>{clrResult.clearedPoints.toLocaleString()} แต้ม</strong>
+          </div>
+        )}
       </div>
 
       {/* ── ประวัติการเพิ่มแต้ม ── */}
