@@ -71,9 +71,9 @@ export default function AdminPage() {
   const [apResult, setApResult]   = useState<{ name: string; pointsEarned: number; totalPoints: number } | null>(null);
   const [apError, setApError]     = useState("");
 
-  // ลดแต้ม
+  // หักแต้ม (คืนสินค้า)
   const [dpPhone, setDpPhone]     = useState("");
-  const [dpPoints, setDpPoints]   = useState("");
+  const [dpAmount, setDpAmount]   = useState("");
   const [dpNote, setDpNote]       = useState("");
   const [dpLoading, setDpLoading] = useState(false);
   const [dpResult, setDpResult]   = useState<{ name: string; pointsDeducted: number; totalPoints: number } | null>(null);
@@ -187,19 +187,20 @@ export default function AdminPage() {
 
   async function handleDeductPoints() {
     if (!/^0\d{9}$/.test(dpPhone)) { setDpError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
-    const pts = parseInt(dpPoints);
-    if (!pts || pts <= 0) { setDpError("กรุณากรอกจำนวนแต้มที่ต้องการแลก"); return; }
+    const amt = parseInt(dpAmount);
+    if (!amt || amt < 100) { setDpError("ยอดเงินที่คืนต้องไม่ต่ำกว่า 100 บาท"); return; }
+    const pts = Math.floor(amt / 100);
     setDpLoading(true); setDpError(""); setDpResult(null);
     try {
       const res  = await fetch("/api/admin/deduct-points", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
-        body: JSON.stringify({ phone: dpPhone, points: pts, note: dpNote.trim() || null }),
+        body: JSON.stringify({ phone: dpPhone, points: pts, note: dpNote.trim() || `คืนสินค้า ยอดเงิน ${amt.toLocaleString()} บาท` }),
       });
       const data = await res.json();
       if (!res.ok) { setDpError(data.error ?? "เกิดข้อผิดพลาด"); return; }
       setDpResult(data);
-      setDpPhone(""); setDpPoints(""); setDpNote("");
+      setDpPhone(""); setDpAmount(""); setDpNote("");
       fetchUsers(savedPw, search);
     } catch { setDpError("เกิดข้อผิดพลาด"); }
     finally { setDpLoading(false); }
@@ -478,9 +479,9 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ลดแต้ม / แลกของรางวัล */}
+      {/* หักแต้ม (คืนสินค้า) */}
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>🎁 แลกของรางวัล (ลดแต้ม)</div>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>↩️ หักแต้ม (กรณีลูกค้าคืนสินค้า)</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
@@ -490,28 +491,33 @@ export default function AdminPage() {
               style={{ ...s.input, width: 180, marginBottom: 0 }} />
           </div>
           <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>จำนวนแต้มที่แลก</div>
-            <input type="number" min={1} placeholder="100"
-              value={dpPoints}
-              onChange={e => { setDpPoints(e.target.value); setDpResult(null); setDpError(""); }}
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ยอดเงินที่คืน (บาท)</div>
+            <input type="number" min={100} step={100} placeholder="1500"
+              value={dpAmount}
+              onChange={e => { setDpAmount(e.target.value); setDpResult(null); setDpError(""); }}
               onKeyDown={e => e.key === "Enter" && handleDeductPoints()}
               style={{ ...s.input, width: 160, marginBottom: 0 }} />
           </div>
+          {dpAmount && parseInt(dpAmount) >= 100 && (
+            <div style={{ fontSize: 13, color: "#888", paddingBottom: 10 }}>
+              = หัก <strong style={{ color: "#e53935", fontSize: 16 }}>{Math.floor(parseInt(dpAmount) / 100)}</strong> แต้ม
+            </div>
+          )}
           <button onClick={handleDeductPoints} disabled={dpLoading}
             style={{ ...s.btn, background: "#e53935", paddingBottom: 12, paddingTop: 12 }}>
-            {dpLoading ? "กำลังบันทึก..." : "🎁 แลกของรางวัล"}
+            {dpLoading ? "กำลังบันทึก..." : "↩️ หักแต้ม"}
           </button>
         </div>
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ / ของรางวัลที่แลก *</div>
-          <input type="text" placeholder="เช่น แลกพัดลม Hatari 16 นิ้ว" value={dpNote}
+          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ (ถ้ามี)</div>
+          <input type="text" placeholder="เช่น คืนปูน 5 ถุง" value={dpNote}
             onChange={e => setDpNote(e.target.value)}
             style={{ ...s.input, maxWidth: 400, marginBottom: 0 }} />
         </div>
         {dpError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {dpError}</div>}
         {dpResult && (
           <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
-            ✅ แลกของรางวัลสำเร็จ! <strong>{dpResult.name}</strong> ใช้ <strong>{dpResult.pointsDeducted} แต้ม</strong> — แต้มคงเหลือ: <strong>{dpResult.totalPoints.toLocaleString()} แต้ม</strong>
+            ✅ หักแต้มสำเร็จ! <strong>{dpResult.name}</strong> ถูกหัก <strong>{dpResult.pointsDeducted} แต้ม</strong> — แต้มคงเหลือ: <strong>{dpResult.totalPoints.toLocaleString()} แต้ม</strong>
           </div>
         )}
       </div>
