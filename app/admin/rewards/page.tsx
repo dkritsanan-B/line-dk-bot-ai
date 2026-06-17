@@ -18,8 +18,9 @@ const EMPTY: Omit<Reward, "id" | "created_at"> = {
 };
 
 export default function RewardsAdminPage() {
-  const [authed, setAuthed]     = useState(false);
-  const [savedPw, setSavedPw]   = useState("");
+  const [authed, setAuthed]       = useState(false);
+  const [savedPw, setSavedPw]     = useState("");
+  const [savedUsername, setSavedUsername] = useState("");
   const [rewards, setRewards]   = useState<Reward[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -35,9 +36,13 @@ export default function RewardsAdminPage() {
   const dragIndex                 = useRef<number | null>(null);
 
   useEffect(() => {
-    const pw = sessionStorage.getItem("admin_pw") ?? "";
+    const pw    = sessionStorage.getItem("admin_pw") ?? "";
+    const uname = sessionStorage.getItem("admin_username") ?? "";
+    const role  = sessionStorage.getItem("admin_role") ?? "";
     if (!pw) { window.location.href = "/admin"; return; }
-    fetchRewards(pw);
+    if (role && role !== "super") { window.location.href = "/admin"; return; }
+    setSavedUsername(uname);
+    fetchRewards(pw, uname);
   }, []);
 
   useEffect(() => {
@@ -57,17 +62,17 @@ export default function RewardsAdminPage() {
     return () => document.removeEventListener("paste", onPaste);
   }, [formOpen, savedPw]);
 
-  async function fetchRewards(pw: string) {
+  async function fetchRewards(pw: string, uname = savedUsername) {
     setLoading(true); setError("");
     try {
-      const res  = await fetch("/api/admin/rewards", { headers: { "x-admin-password": pw } });
+      const res  = await fetch("/api/admin/rewards", { headers: { "x-admin-password": pw, "x-admin-username": uname } });
       if (res.status === 401) { window.location.href = "/admin"; return; }
       const text = await res.text();
       let data: { rewards?: Reward[]; error?: string };
       try { data = JSON.parse(text); } catch { setError(`HTTP ${res.status} — ${text.substring(0, 300) || "(empty body)"}`); return; }
       if (!res.ok) { setError(`Error ${res.status}: ${data.error ?? text}`); return; }
       setRewards(data.rewards ?? []);
-      setAuthed(true); setSavedPw(pw);
+      setAuthed(true); setSavedPw(pw); setSavedUsername(uname);
     } catch (e) { setError(`เชื่อมต่อไม่ได้: ${String(e)}`); }
     finally { setLoading(false); }
   }
@@ -77,7 +82,7 @@ export default function RewardsAdminPage() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res  = await fetch("/api/admin/upload", { method: "POST", headers: { "x-admin-password": savedPw }, body: fd });
+      const res  = await fetch("/api/admin/upload", { method: "POST", headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername }, body: fd });
       const data = await res.json();
       if (!res.ok) { setFormError(`อัพโหลดรูปไม่ได้: ${data.error}`); return; }
       setForm(f => ({ ...f, image_url: data.url }));
@@ -100,7 +105,7 @@ export default function RewardsAdminPage() {
       };
       const res  = await fetch("/api/admin/rewards", {
         method: editId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify(body),
       });
       const data = await res.json();
@@ -115,7 +120,7 @@ export default function RewardsAdminPage() {
     const order = list.map((r, i) => ({ id: r.id, sort_order: i }));
     await fetch("/api/admin/rewards", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
       body: JSON.stringify({ order }),
     });
   }
@@ -137,7 +142,7 @@ export default function RewardsAdminPage() {
     if (!window.confirm(`ลบ "${name}" ออกจากระบบ?`)) return;
     await fetch(`/api/admin/rewards?id=${id}`, {
       method: "DELETE",
-      headers: { "x-admin-password": savedPw },
+      headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername },
     });
     setRewards(prev => prev.filter(r => r.id !== id));
   }
@@ -145,7 +150,7 @@ export default function RewardsAdminPage() {
   async function toggleActive(r: Reward) {
     const res = await fetch("/api/admin/rewards", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
       body: JSON.stringify({ ...r, active: !r.active }),
     });
     const data = await res.json();

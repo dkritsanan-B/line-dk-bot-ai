@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getAdminRole, hasRole } from "@/lib/admin-auth";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -14,13 +15,14 @@ async function pushMessage(to: string, text: string) {
   });
 }
 
-function auth(req: NextRequest) {
-  return req.headers.get("x-admin-password") === process.env.ADMIN_PASSWORD;
+async function auth(req: NextRequest) {
+  const role = await getAdminRole(req);
+  return hasRole(role, "staff");
 }
 
 // GET — ดึงรายการ pending
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await sql`
       CREATE TABLE IF NOT EXISTS redemption_requests (
@@ -51,7 +53,7 @@ export async function GET(req: NextRequest) {
 
 // POST — confirm หรือ cancel
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id, action } = await req.json(); // action: 'confirm' | 'cancel'
     if (!id || !action) return NextResponse.json({ error: "missing fields" }, { status: 400 });

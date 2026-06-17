@@ -2,9 +2,11 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getAdminRole, hasRole } from "@/lib/admin-auth";
 
-function auth(req: NextRequest) {
-  return req.headers.get("x-admin-password") === process.env.ADMIN_PASSWORD;
+async function auth(req: NextRequest, write = false) {
+  const role = await getAdminRole(req);
+  return write ? hasRole(role, "super") : hasRole(role, "viewer");
 }
 
 async function ensureTable() {
@@ -25,7 +27,7 @@ async function ensureTable() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req, false)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await ensureTable();
     const rows = await sql`SELECT * FROM rewards ORDER BY sort_order ASC NULLS LAST, id ASC`;
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req, true)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await ensureTable();
     const { name, description, points_required, image_url, stock } = await req.json();
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req, true)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await ensureTable();
     const { id, name, description, points_required, image_url, stock, active } = await req.json();
@@ -76,7 +78,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req, true)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { order } = await req.json() as { order: { id: number; sort_order: number }[] };
     for (const item of order) {
@@ -89,7 +91,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await auth(req, true)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
   await sql`DELETE FROM rewards WHERE id = ${id}`;

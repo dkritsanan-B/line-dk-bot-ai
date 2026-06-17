@@ -55,8 +55,11 @@ function exportCSV(users: User[]) {
 }
 
 export default function AdminPage() {
+  const [username, setUsername]   = useState("");
   const [password, setPassword]   = useState("");
   const [authed, setAuthed]       = useState(false);
+  const [role, setRole]           = useState<"super" | "staff" | "viewer">("viewer");
+  const [savedUsername, setSavedUsername] = useState("");
   const [users, setUsers]         = useState<User[]>([]);
   const [search, setSearch]       = useState("");
   const [loading, setLoading]     = useState(false);
@@ -95,6 +98,16 @@ export default function AdminPage() {
   interface AuditRow { id: number; action: string; detail: string; created_at: string; first_name: string | null; last_name: string | null; phone: string | null; }
   interface ClearedTx { id: number; type: string; points_earned: number; purchase_amount: number; note: string | null; created_at: string; }
   interface RedemptionRow { id: number; status: string; points_required: number; created_at: string; confirmed_at: string | null; first_name: string | null; last_name: string | null; display_name: string | null; phone: string; line_user_id: string; reward_name: string; image_url: string | null; stock: number | null; }
+  // จัดการ admin users
+  interface AdminUser { id: number; username: string; role: string; active: boolean; created_at: string; }
+  const [adminUsers, setAdminUsers]         = useState<AdminUser[]>([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [newAdminUsername, setNewAdminUsername]   = useState("");
+  const [newAdminPassword, setNewAdminPassword]   = useState("");
+  const [newAdminRole, setNewAdminRole]           = useState("staff");
+  const [newAdminError, setNewAdminError]         = useState("");
+  const [newAdminSuccess, setNewAdminSuccess]     = useState("");
+
   const [redeemRows, setRedeemRows]         = useState<RedemptionRow[]>([]);
   const [redeemLoading, setRedeemLoading]   = useState(false);
   const [redeemError, setRedeemError]       = useState("");
@@ -123,7 +136,7 @@ export default function AdminPage() {
     try {
       const res  = await fetch("/api/admin/redemptions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ id, action }),
       });
       const data = await res.json();
@@ -142,7 +155,7 @@ export default function AdminPage() {
     setAuditLoading(true);
     try {
       const res  = await fetch(`/api/admin/audit-log?phone=${encodeURIComponent(phone)}`, {
-        headers: { "x-admin-password": savedPw },
+        headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername },
       });
       const data = await res.json();
       setAuditLogs(data.logs ?? []);
@@ -173,7 +186,7 @@ export default function AdminPage() {
     try {
       const res  = await fetch("/api/admin/add-points", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ phone: apPhone, amount: amt, note: apNote.trim() || null }),
       });
       const data = await res.json();
@@ -194,7 +207,7 @@ export default function AdminPage() {
     try {
       const res  = await fetch("/api/admin/deduct-points", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ phone: dpPhone, points: pts, note: dpNote.trim() || `คืนสินค้า ยอดเงิน ${amt.toLocaleString()} บาท` }),
       });
       const data = await res.json();
@@ -252,7 +265,7 @@ export default function AdminPage() {
     try {
       const res  = await fetch("/api/admin/bulk-add-points", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ rows: csvRows.map(r => ({ phone: r.phone, amount: r.amount })) }),
       });
       const data = await res.json();
@@ -273,28 +286,30 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   }
 
-  const fetchUsers = useCallback(async (pw: string, q = "") => {
+  const fetchUsers = useCallback(async (pw: string, q = "", uname = savedUsername) => {
     setLoading(true); setError("");
     try {
       const res  = await fetch(`/api/admin/members?search=${encodeURIComponent(q)}`, {
-        headers: { "x-admin-password": pw },
+        headers: { "x-admin-password": pw, "x-admin-username": uname },
       });
-      if (res.status === 401) { setError("รหัสผ่านไม่ถูกต้อง"); setAuthed(false); setLoading(false); return; }
+      if (res.status === 401) { setError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"); setAuthed(false); setLoading(false); return; }
       if (!res.ok) { setError(`เกิดข้อผิดพลาด (${res.status}) — กรุณา Redeploy Vercel`); setLoading(false); return; }
       const data = await res.json();
       setUsers(data.users ?? []);
       setAuthed(true);
       setSavedPw(pw);
+      setSavedUsername(uname);
       sessionStorage.setItem("admin_pw", pw);
+      sessionStorage.setItem("admin_username", uname);
     } catch { setError("เชื่อมต่อ API ไม่ได้ — กรุณาตรวจสอบ Vercel deployment"); }
     finally { setLoading(false); }
-  }, []);
+  }, [savedUsername]);
 
   async function saveCustomerId(userId: number, value: string) {
     setEditingId(null);
     await fetch("/api/admin/update-member", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-password": savedPw },
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
       body: JSON.stringify({ id: userId, customer_id: value.trim() || null }),
     });
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: value.trim() || null } : u));
@@ -332,7 +347,7 @@ export default function AdminPage() {
     try {
       const res  = await fetch("/api/admin/clear-member-points", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-password": clrPw },
+        headers: { "Content-Type": "application/json", "x-admin-password": clrPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ phone: clrPhone }),
       });
       const data = await res.json();
@@ -349,12 +364,29 @@ export default function AdminPage() {
     try {
       const params = new URLSearchParams({ search: q, from, to });
       const res  = await fetch(`/api/admin/transactions?${params}`, {
-        headers: { "x-admin-password": savedPw },
+        headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername },
       });
       const data = await res.json();
       setTxRows(data.transactions ?? []);
     } catch { /* silent */ }
     finally { setTxLoading(false); }
+  }
+
+  async function handleLogin() {
+    if (!username.trim() || !password.trim()) { setError("กรุณากรอกชื่อผู้ใช้และรหัสผ่าน"); return; }
+    setLoading(true); setError("");
+    try {
+      const res  = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"); setLoading(false); return; }
+      setRole(data.role);
+      sessionStorage.setItem("admin_role", data.role);
+      await fetchUsers(password, "", username.trim());
+    } catch { setError("เชื่อมต่อไม่ได้"); setLoading(false); }
   }
 
   /* ── Login ── */
@@ -365,25 +397,73 @@ export default function AdminPage() {
         <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Admin Panel</div>
         <div style={{ color: "#888", fontSize: 13, marginBottom: 24 }}>ร้าน DK วัสดุก่อสร้าง</div>
         <input
+          type="text"
+          placeholder="ชื่อผู้ใช้"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleLogin()}
+          style={s.input}
+          autoFocus
+          autoComplete="username"
+        />
+        <input
           type="password"
           placeholder="รหัสผ่าน"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchUsers(password)}
+          onKeyDown={e => e.key === "Enter" && handleLogin()}
           style={s.input}
-          autoFocus
+          autoComplete="current-password"
         />
         {error && <div style={{ color: "#e53935", fontSize: 13, margin: "8px 0" }}>{error}</div>}
-        <button
-          onClick={() => fetchUsers(password)}
-          disabled={loading}
-          style={s.btn}
-        >
+        <button onClick={handleLogin} disabled={loading} style={s.btn}>
           {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </button>
       </div>
     </div>
   );
+
+  async function fetchAdminUsers() {
+    setAdminUsersLoading(true);
+    try {
+      const res  = await fetch("/api/admin/admin-users", { headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername } });
+      const data = await res.json();
+      setAdminUsers(data.users ?? []);
+    } finally { setAdminUsersLoading(false); }
+  }
+
+  async function handleCreateAdmin() {
+    setNewAdminError(""); setNewAdminSuccess("");
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) { setNewAdminError("กรอกข้อมูลให้ครบ"); return; }
+    const res  = await fetch("/api/admin/admin-users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
+      body: JSON.stringify({ username: newAdminUsername.trim(), password: newAdminPassword, adminRole: newAdminRole }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setNewAdminError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+    setNewAdminSuccess("สร้างสำเร็จ"); setNewAdminUsername(""); setNewAdminPassword("");
+    fetchAdminUsers();
+  }
+
+  async function handleToggleAdmin(id: number, active: boolean) {
+    await fetch("/api/admin/admin-users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
+      body: JSON.stringify({ id, active: !active }),
+    });
+    fetchAdminUsers();
+  }
+
+  async function handleDeleteAdmin(id: number, uname: string) {
+    if (!window.confirm(`ลบ admin "${uname}" ?`)) return;
+    await fetch("/api/admin/admin-users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
+      body: JSON.stringify({ id }),
+    });
+    fetchAdminUsers();
+  }
 
   /* ── Dashboard ── */
   const totalPoints = users.reduce((s, u) => s + u.points, 0);
@@ -394,7 +474,12 @@ export default function AdminPage() {
       <div style={s.header}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 800 }}>🏗️ DK Admin Panel</div>
-          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>ข้อมูลสมาชิกทั้งหมด</div>
+          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
+            {savedUsername} &nbsp;
+            <span style={{ padding: "2px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: role === "super" ? "#1565C0" : role === "staff" ? "#2e7d32" : "#888", color: "white" }}>
+              {role === "super" ? "Super Admin" : role === "staff" ? "Staff" : "Viewer"}
+            </span>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <a href="/admin/rewards"
@@ -431,7 +516,14 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* เพิ่มแต้ม — staff+ */}
+      {role === "viewer" && (
+        <div style={{ width: "100%", maxWidth: 1100, background: "#FFF8E1", borderRadius: 12, padding: "14px 20px", marginBottom: 16, fontSize: 14, color: "#E65100" }}>
+          👁️ คุณมีสิทธิ์ดูข้อมูลเท่านั้น ไม่สามารถเพิ่ม/หักแต้มได้
+        </div>
+      )}
       {/* เพิ่มแต้ม */}
+      {(role === "staff" || role === "super") && (
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>⭐ เพิ่มแต้มให้ลูกค้า</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -478,8 +570,10 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* หักแต้ม (คืนสินค้า) */}
+      {/* หักแต้ม (คืนสินค้า) — staff+ */}
+      {(role === "staff" || role === "super") && (
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>↩️ หักแต้ม (กรณีลูกค้าคืนสินค้า)</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -521,8 +615,10 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* ── คำขอแลกของรางวัล (ลูกค้าส่งมาเอง) ── */}
+      {/* ── คำขอแลกของรางวัล — staff+ ── */}
+      {(role === "staff" || role === "super") && (
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>
@@ -607,8 +703,10 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* เพิ่มแต้มแบบ CSV */}
+      {/* เพิ่มแต้มแบบ CSV — staff+ */}
+      {(role === "staff" || role === "super") && (
       <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>📂 เพิ่มแต้มหลายรายจาก CSV</div>
@@ -686,6 +784,7 @@ export default function AdminPage() {
           </>
         )}
       </div>
+      )}
 
       {/* Search */}
       <div style={{ width: "100%", maxWidth: 1100, marginBottom: 16, display: "flex", gap: 8 }}>
@@ -766,8 +865,8 @@ export default function AdminPage() {
         </table>
       </div>
 
-      {/* ── เคลียร์ประวัติสมาชิก ── */}
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
+      {/* ── เคลียร์ประวัติสมาชิก — super only ── */}
+      {role === "super" && <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🗑️ เคลียร์ประวัติแต้มสมาชิก</div>
         <div style={{ fontSize: 13, color: "#e53935", marginBottom: 16 }}>⚠️ ลบประวัติทั้งหมดและรีเซ็ตแต้มเป็น 0 — ข้อมูลจะถูกซ่อน (soft delete) และบันทึก audit log</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -796,16 +895,101 @@ export default function AdminPage() {
             ✅ เคลียร์ประวัติของ <strong>{clrResult.name}</strong> สำเร็จ — แต้มที่ถูกซ่อน: <strong>{clrResult.clearedPoints.toLocaleString()} แต้ม</strong>
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* ── Audit Log (แอบๆ) ── */}
-      <div style={{ width: "100%", maxWidth: 1100, marginTop: 40, textAlign: "center" }}>
+      {/* ── จัดการ Admin Users — super only ── */}
+      {role === "super" && (
+      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>👥 จัดการ Admin</div>
+          <button onClick={fetchAdminUsers} disabled={adminUsersLoading}
+            style={{ ...s.btn, fontSize: 13, padding: "8px 14px" }}>
+            {adminUsersLoading ? "..." : "🔄 โหลด"}
+          </button>
+        </div>
+
+        {/* ฟอร์มสร้าง admin ใหม่ */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ชื่อผู้ใช้</div>
+            <input type="text" placeholder="เช่น staff01" value={newAdminUsername}
+              onChange={e => setNewAdminUsername(e.target.value)}
+              style={{ ...s.input, width: 160, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>รหัสผ่าน</div>
+            <input type="text" placeholder="รหัสผ่าน" value={newAdminPassword}
+              onChange={e => setNewAdminPassword(e.target.value)}
+              style={{ ...s.input, width: 160, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>สิทธิ์</div>
+            <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value)}
+              style={{ ...s.input, width: 140, marginBottom: 0 }}>
+              <option value="staff">Staff (เพิ่ม/ยืนยันแลก)</option>
+              <option value="viewer">Viewer (ดูอย่างเดียว)</option>
+            </select>
+          </div>
+          <button onClick={handleCreateAdmin} style={{ ...s.btn, paddingBottom: 12, paddingTop: 12 }}>
+            ➕ เพิ่ม Admin
+          </button>
+        </div>
+        {newAdminError && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>❌ {newAdminError}</div>}
+        {newAdminSuccess && <div style={{ color: "#2e7d32", fontSize: 13, marginBottom: 10 }}>✅ {newAdminSuccess}</div>}
+
+        {/* รายชื่อ admin */}
+        {adminUsers.length > 0 && (
+          <div style={{ overflowX: "auto", marginTop: 8 }}>
+            <table style={s.table}>
+              <thead>
+                <tr style={{ background: "#f5f7fa" }}>
+                  {["ชื่อผู้ใช้", "สิทธิ์", "สถานะ", "สร้างเมื่อ", "จัดการ"].map(h => <th key={h} style={s.th}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {adminUsers.map(u => (
+                  <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                    <td style={{ ...s.td, fontWeight: 600 }}>{u.username}</td>
+                    <td style={s.td}>
+                      <span style={{ padding: "2px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: u.role === "staff" ? "#E8F5E9" : "#EDE7F6", color: u.role === "staff" ? "#2e7d32" : "#6A1B9A" }}>
+                        {u.role === "staff" ? "Staff" : "Viewer"}
+                      </span>
+                    </td>
+                    <td style={s.td}>
+                      <span style={{ fontSize: 12, color: u.active ? "#2e7d32" : "#e53935", fontWeight: 600 }}>
+                        {u.active ? "✅ ใช้งาน" : "❌ ปิดใช้"}
+                      </span>
+                    </td>
+                    <td style={{ ...s.td, fontSize: 12, color: "#aaa" }}>
+                      {new Date(u.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
+                    </td>
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }}>
+                      <button onClick={() => handleToggleAdmin(u.id, u.active)}
+                        style={{ padding: "5px 12px", marginRight: 6, background: u.active ? "#FF8F00" : "#2e7d32", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {u.active ? "ปิดใช้" : "เปิดใช้"}
+                      </button>
+                      <button onClick={() => handleDeleteAdmin(u.id, u.username)}
+                        style={{ padding: "5px 12px", background: "#e53935", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        ลบ
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      )}
+
+      {/* ── Audit Log — super only ── */}
+      {role === "super" && <div style={{ width: "100%", maxWidth: 1100, marginTop: 40, textAlign: "center" }}>
         <span
           onClick={() => { setAuditOpen(o => !o); if (!auditOpen) fetchAuditLog(""); }}
           style={{ fontSize: 12, color: "#bbb", cursor: "pointer", userSelect: "none", letterSpacing: 1 }}>
           · · · system log · · ·
         </span>
-      </div>
+      </div>}
 
       {auditOpen && (
         <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 10 }}>

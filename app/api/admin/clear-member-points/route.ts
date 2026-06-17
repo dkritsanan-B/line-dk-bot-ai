@@ -3,12 +3,11 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getUserByPhone } from "@/lib/points";
+import { getAdminRole, hasRole } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("x-admin-password");
-  if (auth !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const role = await getAdminRole(req);
+  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { phone } = await req.json();
   if (!phone) return NextResponse.json({ error: "missing phone" }, { status: 400 });

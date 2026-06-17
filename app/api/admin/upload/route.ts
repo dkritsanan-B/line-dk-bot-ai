@@ -2,12 +2,11 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { getAdminRole, hasRole } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("x-admin-password");
-  if (auth !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const role = await getAdminRole(req);
+  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const form = await req.formData();
   const file = form.get("file") as File | null;
