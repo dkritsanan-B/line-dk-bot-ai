@@ -24,4 +24,7 @@
 - อย่าใส่ราคาผิด/เคลมเกินจริงลงบนรูป
 
 ## ⚙️ สถานะ
-ยังไม่เชื่อมต่อเครื่องมือทำรูป AI → ตั้งค่าในเฟส 3
+✅ **เชื่อมต่อแล้ว (เฟส 3)** — สร้างรูปด้วย Gemini (`gemini-2.5-flash-image`)
+- API: `POST /api/generate-image` body `{ prompt, productId? }` (ต้องมี header `x-admin-password`)
+- ปุ่ม 🎨 AI ในหน้า `/admin/catalog` — กดแล้วแก้ prompt → สร้างรูป → อัปเข้า B2 + บันทึกลงสินค้าอัตโนมัติ
+- ต้องใช้ `GEMINI_API_KEY` แบบ **Tier 1 (เปิด billing)** — free tier สร้างรูปไม่ได้

@@ -53,6 +53,24 @@ export default function CatalogAdminPage() {
     finally { setUploadingId(null); }
   }
 
+  async function handleGenerate(p: Product) {
+    const suggested = `Professional product photo of "${p.name}" (${p.category}) for a Thai steel & hardware store, industrial workshop setting, dark tones with orange accent, realistic, high detail, no text`;
+    const prompt = window.prompt("บรรยายรูปที่อยากให้ AI สร้าง (แก้ไขได้):", suggested);
+    if (!prompt) return;
+    setUploadingId(p.id); setError("");
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "x-admin-password": savedPw, "content-type": "application/json" },
+        body: JSON.stringify({ prompt, productId: p.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "สร้างรูป AI ไม่สำเร็จ"); return; }
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, image_url: data.url } : x));
+    } catch { setError("สร้างรูป AI ไม่สำเร็จ"); }
+    finally { setUploadingId(null); }
+  }
+
   if (!authed) {
     return (
       <div style={{ maxWidth: 360, margin: "80px auto", padding: 24, fontFamily: "system-ui, sans-serif" }}>
@@ -89,11 +107,18 @@ export default function CatalogAdminPage() {
             <div style={{ padding: 12 }}>
               <div style={{ fontSize: 11, color: "#E05A17", fontWeight: 700 }}>{p.category}{p.is_focus ? " ⭐" : ""}</div>
               <div style={{ fontWeight: 700, fontSize: 15, margin: "2px 0 8px" }}>{p.name}</div>
-              <label style={{ display: "block", textAlign: "center", padding: "8px 0", fontSize: 13, borderRadius: 8, background: uploadingId === p.id ? "#ccc" : "#111", color: "#fff", cursor: "pointer" }}>
-                {uploadingId === p.id ? "กำลังอัพ..." : (p.image_url ? "เปลี่ยนรูป" : "อัพรูป")}
-                <input type="file" accept="image/*" hidden disabled={uploadingId === p.id}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(p.id, f); e.target.value = ""; }} />
-              </label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <label style={{ flex: 1, textAlign: "center", padding: "8px 0", fontSize: 13, borderRadius: 8, background: uploadingId === p.id ? "#ccc" : "#111", color: "#fff", cursor: "pointer" }}>
+                  {uploadingId === p.id ? "กำลังทำ..." : (p.image_url ? "เปลี่ยนรูป" : "อัพรูป")}
+                  <input type="file" accept="image/*" hidden disabled={uploadingId === p.id}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(p.id, f); e.target.value = ""; }} />
+                </label>
+                <button type="button" title="ให้ AI สร้างรูป" disabled={uploadingId === p.id}
+                  onClick={() => handleGenerate(p)}
+                  style={{ flex: "none", padding: "8px 10px", fontSize: 13, borderRadius: 8, border: "none", background: uploadingId === p.id ? "#ccc" : "#E05A17", color: "#fff", cursor: "pointer" }}>
+                  🎨 AI
+                </button>
+              </div>
             </div>
           </div>
         ))}
