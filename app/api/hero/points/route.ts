@@ -15,7 +15,8 @@ export const runtime = "nodejs";
 // ===================================================================
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { addPoints, getUserByPhone, getTierFromPoints, migrateDB } from "@/lib/points";
+import { addPoints, getUserByPhone, getTierFromPoints, getEffectiveTier, migrateDB } from "@/lib/points";
+import { computeBonus, bonusPoints, type HeroLine } from "@/lib/tierRules";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -37,6 +38,10 @@ async function ensureTable() {
       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  // โบนัสตามระดับ/หมวด (ชิ้น C, 13 ก.ย. 69) — เก็บรายละเอียดต่อบรรทัดไว้ตรวจย้อนหลัง
+  await sql`ALTER TABLE hero_point_bills ADD COLUMN IF NOT EXISTS bonus_points INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE hero_point_bills ADD COLUMN IF NOT EXISTS bonus_tier TEXT`;
+  await sql`ALTER TABLE hero_point_bills ADD COLUMN IF NOT EXISTS bonus_detail JSONB`;
 }
 
 async function pushText(to: string, text: string) {
@@ -64,17 +69,37 @@ export async function DELETE(req: NextRequest) {
   const billNo = (req.nextUrl.searchParams.get("bill_no") ?? "").trim();
   if (!billNo) return NextResponse.json({ error: "missing bill_no" }, { status: 400 });
   await ensureTable();
-  const rows = await sql`DELETE FROM hero_point_bills WHERE bill_no = ${billNo} RETURNING user_id, points`;
+  const rows = await sql`DELETE FROM hero_point_bills WHERE bill_no = ${billNo} RETURNING user_id, points, bonus_points`;
   if (!rows.length) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { user_id, points } = rows[0] as { user_id: number; points: number };
+  const { user_id, points } = rows[0] as { user_id: number; points: number; bonus_points: number };
+  const bonus = Number((rows[0] as { bonus_points?: number }).bonus_points ?? 0);
   if (points > 0) {
     await sql`UPDATE users SET points = GREATEST(points - ${points}, 0), total_earned = GREATEST(total_earned - ${points}, 0) WHERE id = ${user_id}`;
     await sql`INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note) VALUES (${user_id}, 0, ${points}, 'adjust', ${"ถอนแต้มบิล " + billNo})`;
   }
-  return NextResponse.json({ ok: true, user_id, points_reversed: points });
+  if (bonus > 0) {
+    await sql`UPDATE users SET points = GREATEST(points - ${bonus}, 0) WHERE id = ${user_id}`;
+    await sql`INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note) VALUES (${user_id}, 0, ${bonus}, 'adjust', ${"ถอนโบนัสบิล " + billNo})`;
+  }
+  return NextResponse.json({ ok: true, user_id, points_reversed: points, bonus_reversed: bonus });
 }
 
-interface BillIn { customer_code?: unknown; bill_no?: unknown; amount?: unknown; date?: unknown }
+interface BillIn { customer_code?: unknown; bill_no?: unknown; amount?: unknown; date?: unknown; lines?: unknown }
+
+// บรรทัดสินค้าจาก watcher → HeroLine (กันข้อมูลเพี้ยน: ตัดความยาว บังคับตัวเลข)
+function parseLines(v: unknown): HeroLine[] {
+  if (!Array.isArray(v)) return [];
+  return v.slice(0, 300).map((x) => {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    const num = (k: string) => { const n = Number(o[k]); return Number.isFinite(n) ? n : 0; };
+    return {
+      code: String(o.code ?? "").slice(0, 40), name: String(o.name ?? "").slice(0, 120),
+      category: o.category == null ? null : Number(o.category), unit: String(o.unit ?? "").slice(0, 30),
+      qty: num("qty"), unit_price: num("unit_price"), list_price: o.list_price == null ? null : num("list_price"),
+      discword: String(o.discword ?? "").slice(0, 50), net: num("net"),
+    };
+  }).filter((l) => l.code);
+}
 
 export async function POST(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -86,7 +111,7 @@ export async function POST(req: NextRequest) {
   await migrateDB();
   await ensureTable();
 
-  const results: { bill_no: string; status: string; points?: number; name?: string; message?: string }[] = [];
+  const results: { bill_no: string; status: string; points?: number; bonus?: number; tier?: string; name?: string; message?: string }[] = [];
   for (const b of bills) {
     const billNo = String(b.bill_no ?? "").trim();
     const code = normCode(b.customer_code);
@@ -99,21 +124,36 @@ export async function POST(req: NextRequest) {
       const dup = await sql`SELECT 1 FROM hero_point_bills WHERE bill_no = ${billNo} LIMIT 1`;
       if (dup.length) { results.push({ bill_no: billNo, status: "dup" }); continue; }
 
-      const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
+      const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned, points, last_purchase_at FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
       const u = users[0];
       if (!u) { results.push({ bill_no: billNo, status: "skip", message: "ไม่มีสมาชิกผูกรหัสนี้" }); continue; }
 
       const before = getTierFromPoints(Number(u.total_earned ?? 0));
+      // ระดับที่ใช้คิดโบนัส = ระดับ ณ ตอนซื้อ (ก่อนแต้มบิลนี้เข้า, คิด hard-drop ถ้าหายไป 12 เดือน)
+      const bonusTier = getEffectiveTier(Number(u.total_earned ?? 0), Number(u.points ?? 0), (u.last_purchase_at as string | null) ?? null);
+      const lines = parseLines(b.lines);
+      const bonus = computeBonus(lines, bonusTier);
+      const bonusPts = bonusPoints(bonus.baht);
+
       const r = await addPoints(u.phone as string, amount, `บิล ${billNo}`);
       const pts = r?.pointsEarned ?? 0;
+      if (bonusPts > 0) {
+        // โบนัสไม่นับเข้า total_earned (ไม่ดันระดับ) — เป็นมูลค่าส่วนลดที่คืนเป็นแต้ม แลกได้เหมือนแต้มปกติ
+        await sql`UPDATE users SET points = points + ${bonusPts} WHERE id = ${u.id as number}`;
+        const summary = bonus.lines.filter((l) => l.baht > 0).map((l) => `${l.reason} ${l.rate}${l.rule === "sheet" ? "บ/ม" : "%"}`);
+        await sql`
+          INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
+          VALUES (${u.id as number}, 0, ${bonusPts}, 'earn', ${`โบนัส ${bonusTier.name} บิล ${billNo} (${[...new Set(summary)].join(", ")})`}, NOW() + INTERVAL '1 year')
+        `;
+      }
       // บันทึกบิลแม้ได้ 0 แต้ม (ยอดต่ำกว่า 100) — จะได้ไม่ถูกส่งซ้ำทุกรอบ
       await sql`
-        INSERT INTO hero_point_bills (bill_no, user_id, customer_code, amount, points, bill_date)
-        VALUES (${billNo}, ${u.id as number}, ${code}, ${amount}, ${pts}, ${date})
+        INSERT INTO hero_point_bills (bill_no, user_id, customer_code, amount, points, bill_date, bonus_points, bonus_tier, bonus_detail)
+        VALUES (${billNo}, ${u.id as number}, ${code}, ${amount}, ${pts}, ${date}, ${bonusPts}, ${bonusTier.name}, ${JSON.stringify({ baht: bonus.baht, lines: bonus.lines })}::jsonb)
         ON CONFLICT (bill_no) DO NOTHING
       `;
       const name = (u.first_name as string) || (u.display_name as string) || (u.phone as string);
-      results.push({ bill_no: billNo, status: "ok", points: pts, name });
+      results.push({ bill_no: billNo, status: "ok", points: pts, bonus: bonusPts, tier: bonusTier.name, name });
 
       // เลื่อนระดับ → แจ้งลูกค้า 1 ข้อความ (เกิดไม่บ่อย ไม่กินโควตา)
       if (pts > 0 && u.line_user_id) {

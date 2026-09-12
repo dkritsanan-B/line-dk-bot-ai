@@ -514,7 +514,7 @@ export default function AdminPage() {
           <div style={s.statLabel}>💎 Diamond (10,000+)</div>
         </div>
         <div style={s.statCard}>
-          <div style={s.statNum}>{users.filter(u => u.points >= 4000 && u.points < 10000).length}</div>
+          <div style={s.statNum}>{users.filter(u => u.points >= 5000 && u.points < 10000).length}</div>
           <div style={s.statLabel}>🔱 Platinum (4,000+)</div>
         </div>
         <div style={s.statCard}>
@@ -829,8 +829,8 @@ export default function AdminPage() {
               <tr><td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
             )}
             {users.map((u, i) => {
-              const level = u.points >= 10000 ? "💎 Diamond" : u.points >= 4000 ? "🔱 Platinum" : u.points >= 1000 ? "🥇 Gold" : u.points >= 300 ? "🥈 Silver" : u.points >= 100 ? "🥉 Bronze" : "👋 Welcome";
-              const levelColor = u.points >= 10000 ? "#1565C0" : u.points >= 4000 ? "#607D8B" : u.points >= 1000 ? "#F9A825" : u.points >= 300 ? "#78909C" : u.points >= 100 ? "#A1887F" : "#888888";
+              const level = u.points >= 10000 ? "💎 Diamond" : u.points >= 5000 ? "🔱 Platinum" : u.points >= 2000 ? "🥇 Gold" : u.points >= 500 ? "🥈 Silver" : u.points >= 100 ? "🥉 Bronze" : "👋 Welcome";
+              const levelColor = u.points >= 10000 ? "#1565C0" : u.points >= 5000 ? "#607D8B" : u.points >= 2000 ? "#F9A825" : u.points >= 500 ? "#78909C" : u.points >= 100 ? "#A1887F" : "#888888";
               const isEditing = editingId === u.id;
               return (
                 <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>

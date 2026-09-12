@@ -4,9 +4,9 @@ const POINTS_PER_BAHT = 100;
 
 export const TIERS = [
   { name: "Diamond",  emoji: "💎", min: 10000, cardGrad: "linear-gradient(135deg, #0D47A1 0%, #1565C0 45%, #82B1FF 100%)" },
-  { name: "Platinum", emoji: "🔱", min: 4000,  cardGrad: "linear-gradient(135deg, #37474F 0%, #607D8B 45%, #CFD8DC 100%)" },
-  { name: "Gold",     emoji: "🥇", min: 1000,  cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)" },
-  { name: "Silver",   emoji: "🥈", min: 300,   cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)" },
+  { name: "Platinum", emoji: "🔱", min: 5000,  cardGrad: "linear-gradient(135deg, #37474F 0%, #607D8B 45%, #CFD8DC 100%)" },
+  { name: "Gold",     emoji: "🥇", min: 2000,  cardGrad: "linear-gradient(135deg, #F57F17 0%, #FFD600 50%, #F9A825 100%)" },
+  { name: "Silver",   emoji: "🥈", min: 500,   cardGrad: "linear-gradient(135deg, #37474F 0%, #78909C 50%, #B0BEC5 100%)" },
   { name: "Bronze",   emoji: "🥉", min: 100,   cardGrad: "linear-gradient(135deg, #6D4C41 0%, #A1887F 50%, #D7A27C 100%)" },
   { name: "Welcome",  emoji: "👋", min: 0,     cardGrad: "linear-gradient(135deg, #455A64 0%, #607D8B 50%, #90A4AE 100%)" },
 ] as const;
