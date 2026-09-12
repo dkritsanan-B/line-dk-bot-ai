@@ -76,7 +76,9 @@ export function computeBonus(lines: HeroLine[], tier: Tier | string): { baht: nu
     if (rate <= 0) { item.skipped = rule === "none" ? reason : "ระดับนี้ยังไม่ได้"; out.push(item); continue; }
     if (l.net <= 0 || l.qty <= 0) { item.skipped = "ยอดศูนย์/คืนของ"; out.push(item); continue; }
     if (l.list_price != null && l.list_price > 0 && l.unit_price < l.list_price - 0.005) { item.skipped = `ต่อราคาแล้ว (${l.unit_price} < ป้าย ${l.list_price})`; out.push(item); continue; }
-    const baht = r.mode === "pct" ? l.net * rate / 100 : l.qty * rate;
+    // % คิดจากราคาเต็ม (qty × ราคาป้าย) — ตามกติกา "สินค้ามีส่วนลดปกติ ให้บวก % ตรง ๆ" (ท่อพีวีซี 8% → +2% ของราคาเต็ม)
+    const gross = l.qty * l.unit_price > 0 ? l.qty * l.unit_price : l.net;
+    const baht = r.mode === "pct" ? gross * rate / 100 : l.qty * rate;
     item.baht = Math.round(baht * 100) / 100;
     total += item.baht;
     out.push(item);
