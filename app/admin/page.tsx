@@ -307,12 +307,19 @@ export default function AdminPage() {
 
   async function saveCustomerId(userId: number, value: string) {
     setEditingId(null);
-    await fetch("/api/admin/update-member", {
+    // รหัสลูกค้า Hero (CUS-xxxxx) — ผูกแล้วบอทให้แต้มจากบิล Hero อัตโนมัติ; API ตัดช่องว่าง/พิมพ์ใหญ่ให้ และกันผูกซ้ำคนอื่น
+    const code = value.trim().toUpperCase() || null;
+    const res = await fetch("/api/admin/update-member", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
-      body: JSON.stringify({ id: userId, customer_id: value.trim() || null }),
+      body: JSON.stringify({ id: userId, customer_id: code }),
     });
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: value.trim() || null } : u));
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || `บันทึกรหัสลูกค้าไม่สำเร็จ (${res.status})`);
+      return;
+    }
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: code } : u));
   }
 
   function exportTxExcel() {
