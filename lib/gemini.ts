@@ -132,6 +132,32 @@ export async function explainAnswer(question: string, answer: string): Promise<s
   }
 }
 
+// สร้างรูปด้วย Gemini (โมเดล image generation) — คืน buffer รูป ไว้อัปขึ้น B2
+// ใช้ในระบบ Agency OS แผนก Production: ป้อน prompt → ได้รูปสินค้า/รูปโฆษณา
+export async function generateProductImage(
+  prompt: string
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  const result = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { responseModalities: ["IMAGE"] },
+  });
+
+  const parts = result.candidates?.[0]?.content?.parts ?? [];
+  for (const p of parts) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inline = (p as any).inlineData;
+    if (inline?.data) {
+      return {
+        buffer: Buffer.from(inline.data, "base64"),
+        mimeType: inline.mimeType ?? "image/png",
+      };
+    }
+  }
+  console.log(`[gemini] image gen: no image part, finishReason=${result.candidates?.[0]?.finishReason}`);
+  return null;
+}
+
 export async function askGemini(faq: string, userMessage: string): Promise<string> {
   try {
     const result = await ai.models.generateContent({
