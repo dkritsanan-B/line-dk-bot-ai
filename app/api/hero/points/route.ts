@@ -58,6 +58,22 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ codes }, { headers: { "Cache-Control": "no-store" } });
 }
 
+// DELETE ?bill_no=IV-... → ถอนบิลออกจากทะเบียน (ใช้ตอนทดสอบ/แก้ผิด) — ถอนแต้มด้วย: points/total_earned ลดตามที่บิลนั้นให้ + ลง transaction 'adjust'
+export async function DELETE(req: NextRequest) {
+  if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const billNo = (req.nextUrl.searchParams.get("bill_no") ?? "").trim();
+  if (!billNo) return NextResponse.json({ error: "missing bill_no" }, { status: 400 });
+  await ensureTable();
+  const rows = await sql`DELETE FROM hero_point_bills WHERE bill_no = ${billNo} RETURNING user_id, points`;
+  if (!rows.length) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const { user_id, points } = rows[0] as { user_id: number; points: number };
+  if (points > 0) {
+    await sql`UPDATE users SET points = GREATEST(points - ${points}, 0), total_earned = GREATEST(total_earned - ${points}, 0) WHERE id = ${user_id}`;
+    await sql`INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note) VALUES (${user_id}, 0, ${points}, 'adjust', ${"ถอนแต้มบิล " + billNo})`;
+  }
+  return NextResponse.json({ ok: true, user_id, points_reversed: points });
+}
+
 interface BillIn { customer_code?: unknown; bill_no?: unknown; amount?: unknown; date?: unknown }
 
 export async function POST(req: NextRequest) {
