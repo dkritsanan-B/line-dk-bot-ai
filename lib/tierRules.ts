@@ -37,6 +37,10 @@ export const HERO_CATEGORY_RULE: Record<number, RuleKey> = {
 
 // เหล็กเส้น (ข้ออ้อย/กลม) — ไม่ลดทุกระดับ · จับจากชื่อสินค้าใน Hero
 const REBAR_RE = /ข้ออ้อย|SD ?40|SD ?50|เหล็กเส้นกลม|\bRB\d|SR ?24/i;
+// ไวร์เมช/ตะแกรงเทพื้น ชื่อมีคำว่า "ข้ออ้อย" (เส้นลวดข้ออ้อย) แต่เป็นเหล็กอื่น ไม่ใช่เหล็กเส้น (เจอตอน preview 13 ก.ย.)
+const NOT_REBAR_RE = /ตะแกรง|ไวร์เมช|wire ?mesh/i;
+// เมทัลชีทลดเป็นบาทต่อเมตร → ใช้ได้เฉพาะหน่วยเมตร หน่วยอื่น (ชิ้น/แผ่น) ไม่ลด
+const METER_UNIT_RE = /เมตร/;
 // หน่วยที่ถือเป็น "ราคาแบ่งตัด" ของเหล็ก — ไม่ลด (เมทัลชีทขายเป็นเมตรอยู่แล้ว ไม่เข้าเงื่อนไขนี้)
 const CUT_UNIT_RE = /เมตร|ตัด|ท่อน|ซม|ฟุต|กิโล/;
 
@@ -49,9 +53,10 @@ export function ruleForLine(line: HeroLine): { rule: RuleKey; reason: string } {
   const base = line.category != null ? HERO_CATEGORY_RULE[line.category] : undefined;
   if (!base) return { rule: "none", reason: "ไม่มีหมวด" };
   if (base === "steel") {
-    if (REBAR_RE.test(line.name)) return { rule: "none", reason: "เหล็กเส้น" };
+    if (REBAR_RE.test(line.name) && !NOT_REBAR_RE.test(line.name)) return { rule: "none", reason: "เหล็กเส้น" };
     if (CUT_UNIT_RE.test(line.unit)) return { rule: "none", reason: "ราคาแบ่งตัด" };
   }
+  if (base === "sheet" && !METER_UNIT_RE.test(line.unit)) return { rule: "none", reason: "เมทัลชีทหน่วยไม่ใช่เมตร" };
   return { rule: base, reason: RULES[base].label };
 }
 
