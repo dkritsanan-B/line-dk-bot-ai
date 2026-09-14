@@ -3,7 +3,8 @@
 //
 //  โหมด:  npx tsx scripts/hero-price-levels.ts preview   → อ่าน Hero อย่างเดียว ออก Excel + plan.json ให้เจ้าของตรวจ (ค่าเริ่มต้น)
 //         npx tsx scripts/hero-price-levels.ts apply     → เขียน Hero ตาม plan.json ล่าสุด (ต้องได้รับอนุญาตก่อนทุกครั้ง · สำรองค่าเดิมก่อน)
-//         npx tsx scripts/hero-price-levels.ts rollback  → คืนค่าจากไฟล์สำรองล่าสุด
+//         npx tsx scripts/hero-price-levels.ts rollback  → คืนค่าจากไฟล์สำรองล่าสุด (backup-*.json ของ apply)
+//         npx tsx scripts/hero-price-levels.ts sync      → โหมดบอท: เขียนเฉพาะแถวที่ไม่ตรงแผน (Task HeroPriceLevelSync ทุก 10 นาที ผ่าน trello_approve\hero_price_level_sync.js) · log = hero-price-levels/sync.log
 //
 //  กติกา % อยู่ที่ lib/tierRules.ts ที่เดียว (ตัวเดียวกับที่คิดโบนัสแต้ม) — ห้ามฝังตัวเลขที่นี่
 //  โครง Hero: CSPDPRICE 3 แถวต่อสินค้า-หน่วย (TAXTYPE แยกนอก/รวมใน/อัตราศูนย์) ร้านใช้ "รวมใน" (TAXTYPE=1) เท่านั้น → แตะเฉพาะแถวนั้น
@@ -166,6 +167,40 @@ async function main() {
         await req.query(`UPDATE CSPDPRICE SET UNITPRICE2=@p2, UNITPRICE3=@p3, UNITPRICE4=@p4, UNITPRICE5=@p5, UNITPRICE6=@p6, DISCWORD2=@w2, DISCWORD3=@w3, DISCWORD4=@w4, DISCWORD5=@w5, DISCWORD6=@w6 WHERE ID=@id`);
       }
       console.log("rollback done");
+      return;
+    }
+    if (MODE === "sync") {
+      // โหมดบอท (Task HeroPriceLevelSync ทุก 10 นาที): คำนวณใหม่ทั้งหมด เขียนเฉพาะแถวที่ค่าใน Hero ไม่ตรงแผน
+      // ใช้หลัง apply ครั้งแรก 14 ก.ย. 69 — ราคาป้าย/ส่วนลดปกติเปลี่ยน · สินค้าใหม่ · ตั้งราคาจาก 0 → ช่องระดับตามให้เอง
+      // เจ้าของอนุญาตให้บอทนี้เขียน Hero ต่อเนื่องแล้ว (14 ก.ย. 69) · lock กันรันซ้อน · hard cap ต่อรอบ · สำรองเฉพาะแถวที่แตะ
+      const lockFile = path.join(OUT_DIR, "sync.lock");
+      const logFile = path.join(OUT_DIR, "sync.log");
+      const slog = (m: string) => { const line = `[${new Date().toLocaleString("th-TH", { hour12: false })}] ${m}`; console.log(line); fs.appendFileSync(logFile, line + "\n"); };
+      try { const st = fs.statSync(lockFile); if (Date.now() - st.mtimeMs < 20 * 60 * 1000) { slog("ข้าม: มีรอบก่อนรันอยู่ (lock)"); return; } } catch { /* ไม่มี lock */ }
+      fs.writeFileSync(lockFile, String(process.pid));
+      try {
+        const HARD_CAP = 3000;                       // แถว/รอบ — ปกติหลัก 0–50 ถ้าเกินนี้แปลว่ามีอะไรผิด (เช่นกติกาเปลี่ยน) ให้คนดูก่อน
+        const rows = await loadRows(pool);
+        const todo = rows.map((r) => ({ r, p: plan(r) })).filter(({ p }) => p.changed);
+        if (!todo.length) { slog(`ตรวจ ${rows.length} แถว · ตรงหมด`); return; }
+        if (todo.length > HARD_CAP) { slog(`!! ต้องเขียน ${todo.length} แถว เกินเพดาน ${HARD_CAP} — ไม่เขียน ให้รัน preview ดูก่อน`); return; }
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        const backup = todo.map(({ r }) => ({ ID: r.ID, PRODUCTCODE: r.CODE, UNITID: r.UNITID, UNITPRICE2: r.UNITPRICE2, UNITPRICE3: r.UNITPRICE3, UNITPRICE4: r.UNITPRICE4, UNITPRICE5: r.UNITPRICE5, UNITPRICE6: r.UNITPRICE6, DISCWORD2: r.DISCWORD2, DISCWORD3: r.DISCWORD3, DISCWORD4: r.DISCWORD4, DISCWORD5: r.DISCWORD5, DISCWORD6: r.DISCWORD6 }));
+        fs.writeFileSync(path.join(OUT_DIR, `backup-sync-${stamp}.json`), JSON.stringify(backup));
+        let done = 0;
+        for (const { r, p } of todo) {
+          const req = pool.request();
+          req.input("id", sql.Int, r.ID);
+          for (let i = 0; i < 5; i++) { req.input(`p${i + 2}`, sql.Decimal(18, 4), p.prices[i]); req.input(`w${i + 2}`, sql.VarChar(50), p.words[i]); }
+          await req.query(`UPDATE CSPDPRICE SET UNITPRICE2=@p2, UNITPRICE3=@p3, UNITPRICE4=@p4, UNITPRICE5=@p5, UNITPRICE6=@p6, DISCWORD2=@w2, DISCWORD3=@w3, DISCWORD4=@w4, DISCWORD5=@w5, DISCWORD6=@w6 WHERE ID=@id AND TAXTYPE=1`);
+          done++;
+        }
+        const sample = todo.slice(0, 5).map(({ r, p }) => `${String(r.NAME).replace(/^[*\s-]+/, "").slice(0, 28)} ${r.UNIT} ${Number(r.UNITPRICE1)} [${p.words.join("|")}]`).join(" · ");
+        slog(`เขียน ${done}/${todo.length} แถว (ตรวจ ${rows.length}) · ${sample}${todo.length > 5 ? " …" : ""}`);
+        // เก็บ backup-sync ไว้แค่ 30 ไฟล์ล่าสุด
+        const bks = fs.readdirSync(OUT_DIR).filter((f) => f.startsWith("backup-sync-")).sort();
+        for (const f of bks.slice(0, Math.max(0, bks.length - 30))) fs.unlinkSync(path.join(OUT_DIR, f));
+      } finally { try { fs.unlinkSync(lockFile); } catch { /* ignore */ } }
       return;
     }
     console.log("unknown mode");
