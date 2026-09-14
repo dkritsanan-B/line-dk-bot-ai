@@ -73,8 +73,12 @@ function plan(r: Row) {
   return { rule, reason, base, prices, words, changed, notes: [...new Set(notes)].join("; ") };
 }
 
+// --code=XXX (โหมด sync) = ทำเฉพาะสินค้าตัวเดียว — ตัวเขียนราคา (hero-po price-set / steel_price_push) เรียกหลังแก้ราคาป้าย ช่องระดับจะได้ตามทันที
+const ONLY_CODE = (process.argv.find((a) => a.startsWith("--code=")) || "").slice(7).trim();
+
 async function loadRows(pool: { request: () => { query: (q: string) => Promise<{ recordset: Row[] }> } }): Promise<Row[]> {
   // แถวราคาล่าสุดต่อสินค้า-หน่วย (ATDATE ล่าสุด) เฉพาะ TAXTYPE=1 รวมใน · เฉพาะสินค้าที่ยังใช้งาน
+  const onlyCode = ONLY_CODE ? ` AND p.CODE = '${ONLY_CODE.replace(/'/g, "''")}'` : "";
   const q = `
     ;WITH PR AS (
       SELECT pr.*, ROW_NUMBER() OVER (PARTITION BY pr.PRODUCTCODE, pr.UNITID ORDER BY pr.ATDATE DESC, pr.ID DESC) AS rn
@@ -82,7 +86,7 @@ async function loadRows(pool: { request: () => { query: (q: string) => Promise<{
     SELECT PR.ID, p.CODE, p.NAME, p.CATEGORY, ISNULL(c.LNAME,'') AS CATNAME, PR.UNITID, ISNULL(u.LNAME,'') AS UNIT, PR.UNITPRICE1, PR.DISCWORD1, PR.ATDATE, p.USEFLAG,
            PR.UNITPRICE2, PR.UNITPRICE3, PR.UNITPRICE4, PR.UNITPRICE5, PR.UNITPRICE6, PR.DISCWORD2, PR.DISCWORD3, PR.DISCWORD4, PR.DISCWORD5, PR.DISCWORD6
       FROM PR JOIN CSPRODUCT p ON p.CODE = PR.PRODUCTCODE LEFT JOIN CSCATEGORY c ON c.ID = p.CATEGORY LEFT JOIN CSUNIT u ON u.ID = PR.UNITID
-     WHERE PR.rn = 1 AND p.USEFLAG = 0
+     WHERE PR.rn = 1 AND p.USEFLAG = 0${onlyCode}
      ORDER BY p.CATEGORY, p.NAME, PR.UNITID`;
   return (await pool.request().query(q)).recordset;
 }
@@ -175,12 +179,17 @@ async function main() {
       // เจ้าของอนุญาตให้บอทนี้เขียน Hero ต่อเนื่องแล้ว (14 ก.ย. 69) · lock กันรันซ้อน · hard cap ต่อรอบ · สำรองเฉพาะแถวที่แตะ
       const lockFile = path.join(OUT_DIR, "sync.lock");
       const logFile = path.join(OUT_DIR, "sync.log");
-      const slog = (m: string) => { const line = `[${new Date().toLocaleString("th-TH", { hour12: false })}] ${m}`; console.log(line); fs.appendFileSync(logFile, line + "\n"); };
-      try { const st = fs.statSync(lockFile); if (Date.now() - st.mtimeMs < 20 * 60 * 1000) { slog("ข้าม: มีรอบก่อนรันอยู่ (lock)"); return; } } catch { /* ไม่มี lock */ }
-      fs.writeFileSync(lockFile, String(process.pid));
+      const tag = ONLY_CODE ? `[${ONLY_CODE}] ` : "";
+      const slog = (m: string) => { const line = `[${new Date().toLocaleString("th-TH", { hour12: false })}] ${tag}${m}`; console.log(line); fs.appendFileSync(logFile, line + "\n"); };
+      // --code= ไม่ใช้ lock (แค่สินค้าเดียว รันชนรอบใหญ่ได้ ผลลัพธ์เหมือนกัน) — รอบใหญ่ใช้ lock กันซ้อน
+      if (!ONLY_CODE) {
+        try { const st = fs.statSync(lockFile); if (Date.now() - st.mtimeMs < 20 * 60 * 1000) { slog("ข้าม: มีรอบก่อนรันอยู่ (lock)"); return; } } catch { /* ไม่มี lock */ }
+        fs.writeFileSync(lockFile, String(process.pid));
+      }
       try {
         const HARD_CAP = 3000;                       // แถว/รอบ — ปกติหลัก 0–50 ถ้าเกินนี้แปลว่ามีอะไรผิด (เช่นกติกาเปลี่ยน) ให้คนดูก่อน
         const rows = await loadRows(pool);
+        if (ONLY_CODE && !rows.length) { slog("ไม่พบสินค้า (หรือยกเลิกขาย/ไม่มีแถว TAXTYPE=1)"); return; }
         const todo = rows.map((r) => ({ r, p: plan(r) })).filter(({ p }) => p.changed);
         if (!todo.length) { slog(`ตรวจ ${rows.length} แถว · ตรงหมด`); return; }
         if (todo.length > HARD_CAP) { slog(`!! ต้องเขียน ${todo.length} แถว เกินเพดาน ${HARD_CAP} — ไม่เขียน ให้รัน preview ดูก่อน`); return; }
@@ -200,7 +209,7 @@ async function main() {
         // เก็บ backup-sync ไว้แค่ 30 ไฟล์ล่าสุด
         const bks = fs.readdirSync(OUT_DIR).filter((f) => f.startsWith("backup-sync-")).sort();
         for (const f of bks.slice(0, Math.max(0, bks.length - 30))) fs.unlinkSync(path.join(OUT_DIR, f));
-      } finally { try { fs.unlinkSync(lockFile); } catch { /* ignore */ } }
+      } finally { if (!ONLY_CODE) { try { fs.unlinkSync(lockFile); } catch { /* ignore */ } } }
       return;
     }
     console.log("unknown mode");
