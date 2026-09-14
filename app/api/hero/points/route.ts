@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { addPoints, getUserByPhone, getTierFromPoints, getEffectiveTier, migrateDB } from "@/lib/points";
-import { computeBonus, bonusPoints, type HeroLine } from "@/lib/tierRules";
+import { computeBonus, bonusPoints, tierIndex, ruleForLine, RULES, type HeroLine } from "@/lib/tierRules";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -56,11 +56,44 @@ async function pushText(to: string, text: string) {
 
 const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
 
+// GET → รายชื่อสมาชิกที่ผูกรหัส Hero แล้ว (codes เดิม + members พร้อมระดับ) และสมาชิกที่ยังไม่ผูก (unlinked มีเบอร์) ให้ watcher บนเครื่องร้าน
+//   members[].level = ระดับราคา Hero (CSCUSTOMER.PRICELEVEL) 0=Welcome 1=Bronze … 5=Diamond — ชิ้น B: watcher เขียนลง Hero ให้ (ลูกค้าเครดิตได้ 0)
+//   unlinked = ให้ watcher ลองจับคู่เบอร์กับ CSCUSTOMER.TELEPHONE แล้ว PUT กลับมาผูกอัตโนมัติ
 export async function GET(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const rows = await sql`SELECT customer_id FROM users WHERE customer_id IS NOT NULL AND customer_id <> ''`;
-  const codes = [...new Set(rows.map((r) => normCode(r.customer_id)).filter(Boolean))];
-  return NextResponse.json({ codes }, { headers: { "Cache-Control": "no-store" } });
+  await migrateDB();
+  const rows = await sql`SELECT id, customer_id, phone, total_earned, points, last_purchase_at FROM users`;
+  const members = rows.filter((r) => normCode(r.customer_id)).map((r) => {
+    const tier = getEffectiveTier(Number(r.total_earned ?? 0), Number(r.points ?? 0), (r.last_purchase_at as string | null) ?? null);
+    return { id: r.id as number, code: normCode(r.customer_id), tier: tier.name, level: tierIndex(tier) };
+  });
+  const codes = [...new Set(members.map((m) => m.code))];
+  const unlinked = rows.filter((r) => !normCode(r.customer_id) && String(r.phone ?? "").replace(/\D/g, "").length >= 9)
+    .map((r) => ({ id: r.id as number, phone: String(r.phone).replace(/\D/g, "") }));
+  return NextResponse.json({ codes, members, unlinked }, { headers: { "Cache-Control": "no-store" } });
+}
+
+// PUT { links: [{ id, customer_id }] } → ผูกรหัส Hero ให้สมาชิกอัตโนมัติ (watcher จับคู่เบอร์โทรได้ตัวเดียว) — กันผูกซ้ำคนอื่น
+export async function PUT(req: NextRequest) {
+  if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  let body: { links?: { id?: number; customer_id?: string; note?: string }[] };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+  const links = Array.isArray(body.links) ? body.links.slice(0, 100) : [];
+  await migrateDB();
+  const results: { id: number; code: string; status: string; message?: string }[] = [];
+  for (const l of links) {
+    const id = Number(l.id); const code = normCode(l.customer_id);
+    if (!Number.isInteger(id) || !code) { results.push({ id, code, status: "error", message: "ข้อมูลไม่ครบ" }); continue; }
+    const taken = await sql`SELECT id FROM users WHERE UPPER(TRIM(customer_id)) = ${code} AND id <> ${id} LIMIT 1`;
+    if (taken.length) { results.push({ id, code, status: "skip", message: `รหัสผูกกับสมาชิก id ${taken[0].id} แล้ว` }); continue; }
+    const cur = await sql`SELECT customer_id FROM users WHERE id = ${id} LIMIT 1`;
+    if (!cur.length) { results.push({ id, code, status: "error", message: "ไม่พบสมาชิก" }); continue; }
+    if (normCode(cur[0].customer_id)) { results.push({ id, code, status: "skip", message: "ผูกอยู่แล้ว" }); continue; }
+    await sql`UPDATE users SET customer_id = ${code} WHERE id = ${id}`;
+    await sql`INSERT INTO audit_log (action, target_user_id, detail) VALUES ('auto_link_customer', ${id}, ${`ผูกรหัส Hero ${code} อัตโนมัติ (${String(l.note ?? "จับคู่เบอร์โทร").slice(0, 120)})`})`;
+    results.push({ id, code, status: "ok" });
+  }
+  return NextResponse.json({ results });
 }
 
 // DELETE ?bill_no=IV-... → ถอนบิลออกจากทะเบียน (ใช้ตอนทดสอบ/แก้ผิด) — ถอนแต้มด้วย: points/total_earned ลดตามที่บิลนั้นให้ + ลง transaction 'adjust'
@@ -111,7 +144,7 @@ export async function POST(req: NextRequest) {
   await migrateDB();
   await ensureTable();
 
-  const results: { bill_no: string; status: string; points?: number; bonus?: number; tier?: string; name?: string; message?: string }[] = [];
+  const results: { bill_no: string; status: string; points?: number; bonus?: number; tier?: string; name?: string; message?: string; warnings?: string[] }[] = [];
   for (const b of bills) {
     const billNo = String(b.bill_no ?? "").trim();
     const code = normCode(b.customer_code);
@@ -153,7 +186,12 @@ export async function POST(req: NextRequest) {
         ON CONFLICT (bill_no) DO NOTHING
       `;
       const name = (u.first_name as string) || (u.display_name as string) || (u.phone as string);
-      results.push({ bill_no: billNo, status: "ok", points: pts, bonus: bonusPts, tier: bonusTier.name, name });
+      // ชิ้น D: บรรทัดที่แคชเชียร์ต่อราคา (ขาย < ป้าย) แต่คำส่วนลดระดับยังติดอยู่ = ลดซ้ำ 2 ต่อ → ส่งกลับให้ watcher เปิดการ์ดเตือน
+      const ti = tierIndex(bonusTier);
+      const warnings = lines.filter((l) => l.discword && l.list_price != null && l.list_price > 0 && l.unit_price < l.list_price - 0.005)
+        .filter((l) => { const r = RULES[ruleForLine(l).rule]; return r.via === "discount" && (r.byTier[ti] ?? 0) > 0; })
+        .map((l) => `${l.name} ${l.qty} ${l.unit} — ขาย ${l.unit_price} (ป้าย ${l.list_price}) แต่ยังลด "${l.discword}"`);
+      results.push({ bill_no: billNo, status: "ok", points: pts, bonus: bonusPts, tier: bonusTier.name, name, ...(warnings.length ? { warnings } : {}) });
 
       // เลื่อนระดับ → แจ้งลูกค้า 1 ข้อความ (เกิดไม่บ่อย ไม่กินโควตา)
       if (pts > 0 && u.line_user_id) {

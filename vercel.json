@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/notify-expiry",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/birthday",
+      "schedule": "0 1 * * *"
     }
   ]
 }
