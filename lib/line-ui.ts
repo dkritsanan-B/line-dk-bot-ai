@@ -94,52 +94,39 @@ export function welcomeFlex(): Msg {
   };
 }
 
-// ติดต่อ: การ์ดร้าน 1 ใบ + การ์ดพนักงานขาย 4 ใบ (เดิมทุกใบมีแบนเนอร์ใหญ่ซ้ำกัน อ่านยาก)
+// ติดต่อฝ่ายขาย: การ์ดพนักงาน 4 ใบ ดีไซน์เดิม (แบนเนอร์ DK + รูปใหญ่ + โทร/เพิ่มเพื่อน + เวลาทำการ) — เจ้าของเทียบแล้วชอบแบบเดิมมากกว่า (14 ก.ย. 69)
+// เพิ่มจากเดิมแค่เบอร์ร้านในบรรทัดเวลาทำการ · quick reply แนบตอนส่ง
 export function contactFlex(): Msg {
-  const shopBubble: Msg = {
+  const bubbles: Msg[] = SALES_STAFF.map((s) => ({
     type: "bubble", size: "kilo",
-    header: {
-      type: "box", layout: "vertical", backgroundColor: BRAND.navy, paddingAll: "16px",
-      contents: [
-        { type: "text", text: SHOP.name, weight: "bold", size: "md", color: "#FFFFFF" },
-        { type: "text", text: SHOP.legal, size: "xs", color: "#C9D6EE" },
-      ],
-    },
+    hero: { type: "image", url: `${SHOP.base}/herobanner2.png`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
     body: {
-      type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px",
+      type: "box", layout: "vertical", paddingAll: "0px",
       contents: [
-        { type: "box", layout: "horizontal", contents: [{ type: "text", text: "📞", flex: 0 }, { type: "text", text: SHOP.phone, weight: "bold", size: "lg", color: BRAND.ink, margin: "sm" }] },
-        { type: "box", layout: "horizontal", contents: [{ type: "text", text: "🕐", flex: 0 }, { type: "text", text: SHOP.hours, size: "sm", color: BRAND.muted, margin: "sm", wrap: true }] },
-        { type: "box", layout: "horizontal", contents: [{ type: "text", text: "💬", flex: 0 }, { type: "text", text: `LINE ${SHOP.lineId}`, size: "sm", color: BRAND.muted, margin: "sm" }] },
+        { type: "box", layout: "vertical", paddingStart: "20px", paddingEnd: "20px", paddingTop: "12px",
+          contents: [{ type: "image", url: s.photo, size: "full", aspectRatio: "10:9", aspectMode: "cover" }] },
+        { type: "box", layout: "vertical", paddingTop: "8px", paddingBottom: "4px", paddingStart: "12px", paddingEnd: "12px", spacing: "xs",
+          contents: [
+            { type: "text", text: s.name, size: "lg", weight: "bold", color: "#1A1A1A", align: "center" },
+            { type: "text", text: "ฝ่ายขาย", size: "xs", color: "#888888", align: "center" },
+            { type: "text", text: s.phone, size: "sm", color: "#555555", align: "center" },
+          ] },
       ],
     },
     footer: {
       type: "box", layout: "vertical", spacing: "sm", paddingAll: "12px",
       contents: [
-        btn("โทรร้าน", { type: "uri", uri: `tel:${SHOP.tel}` }, BRAND.navy),
-        btn("แผนที่ / นำทาง", { type: "uri", uri: SHOP.mapsUrl }, BRAND.navy, "secondary"),
-      ],
-    },
-  };
-  const staffBubbles: Msg[] = SALES_STAFF.map((s) => ({
-    type: "bubble", size: "kilo",
-    hero: { type: "image", url: s.photo, size: "full", aspectRatio: "4:3", aspectMode: "cover" },
-    body: {
-      type: "box", layout: "vertical", paddingAll: "14px", spacing: "none",
-      contents: [
-        { type: "text", text: s.name, weight: "bold", size: "lg", color: BRAND.ink },
-        { type: "text", text: `ฝ่ายขาย · ${s.phone}`, size: "sm", color: BRAND.muted, margin: "xs" },
-      ],
-    },
-    footer: {
-      type: "box", layout: "horizontal", spacing: "sm", paddingAll: "12px",
-      contents: [
-        btn("📞 โทร", { type: "uri", uri: `tel:${s.tel}` }, BRAND.blue),
-        btn("LINE", { type: "uri", uri: `https://line.me/ti/p/~${s.lineId}` }, BRAND.line),
+        { type: "button", style: "primary", height: "sm", color: "#2E3192", action: { type: "uri", label: `📞 โทรหา${s.name}`, uri: `tel:${s.tel}` } },
+        { type: "button", style: "primary", height: "sm", color: BRAND.line, action: { type: "uri", label: "🟢 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` } },
+        { type: "box", layout: "vertical", margin: "sm",
+          contents: [
+            { type: "text", text: `🕐 เวลาทำการ 8:00 - 17:00 · โทรร้าน ${SHOP.phone}`, size: "xs", color: "#888888", align: "center", wrap: true },
+            { type: "text", text: "เปิดทุกวัน จันทร์ - เสาร์", size: "xs", color: "#888888", align: "center" },
+          ] },
       ],
     },
   }));
-  return { type: "flex", altText: `📞 ติดต่อ ${SHOP.name} โทร ${SHOP.phone} · ฝ่ายขาย 4 ท่าน`, contents: { type: "carousel", contents: [shopBubble, ...staffBubbles] } };
+  return { type: "flex", altText: `📞 ติดต่อฝ่ายขาย DK วัสดุก่อสร้าง · โทรร้าน ${SHOP.phone}`, contents: { type: "carousel", contents: bubbles } };
 }
 
 // เช็คแต้ม: บัตรย่อสีตามระดับ + หลอดความคืบหน้า + ปุ่มเปิดบัตร/ของรางวัล

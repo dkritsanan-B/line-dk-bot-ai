@@ -15,10 +15,12 @@ const TILES = [
   { id: 3, name: "contact", bg: "warm orange gradient (#BF360C to #FF7043)", obj: "a white 3D telephone handset with a speech bubble, friendly and clean" },
   { id: 4, name: "game",    bg: "purple gradient (#4A148C to #8E24AA)", obj: "a cute white robot head with headphones holding a glowing question mark, playful" },
   { id: 5, name: "facebook",bg: "blue gradient (#0D47A1 to #1E88E5)", obj: "a big white thumbs-up hand with small floating heart and like reaction icons" },
-  { id: 6, name: "web",     bg: "teal gradient (#004D40 to #00897B)", obj: "a translucent glass globe with a white cursor arrow, clean tech look" },
+  { id: 6, name: "web",     bg: "teal gradient (#004D40 to #00897B)", obj: "a 3D laptop with a bright glowing screen showing a tiny online storefront layout made of blank colored blocks, a white shopping cart icon floating beside it, small floating price-tag shapes, clean tech look" },
 ];
 
+const ONLY = (process.env.TILES || "").split(",").filter(Boolean);
 for (const t of TILES) {
+  if (ONLY.length && !ONLY.includes(t.name)) continue;
   const prompt = `${STYLE} Subject: ${t.obj}. Background: smooth ${t.bg}, with very subtle diagonal light streaks.`;
   const r = await ai.models.generateContent({ model: "gemini-2.5-flash-image", contents: [{ role: "user", parts: [{ text: prompt }] }], config: { responseModalities: ["IMAGE"] } });
   const part = (r.candidates?.[0]?.content?.parts ?? []).find(p => p.inlineData?.data);
