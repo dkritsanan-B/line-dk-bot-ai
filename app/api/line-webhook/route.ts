@@ -5,6 +5,7 @@ import * as crypto from "crypto";
 import { getFaqContent } from "@/lib/sheet";
 import { askGemini, generateQuizQuestion, checkQuizAnswer, explainAnswer } from "@/lib/gemini";
 import { getUserByLineId, getEffectiveTier, getNextTier, TIERS } from "@/lib/points";
+import { welcomeFlex, contactFlex, pointsFlex, locationMsg, quickReplies, textMsg, TIER_COLOR, SHOP } from "@/lib/line-ui";
 import {
   migrateQuizDB, getQuizSession, ensureSession,
   startQuestion, clearQuestion, awardQuizPoint, QuizSession,
@@ -32,7 +33,7 @@ async function sendReply(replyToken: string, text: string): Promise<void> {
   const res = await fetch(LINE_REPLY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
-    body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] }),
+    body: JSON.stringify({ replyToken, messages: [{ type: "text", text, quickReply: quickReplies() }] }),   // แถบปุ่มลัดทุกข้อความ
   });
   if (!res.ok) console.error(`[line] reply failed status=${res.status} body=${await res.text()}`);
 }
@@ -52,16 +53,7 @@ async function sendReplyButton(replyToken: string, text: string, label: string, 
   if (!res.ok) console.error(`[line] reply button failed status=${res.status} body=${await res.text()}`);
 }
 
-const WELCOME_MESSAGE =
-  `ยินดีต้อนรับสู่ร้าน DK วัสดุก่อสร้างค่ะ 🏗️\n\n` +
-  `📌 ระบบสะสมแต้ม\n` +
-  `ทุกการซื้อ 100 บาท = 1 แต้ม\n\n` +
-  `🎴 สมัครสมาชิก / ดูบัตรสมาชิก\n` +
-  `กดปุ่ม "สมัครสมาชิก" ในเมนูด้านล่างค่ะ\n\n` +
-  `🌟 เช็คแต้มสะสม\n` +
-  `พิมพ์: แต้ม หรือกดปุ่มในเมนูด้านล่างค่ะ\n\n` +
-  `💬 สอบถามสินค้าและราคา\n` +
-  `พิมพ์คำถามได้เลยค่ะ น้อง DK ยินดีช่วยเสมอ 😊`;
+// ข้อความต้อนรับย้ายไปเป็นการ์ด welcomeFlex() ใน lib/line-ui.ts (14 ก.ย. 69)
 
 // ── เกมตอบคำถาม: ประเมินคำตอบ ──────────────────────────────────
 async function handleQuizAnswer(
@@ -153,113 +145,19 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
   await sendReply(replyToken, msg);
 }
 
-// ── ติดต่อฝ่ายขาย: Flex Message Carousel ────────────────────────
-const BASE_URL = "https://line-dk-bot-ai.vercel.app";
-const SALES_STAFF = [
-  { name: "คุณเก๋",   phone: "094-651-4309", tel: "0946514309", lineId: "0946514309", photo: `${BASE_URL}/staff-gae.png` },
-  { name: "คุณแพรว", phone: "065-209-4955", tel: "0652094955", lineId: "0652094955", photo: `${BASE_URL}/staff-praew.png` },
-  { name: "คุณลัย",  phone: "095-023-6382", tel: "0950236382", lineId: "0950236382", photo: `${BASE_URL}/staff-lai.png` },
-  { name: "คุณมีน",  phone: "094-629-3510", tel: "0946293510", lineId: "somdk5004",  photo: `${BASE_URL}/staff-meen.png` },
-];
-
-const HERO_URL = "https://line-dk-bot-ai.vercel.app/herobanner2.png";
-const BRAND_COLOR = "#2E3192";
-
-async function sendFlexSalesContact(replyToken: string): Promise<void> {
-  const bubbles = SALES_STAFF.map((s) => ({
-    type: "bubble",
-    size: "kilo",
-    hero: {
-      type: "image",
-      url: HERO_URL,
-      size: "full",
-      aspectRatio: "20:13",
-      aspectMode: "cover",
-    },
-    body: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "0px",
-      contents: [
-        {
-          type: "box",
-          layout: "vertical",
-          paddingStart: "20px",
-          paddingEnd: "20px",
-          paddingTop: "12px",
-          contents: [{
-            type: "image",
-            url: s.photo,
-            size: "full",
-            aspectRatio: "10:9",
-            aspectMode: "cover",
-          }],
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          paddingTop: "8px",
-          paddingBottom: "4px",
-          paddingStart: "12px",
-          paddingEnd: "12px",
-          spacing: "xs",
-          contents: [
-            { type: "text", text: s.name, size: "lg", weight: "bold", color: "#1A1A1A", align: "center" },
-            { type: "text", text: "ฝ่ายขาย", size: "xs", color: "#888888", align: "center" },
-            { type: "text", text: s.phone, size: "sm", color: "#555555", align: "center" },
-          ],
-        },
-      ],
-    },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      paddingAll: "12px",
-      contents: [
-        {
-          type: "button",
-          style: "primary",
-          height: "sm",
-          color: BRAND_COLOR,
-          action: { type: "uri", label: `📞 โทรหา${s.name}`, uri: `tel:${s.tel}` },
-        },
-        {
-          type: "button",
-          style: "primary",
-          height: "sm",
-          color: "#06C755",
-          action: { type: "uri", label: "🟢 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` },
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          margin: "sm",
-          contents: [
-            { type: "text", text: "🕐 เวลาทำการ 8:00 - 17:00", size: "xs", color: "#888888", align: "center" },
-            { type: "text", text: "เปิดทุกวัน จันทร์ - เสาร์", size: "xs", color: "#888888", align: "center" },
-          ],
-        },
-      ],
-    },
-  }));
-
+// ── ข้อความที่มีหน้าตา (Flex/location/quick reply) อยู่ที่ lib/line-ui.ts — ที่นี่แค่ส่ง
+// ทุกข้อความแนบแถบปุ่มลัด (quick reply) ที่ข้อความสุดท้าย ลูกค้าไม่ต้องจำคำสั่ง
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function replyMessages(replyToken: string, messages: Record<string, any>[]): Promise<void> {
+  const msgs = messages.slice(0, 5).map((m, i, arr) => (i === arr.length - 1 ? { ...m, quickReply: quickReplies() } : m));
   const res = await fetch(LINE_REPLY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
-    body: JSON.stringify({
-      replyToken,
-      messages: [{
-        type: "flex",
-        altText: "📞 ติดต่อฝ่ายขาย DK วัสดุก่อสร้าง",
-        contents: { type: "carousel", contents: bubbles },
-      }],
-    }),
+    body: JSON.stringify({ replyToken, messages: msgs }),
   });
-  if (!res.ok) console.error(`[line] flex sales failed status=${res.status} body=${await res.text()}`);
+  if (!res.ok) console.error(`[line] reply failed status=${res.status} body=${await res.text()}`);
 }
 
-// ── จัดการข้อความหลัก ───────────────────────────────────────────
 async function handleMessage(
   lineUserId: string,
   replyToken: string,
@@ -291,30 +189,24 @@ async function handleMessage(
   }
 
   if (trimmed === "สมาชิก" || trimmed === "วิธีสะสมแต้ม" || trimmed === "สะสมแต้ม") {
-    await sendReply(replyToken, WELCOME_MESSAGE).catch((e) => console.error("[line] sendReply error", e));
+    await replyMessages(replyToken, [welcomeFlex()]).catch((e) => console.error("[line] welcome flex error", e));
     return;
   }
 
-  if (trimmed === "คะแนน" || trimmed === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน")) {
+  if (trimmed === "คะแนน" || trimmed === "แต้ม" || text.includes("ดูแต้ม") || text.includes("ดูคะแนน") || text.includes("เช็คแต้ม")) {
     if (user) {
+      // การ์ดบัตรย่อสีตามระดับ + หลอดความคืบหน้า (เดิมเป็นข้อความล้วน)
       const tier = getEffectiveTier(user.total_earned ?? 0, user.points, user.last_purchase_at ?? null);
       const baseTier = TIERS.find(t => (user.total_earned ?? 0) >= t.min) ?? TIERS[TIERS.length - 1];
       const isInactive = tier.name !== baseTier.name;
       const next = getNextTier(tier);
-      let msg = `${tier.emoji} ${tier.name} Member\n`;
-      msg += `แต้มคงเหลือ: ${user.points.toLocaleString()} แต้ม\n`;
-      if (isInactive) {
-        msg += `\n⚠️ ระดับจริง: ${baseTier.emoji} ${baseTier.name}\nกลับมาซื้อเพื่อฟื้นระดับทันทีค่ะ\n`;
-      }
-      if (next) {
-        const pointsForNext = isInactive ? user.total_earned ?? 0 : user.total_earned ?? 0;
-        const needed = next.min - pointsForNext;
-        if (needed > 0) msg += `\nอีก ${needed.toLocaleString()} แต้ม ถึง ${next.emoji} ${next.name}`;
-      } else {
-        msg += `\n🏆 คุณอยู่ในระดับสูงสุดแล้วค่ะ!`;
-      }
-      msg += `\n\nทุก 100 บาท = 1 แต้มค่ะ 🌟`;
-      await sendReply(replyToken, msg).catch((e) => console.error("[line] sendReply error", e));
+      const name = user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : (user.display_name ?? "สมาชิก DK");
+      await replyMessages(replyToken, [pointsFlex({
+        name, tierName: tier.name, tierEmoji: tier.emoji, tierColor: TIER_COLOR[tier.name] ?? "#1B5FC1",
+        points: user.points, totalEarned: user.total_earned ?? 0, tierMin: tier.min,
+        next: next ? { name: next.name, emoji: next.emoji, min: next.min } : null,
+        inactiveRealTier: isInactive ? `${baseTier.emoji} ${baseTier.name}` : undefined,
+      })]).catch((e) => console.error("[line] points flex error", e));
     } else {
       await sendReplyButton(
         replyToken,
@@ -326,9 +218,22 @@ async function handleMessage(
     return;
   }
 
-  // ติดต่อฝ่ายขาย → Flex Message Carousel
-  if (trimmed === "ติดต่อฝ่ายขาย") {
-    await sendFlexSalesContact(replyToken).catch((e) => console.error("[line] sendFlexSalesContact error", e));
+  // ติดต่อ → การ์ดร้าน + พนักงานขาย 4 ท่าน (รับคำใกล้เคียงด้วย: ติดต่อ/โทร/เบอร์/พนักงาน)
+  if (trimmed === "ติดต่อฝ่ายขาย" || /^(ติดต่อ|โทร|เบอร์|เบอร์โทร|พนักงาน|ฝ่ายขาย)/.test(trimmed)) {
+    await replyMessages(replyToken, [contactFlex()]).catch((e) => console.error("[line] contact flex error", e));
+    return;
+  }
+
+  // แผนที่ / ที่อยู่ → ส่งพิกัดจริง (กดแล้วนำทางได้ใน LINE) + ลิงก์ Google Maps
+  if (/^(แผนที่|ที่อยู่|ทางไป|พิกัด|ร้านอยู่|อยู่ที่ไหน|อยู่ตรงไหน|ไปยังไง)/.test(trimmed) || text.includes("แผนที่")) {
+    await replyMessages(replyToken, [locationMsg(), textMsg(`📍 ${SHOP.name}\n${SHOP.legal}\n🕐 ${SHOP.hours}\n📞 ${SHOP.phone}\n\nนำทาง: ${SHOP.mapsUrl}`)])
+      .catch((e) => console.error("[line] location error", e));
+    return;
+  }
+
+  // เวลาเปิด-ปิด
+  if (/(เวลา(เปิด|ทำการ)|เปิดกี่โมง|ปิดกี่โมง|กี่โมง|เปิดวัน|หยุดวัน|วันหยุด)/.test(trimmed)) {
+    await sendReply(replyToken, `🕐 เปิด${SHOP.hours} ค่ะ (หยุดวันอาทิตย์)\n📞 ${SHOP.phone}`).catch((e) => console.error("[line] hours error", e));
     return;
   }
 
@@ -378,7 +283,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const event = ev as LineTextEvent | LineFollowEvent;
 
       if (event.type === "follow") {
-        await sendReply(event.replyToken, WELCOME_MESSAGE).catch((e) =>
+        // เพิ่มเพื่อน → การ์ดต้อนรับ (แบนเนอร์ + 3 สิทธิ์ + ปุ่มสมัคร/ติดต่อ/แผนที่) แทนข้อความยาว
+        await replyMessages(event.replyToken, [welcomeFlex()]).catch((e) =>
           console.error("[line] follow reply error", e)
         );
         return;
