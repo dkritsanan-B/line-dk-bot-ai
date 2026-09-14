@@ -28,32 +28,43 @@ const MODE = process.argv[2] || "preview";
 interface Row { ID: number; CODE: string; NAME: string; CATEGORY: number | null; CATNAME: string; UNITID: number; UNIT: string; UNITPRICE1: number; DISCWORD1: string | null; ATDATE: Date; USEFLAG: number;
   UNITPRICE2: number; UNITPRICE3: number; UNITPRICE4: number; UNITPRICE5: number; UNITPRICE6: number; DISCWORD2: string | null; DISCWORD3: string | null; DISCWORD4: string | null; DISCWORD5: string | null; DISCWORD6: string | null }
 
-// แปลงคำส่วนลดปกติ (ช่องที่ 1) เป็น % ของราคาป้าย — รับทั้ง "8%" และ "21" (บาทต่อหน่วย)
-function baseDiscountPct(word: string | null, listPrice: number): { pct: number; kind: "none" | "pct" | "baht" | "unknown" } {
+// อ่านคำส่วนลดปกติ (ช่องที่ 1) — Hero รับได้ 2 แบบ: "8%" (เปอร์เซ็นต์) หรือ "21" (บาทต่อหน่วย)
+// คงหน่วยเดิมไว้เสมอ: ปกติเป็นบาท → ช่องระดับก็เป็นบาท (เคยแปลงเป็น % แล้วเลขอ่านไม่รู้เรื่อง + ปัดเศษทำราคาเพี้ยน)
+function baseDiscount(word: string | null, listPrice: number): { pct: number; baht: number; kind: "none" | "pct" | "baht" | "unknown" } {
   const w = String(word ?? "").trim();
-  if (!w) return { pct: 0, kind: "none" };
+  if (!w || !/\d/.test(w)) return { pct: 0, baht: 0, kind: "none" };   // ว่าง หรือขยะที่ไม่มีตัวเลข (เจอ "." 1 แถว) = ไม่มีส่วนลด
   const m = /^(\d+(?:\.\d+)?)\s*%$/.exec(w);
-  if (m) return { pct: Number(m[1]), kind: "pct" };
+  if (m) { const pct = Number(m[1]); return pct > 0 ? { pct, baht: listPrice * pct / 100, kind: "pct" } : { pct: 0, baht: 0, kind: "none" }; }
   const b = /^(\d+(?:\.\d+)?)$/.exec(w);
-  if (b) { const baht = Number(b[1]); return listPrice > 0 ? { pct: Math.round(baht / listPrice * 10000) / 100, kind: "baht" } : { pct: 0, kind: "unknown" }; }
-  return { pct: 0, kind: "unknown" };   // เช่น "8%+2%" หรือข้อความแปลก → ไม่แตะ ปล่อยให้คนดู
+  if (b) { const baht = Number(b[1]); return baht > 0 ? { pct: listPrice > 0 ? baht / listPrice * 100 : 0, baht, kind: "baht" } : { pct: 0, baht: 0, kind: "none" }; }   // "0" = ไม่มีส่วนลด (เจอของจริงหลังแก้ราคา)
+  return { pct: 0, baht: 0, kind: "unknown" };   // เช่น "8%+2%" หรือข้อความแปลก → ไม่แตะ ปล่อยให้คนดู
 }
 
-const fmtPct = (p: number) => `${Math.round(p * 100) / 100}%`.replace(/\.0+%$/, "%");
+const fmtPct = (p: number) => `${Math.round(p * 100) / 100}%`;
+const fmtBaht = (b: number) => String(Math.round(b * 100) / 100);
 
 function plan(r: Row) {
   const list = Number(r.UNITPRICE1) || 0;
-  const base = baseDiscountPct(r.DISCWORD1, list);
+  const base = baseDiscount(r.DISCWORD1, list);
   const { rule, reason } = ruleForLine({ code: r.CODE, name: r.NAME, category: r.CATEGORY, unit: r.UNIT, qty: 1, unit_price: list, list_price: list, discword: String(r.DISCWORD1 ?? ""), net: list });
   const R = RULES[rule];
   const words: string[] = []; const prices: number[] = []; const notes: string[] = [];
   for (let i = 0; i < LEVELS.length; i++) {
     const rate = R.byTier[i + 1] ?? 0;                     // byTier[0] = Welcome
-    prices.push(list);                                     // ราคาช่องระดับ = ราคาป้ายเสมอ (0 ก็ 0 — POS ให้พิมพ์ราคาเอง ส่วนลดยังติด)
+    prices.push(list);                                     // ราคาช่องระดับ = ราคาป้ายเสมอ (ถ้าปล่อย 0 ราคาที่ POS จะว่าง) — แม้หมวดที่ไม่ลดก็ต้องก๊อป
+    // หมวดที่สิทธิ์ออกทางแต้ม (เหล็ก/เมทัลชีท) — ห้ามใส่ส่วนลดใน Hero เดี๋ยวได้ 2 เด้ง + ลดซ้ำจากราคาที่ต่อแล้ว
+    if (R.via !== "discount") { words.push(String(r.DISCWORD1 ?? "").trim()); if (rate > 0) notes.push("สิทธิ์ออกทางแต้ม ไม่ลดหน้าร้าน"); continue; }
+    // ไม่มีราคาป้ายใน Hero = แคชเชียร์พิมพ์ราคาเองทุกครั้ง → ส่วนลดจะไปเกาะราคาที่ต่อมาแล้ว จึงไม่ใส่ (ตัดสินใจ 14 ก.ย.)
+    if (!(list > 0)) { words.push(String(r.DISCWORD1 ?? "").trim()); if (rate > 0) notes.push("ไม่มีราคาป้าย จึงไม่ใส่ส่วนลดระดับ"); continue; }
     if (base.kind === "unknown") { words.push(String(r.DISCWORD1 ?? "").trim()); notes.push("คำส่วนลดปกติอ่านไม่ออก คงเดิม"); continue; }
-    if (rate <= 0) { words.push(String(r.DISCWORD1 ?? "").trim()); continue; }      // ระดับนี้ไม่ได้ → คงส่วนลดปกติ
-    if (R.mode === "pct") words.push(fmtPct(base.pct + rate));                       // บวก % ตรง ๆ (ตัดสินใจ 13 ก.ย.)
-    else words.push(base.kind === "none" ? String(rate) : fmtPct(base.pct + (list > 0 ? rate / list * 100 : 0)));   // บาท/หน่วย (เมทัลชีท) · ถ้ามีส่วนลดปกติเป็น % ให้แปลงบาทเป็น % รวม
+    if (rate <= 0) { words.push(base.kind === "none" ? "" : String(r.DISCWORD1 ?? "").trim()); continue; }   // ระดับนี้ไม่ได้ส่วนลดเพิ่ม → คงส่วนลดปกติไว้
+    if (R.mode === "pct") {
+      if (base.kind === "baht") { words.push(fmtBaht(base.baht + list * rate / 100)); notes.push("ส่วนลดปกติเป็นบาท/หน่วย → ช่องระดับเป็นบาทเหมือนกัน"); }
+      else words.push(fmtPct(base.pct + rate));                                     // บวก % ตรง ๆ (ตัดสินใจ 13 ก.ย.)
+    } else {
+      words.push(fmtBaht(base.baht + rate));                                        // บาท/หน่วย (เมทัลชีท) · ส่วนลดปกติที่เป็น % คิดเป็นบาทไว้ใน base.baht แล้ว
+      if (base.kind === "pct") notes.push("เมทัลชีทที่มีส่วนลดปกติเป็น % → รวมเป็นบาท/เมตร");
+    }
   }
   const cur = [r.UNITPRICE2, r.UNITPRICE3, r.UNITPRICE4, r.UNITPRICE5, r.UNITPRICE6].map((x) => Number(x) || 0);
   const curW = [r.DISCWORD2, r.DISCWORD3, r.DISCWORD4, r.DISCWORD5, r.DISCWORD6].map((x) => String(x ?? "").trim());
@@ -102,7 +113,7 @@ async function main() {
         ["ไม่มีราคาป้าย (จะใส่แค่คำส่วนลด)", noPrice], ["คำส่วนลดปกติอ่านไม่ออก (คงเดิม ต้องดูเอง)", unknownWord], [],
         ["ตามกลุ่มกติกา", ""], ...Object.entries(byRule).map(([k, v]) => [RULES[k as RuleKey].label, v]), [],
         ["ตามหมวด Hero", ""], ...Object.entries(byCat).map(([k, v]) => [k, v]), [],
-        ["กติกา", ""], ...(Object.keys(RULES) as RuleKey[]).map((k) => [RULES[k].label, RULES[k].byTier.slice(1).map((x, i) => `${LEVELS[i]} ${x}${RULES[k].mode === "pct" ? "%" : " บ/หน่วย"}`).join(" · ")]),
+        ["กติกา", ""], ...(Object.keys(RULES) as RuleKey[]).map((k) => [`${RULES[k].label} — ${RULES[k].via === "discount" ? "ลดหน้าร้าน" : "คืนเป็นแต้ม (ไม่เขียน Hero)"}`, RULES[k].byTier.slice(1).map((x, i) => `${LEVELS[i]} ${x}${RULES[k].mode === "pct" ? "%" : " บ/หน่วย"}`).join(" · ")]),
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "สรุป");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetRows), "ทุกสินค้า");

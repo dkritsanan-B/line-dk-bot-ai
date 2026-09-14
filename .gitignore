@@ -3,3 +3,4 @@
 .next/
 node_modules/
 hero-price-levels/
+tsconfig.tsbuildinfo

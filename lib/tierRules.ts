@@ -9,16 +9,22 @@ export const TIER_ORDER = ["Welcome", "Bronze", "Silver", "Gold", "Platinum", "D
 export type TierName = typeof TIER_ORDER[number];
 
 // กลุ่มกติกา — แต่ละกลุ่มมี % (หรือบาท/หน่วย) ต่อระดับ เรียงตาม TIER_ORDER
+//
+// via = สิทธิ์ออกมาทางไหน (เจ้าของตัดสินใจ 14 ก.ย. 69 — ห้ามให้ทั้งสองทางกับหมวดเดียวกัน เดี๋ยวได้ 2 เด้ง)
+//   "discount" = ลดหน้าร้าน · Hero ตัดให้ตอนคิดเงิน (ชิ้น A เขียน DISCWORD2-6) → ห้ามคิดโบนัสแต้มซ้ำ
+//   "points"   = คืนเป็นแต้ม · จ่ายเต็มแล้วได้แต้มเท่ามูลค่าส่วนลด (ชิ้น C) → Hero ต้องไม่มีส่วนลดระดับ
+// ของที่ต่อราคากันประจำ (เหล็ก/เมทัลชีท) ต้องใช้ "points" เพราะส่วนลดใน Hero ติดไปกับราคาที่แคชเชียร์พิมพ์เองด้วย = ลดซ้ำ
+// ส่วนกลไกแต้มมีตัวกันไว้แล้ว (ขายต่ำกว่าราคาป้าย = ไม่ให้โบนัส)
 export type RuleKey = "retail" | "paint" | "steel" | "sheet" | "none";
-export const RULES: Record<RuleKey, { label: string; mode: "pct" | "baht_per_unit"; byTier: number[] }> = {
+export const RULES: Record<RuleKey, { label: string; mode: "pct" | "baht_per_unit"; via: "discount" | "points"; byTier: number[] }> = {
   // ฮาร์ดแวร์ เครื่องมือ/มอเตอร์/ปั๊ม พีวีซี/ประปา ไฟฟ้า เกษตร วัสดุก่อสร้าง สุขภัณฑ์
-  retail: { label: "หมวดปลีก", mode: "pct", byTier: [0, 0, 1, 2, 3, 4] },
-  paint:  { label: "สี",       mode: "pct", byTier: [0, 0, 1, 2, 3, 3] },
+  retail: { label: "หมวดปลีก", mode: "pct", via: "discount", byTier: [0, 0, 1, 2, 3, 4] },
+  paint:  { label: "สี",       mode: "pct", via: "discount", byTier: [0, 0, 1, 2, 3, 3] },
   // เหล็กทุกชนิดในหมวด Hero 005 ยกเว้นเหล็กเส้น (ตัดสินใจ: 58 ตัวที่จำแนกชื่อไม่ได้ก็ถือเป็นเหล็กอื่น)
-  steel:  { label: "เหล็ก (ไม่รวมเหล็กเส้น)", mode: "pct", byTier: [0, 0, 0, 1, 1.5, 2] },
+  steel:  { label: "เหล็ก (ไม่รวมเหล็กเส้น)", mode: "pct", via: "points", byTier: [0, 0, 0, 1, 1.5, 2] },
   // เมทัลชีท ลดเป็นบาทต่อเมตร
-  sheet:  { label: "เมทัลชีท (บาท/เมตร)", mode: "baht_per_unit", byTier: [0, 0, 0, 2, 3, 4] },
-  none:   { label: "ไม่ลด", mode: "pct", byTier: [0, 0, 0, 0, 0, 0] },
+  sheet:  { label: "เมทัลชีท (บาท/เมตร)", mode: "baht_per_unit", via: "points", byTier: [0, 0, 0, 2, 3, 4] },
+  none:   { label: "ไม่ลด", mode: "pct", via: "points", byTier: [0, 0, 0, 0, 0, 0] },
 };
 
 // หมวด Hero (CSCATEGORY.ID) → กลุ่มกติกา
@@ -79,6 +85,7 @@ export function computeBonus(lines: HeroLine[], tier: Tier | string): { baht: nu
     const rate = r.byTier[ti] ?? 0;
     const item: BonusLine = { code: l.code, name: l.name, rule, reason, rate, baht: 0 };
     if (rate <= 0) { item.skipped = rule === "none" ? reason : "ระดับนี้ยังไม่ได้"; out.push(item); continue; }
+    if (r.via !== "points") { item.rate = 0; item.skipped = "ลดหน้าร้านแล้ว (ไม่คืนแต้มซ้ำ)"; out.push(item); continue; }
     if (l.net <= 0 || l.qty <= 0) { item.skipped = "ยอดศูนย์/คืนของ"; out.push(item); continue; }
     if (l.list_price != null && l.list_price > 0 && l.unit_price < l.list_price - 0.005) { item.skipped = `ต่อราคาแล้ว (${l.unit_price} < ป้าย ${l.list_price})`; out.push(item); continue; }
     // % คิดจากราคาเต็ม (qty × ราคาป้าย) — ตามกติกา "สินค้ามีส่วนลดปกติ ให้บวก % ตรง ๆ" (ท่อพีวีซี 8% → +2% ของราคาเต็ม)
