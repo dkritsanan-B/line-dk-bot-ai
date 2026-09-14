@@ -25,20 +25,20 @@ TILES.forEach((t, i) => {
   const x = col * CW + GAP / 2, y = row * CH + GAP / 2, w = CW - GAP, h = CH - GAP;
   const data = img(t.name);
   defs += `<clipPath id="c${t.id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${R}"/></clipPath>
-  <linearGradient id="s${t.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0.46" stop-color="#000" stop-opacity="0"/><stop offset="0.72" stop-color="#000" stop-opacity="0.46"/><stop offset="1" stop-color="#000" stop-opacity="0.62"/></linearGradient>`;
+  <linearGradient id="s${t.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="0.78" stop-color="#000" stop-opacity="0.28"/><stop offset="1" stop-color="#000" stop-opacity="0.40"/></linearGradient>`;
   cells += `<g clip-path="url(#c${t.id})">
-    ${data ? `<image href="${data}" x="${x}" y="${y - h * 0.22}" width="${w}" height="${h * 1.22}" preserveAspectRatio="xMidYMid slice"/>` : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1B5FC1"/>`}
+    ${data ? `<image href="${data}" x="${x}" y="${y - h * 0.22}" width="${w}" height="${h * 1.22}" preserveAspectRatio="xMidYMid slice" filter="url(#vivid)"/>` : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1B5FC1"/>`}
     <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#s${t.id})"/>
   </g>
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${R}" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="3"/>
-  <text x="${x + w / 2}" y="${y + h - 205}" text-anchor="middle" font-family="${THAI}" font-weight="700" font-size="88" fill="#FFFFFF" style="paint-order:stroke" stroke="rgba(0,0,0,0.18)" stroke-width="6">${t.title}</text>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${R}" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="4"/>
+  <text x="${x + w / 2}" y="${y + h - 205}" text-anchor="middle" font-family="${THAI}" font-weight="700" font-size="88" fill="#FFFFFF" style="paint-order:stroke" stroke="rgba(0,0,0,0.28)" stroke-width="7">${t.title}</text>
   <text x="${x + w / 2}" y="${y + h - 138}" text-anchor="middle" font-family="${THAI}" font-weight="500" font-size="50" fill="rgba(255,255,255,0.92)">${t.sub}</text>
   <rect x="${x + w / 2 - 250}" y="${y + h - 108}" width="500" height="3" rx="1.5" fill="rgba(255,255,255,0.35)"/>
   <text x="${x + w / 2}" y="${y + h - 46}" text-anchor="middle" font-family="${THAI}" font-weight="500" font-size="42" fill="${t.accent}">${t.hint}  ›</text>`;
 });
 
 const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<defs>${defs}</defs>
+<defs><filter id="vivid" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="1.35"/><feComponentTransfer><feFuncR type="linear" slope="1.14" intercept="0.02"/><feFuncG type="linear" slope="1.14" intercept="0.02"/><feFuncB type="linear" slope="1.14" intercept="0.02"/></feComponentTransfer></filter>${defs}</defs>
 <rect width="${W}" height="${H}" fill="#F4F6FB"/>
 ${cells}
 </svg>`;
