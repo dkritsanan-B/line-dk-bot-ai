@@ -73,12 +73,13 @@ function plan(r: Row) {
   return { rule, reason, base, prices, words, changed, notes: [...new Set(notes)].join("; ") };
 }
 
-// --code=XXX (โหมด sync) = ทำเฉพาะสินค้าตัวเดียว — ตัวเขียนราคา (hero-po price-set / steel_price_push) เรียกหลังแก้ราคาป้าย ช่องระดับจะได้ตามทันที
-const ONLY_CODE = (process.argv.find((a) => a.startsWith("--code=")) || "").slice(7).trim();
+// --code=A,B,C (โหมด sync) = ทำเฉพาะสินค้าที่ระบุ (คั่นด้วย , ได้หลายตัว) — ตัวเขียนราคา (hero-po price-set / steel_price_push) เรียกครั้งเดียวหลังแก้ราคาป้ายทั้งชุด ช่องระดับจะได้ตามทันที
+const ONLY_CODES = (process.argv.find((a) => a.startsWith("--code=")) || "").slice(7).split(",").map((s) => s.trim()).filter(Boolean);
+const ONLY_CODE = ONLY_CODES.join(",");
 
 async function loadRows(pool: { request: () => { query: (q: string) => Promise<{ recordset: Row[] }> } }): Promise<Row[]> {
   // แถวราคาล่าสุดต่อสินค้า-หน่วย (ATDATE ล่าสุด) เฉพาะ TAXTYPE=1 รวมใน · เฉพาะสินค้าที่ยังใช้งาน
-  const onlyCode = ONLY_CODE ? ` AND p.CODE = '${ONLY_CODE.replace(/'/g, "''")}'` : "";
+  const onlyCode = ONLY_CODES.length ? ` AND p.CODE IN (${ONLY_CODES.map((c) => `'${c.replace(/'/g, "''")}'`).join(",")})` : "";
   const q = `
     ;WITH PR AS (
       SELECT pr.*, ROW_NUMBER() OVER (PARTITION BY pr.PRODUCTCODE, pr.UNITID ORDER BY pr.ATDATE DESC, pr.ID DESC) AS rn
