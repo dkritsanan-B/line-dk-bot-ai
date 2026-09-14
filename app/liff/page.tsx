@@ -485,7 +485,7 @@ export default function LiffPage() {
 
         {/* ของรางวัล */}
         <button
-          onClick={() => window.location.href = `/liff/rewards?uid=${profile?.userId ?? ""}`}
+          onClick={() => window.location.href = "/liff/rewards"}
           style={{ marginTop: 10, width: "100%", padding: "14px", background: "linear-gradient(135deg, #E65100, #FF8F00)", color: "white", border: "none", borderRadius: 16, cursor: "pointer", boxShadow: "0 4px 14px rgba(230,81,0,0.35)", fontFamily: "Leelawadee UI, Tahoma, sans-serif", textAlign: "center" }}>
           <div style={{ fontSize: 16, fontWeight: 800 }}>🎁 ดูของรางวัล</div>
           <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>แลกแต้มสะสมได้ที่ร้าน</div>

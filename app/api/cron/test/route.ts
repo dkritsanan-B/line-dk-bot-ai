@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
+import { getAdminRole, hasRole } from "@/lib/admin-auth";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -17,6 +18,9 @@ async function pushMessage(lineUserId: string, text: string) {
 }
 
 export async function GET(req: NextRequest) {
+  // เครื่องมือทดสอบ — เดิมเปิดสาธารณะ ใส่เบอร์โทรใครก็ดู/แก้แต้มได้ → ล็อก super admin เท่านั้น (14 ก.ย. 69)
+  const role = await getAdminRole(req);
+  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await migrateDB();
 
   const action = req.nextUrl.searchParams.get("action");
