@@ -386,8 +386,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       if (event.type === "message" && (event as LineTextEvent).message?.type === "text") {
         const { source, replyToken, message } = event as LineTextEvent;
+        // ไม่ตอบใน group — ยกเว้นพิมพ์ "@groupid" เพื่อขอ Group ID ไปตั้ง LINE_STAFF_GROUP_ID (reply ฟรี ไม่กินโควตา push)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((source as any).type === "group") return; // ไม่ตอบใน group
+        if ((source as any).type === "group") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (message.text.trim().toLowerCase() === "@groupid") await sendReply(replyToken, `Group ID: ${(source as any).groupId ?? "ไม่พบ"}`);
+          return;
+        }
         await handleMessage(source.userId, replyToken, message.text, faq);
       }
     })
