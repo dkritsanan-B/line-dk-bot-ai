@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+// cold start + Neon + Gemini + reply เคยเกิน 10 วิ (ค่าเริ่มต้น Vercel) → ฟังก์ชันถูกฆ่าก่อนตอบ ลูกค้ากดแล้วเงียบ (เจอ 14 ก.ย. 69 หลัง deploy)
+export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
 import * as crypto from "crypto";
@@ -162,7 +164,6 @@ async function handleMessage(
   lineUserId: string,
   replyToken: string,
   text: string,
-  faq: string
 ): Promise<void> {
   const trimmed = text.trim();
 
@@ -243,8 +244,8 @@ async function handleMessage(
     return;
   }
 
-  // Gemini FAQ
-  const reply = await askGemini(faq, text);
+  // Gemini FAQ — โหลดชีต FAQ เฉพาะตอนต้องใช้จริง (เดิมโหลดก่อนทุกข้อความ เสียเวลาทุกปุ่มที่ไม่เกี่ยว)
+  const reply = await askGemini(await getFaqContent(), text);
   await sendReply(replyToken, reply).catch((e) => console.error("[line] sendReply error", e));
 }
 
@@ -276,8 +277,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const faq = await getFaqContent();
-
   await Promise.all(
     parsed.events.map(async (ev) => {
       const event = ev as LineTextEvent | LineFollowEvent;
@@ -299,7 +298,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (message.text.trim().toLowerCase() === "@groupid") await sendReply(replyToken, `Group ID: ${(source as any).groupId ?? "ไม่พบ"}`);
           return;
         }
-        await handleMessage(source.userId, replyToken, message.text, faq);
+        await handleMessage(source.userId, replyToken, message.text);
       }
     })
   );
