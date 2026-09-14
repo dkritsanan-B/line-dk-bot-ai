@@ -15,8 +15,8 @@
     "@line/bot-sdk": "^9.6.0",
     "@line/liff": "^2.29.0",
     "@neondatabase/serverless": "^1.1.0",
-    "@vercel/blob": "^2.4.0",
     "@supabase/supabase-js": "^2.110.2",
+    "@vercel/blob": "^2.4.0",
     "next": "^15.3.3",
     "xlsx": "^0.18.5"
   },
@@ -26,6 +26,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "sharp": "^0.35.1",
+    "tsx": "^4.23.13",
     "typescript": "^5.8.3"
   }
 }
