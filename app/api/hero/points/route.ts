@@ -62,18 +62,19 @@ const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
 export async function GET(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   await migrateDB();
-  const rows = await sql`SELECT id, customer_id, phone, total_earned, points, last_purchase_at FROM users`;
+  const rows = await sql`SELECT id, customer_id, suggested_customer_id, phone, total_earned, points, last_purchase_at FROM users`;
   const members = rows.filter((r) => normCode(r.customer_id)).map((r) => {
     const tier = getEffectiveTier(Number(r.total_earned ?? 0), Number(r.points ?? 0), (r.last_purchase_at as string | null) ?? null);
     return { id: r.id as number, code: normCode(r.customer_id), tier: tier.name, level: tierIndex(tier) };
   });
   const codes = [...new Set(members.map((m) => m.code))];
-  const unlinked = rows.filter((r) => !normCode(r.customer_id) && String(r.phone ?? "").replace(/\D/g, "").length >= 9)
+  const unlinked = rows.filter((r) => !normCode(r.customer_id) && !normCode(r.suggested_customer_id) && String(r.phone ?? "").replace(/\D/g, "").length >= 9)
     .map((r) => ({ id: r.id as number, phone: String(r.phone).replace(/\D/g, "") }));
   return NextResponse.json({ codes, members, unlinked }, { headers: { "Cache-Control": "no-store" } });
 }
 
-// PUT { links: [{ id, customer_id }] } → ผูกรหัส Hero ให้สมาชิกอัตโนมัติ (watcher จับคู่เบอร์โทรได้ตัวเดียว) — กันผูกซ้ำคนอื่น
+// PUT { links: [{ id, customer_id }] } → "แนะนำ" รหัส Hero ให้สมาชิก (watcher จับคู่เบอร์โทรได้ตัวเดียว) — เก็บใน suggested_customer_id ให้พนักงานกดยืนยันในหน้า /admin
+// ไม่ผูกอัตโนมัติ: เบอร์โทรอยู่บนใบเสร็จ/นามบัตร ใครสมัครด้วยเบอร์ลูกค้ารายใหญ่ก็จะได้แต้ม+ส่วนลดของเขาทันที (ตัดสินใจ 14 ก.ย. 69)
 export async function PUT(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   let body: { links?: { id?: number; customer_id?: string; note?: string }[] };
@@ -89,9 +90,8 @@ export async function PUT(req: NextRequest) {
     const cur = await sql`SELECT customer_id FROM users WHERE id = ${id} LIMIT 1`;
     if (!cur.length) { results.push({ id, code, status: "error", message: "ไม่พบสมาชิก" }); continue; }
     if (normCode(cur[0].customer_id)) { results.push({ id, code, status: "skip", message: "ผูกอยู่แล้ว" }); continue; }
-    await sql`UPDATE users SET customer_id = ${code} WHERE id = ${id}`;
-    await sql`INSERT INTO audit_log (action, target_user_id, detail) VALUES ('auto_link_customer', ${id}, ${`ผูกรหัส Hero ${code} อัตโนมัติ (${String(l.note ?? "จับคู่เบอร์โทร").slice(0, 120)})`})`;
-    results.push({ id, code, status: "ok" });
+    await sql`UPDATE users SET suggested_customer_id = ${code} WHERE id = ${id}`;
+    results.push({ id, code, status: "suggested" });
   }
   return NextResponse.json({ results });
 }

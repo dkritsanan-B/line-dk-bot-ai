@@ -49,6 +49,7 @@ export async function migrateDB() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS company                TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday               DATE`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id            TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS suggested_customer_id  TEXT`;   // บอทเดารหัส Hero จากเบอร์ → พนักงานกดยืนยันเอง (ไม่ผูกอัตโนมัติ กันสวมเบอร์คนอื่น)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_earned           INT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_purchase_at       TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notified_inactive_11m  BOOLEAN NOT NULL DEFAULT FALSE`;
@@ -126,17 +127,27 @@ export async function registerUser(
   company?: string,
   birthday?: string,
 ): Promise<{ isNew: boolean }> {
-  const existing = await getUserByPhone(phone);
-  if (existing) {
+  // กติกาตัวตน (14 ก.ย. 69): 1 คน = 1 บัญชี LINE = 1 เบอร์
+  //  - LINE นี้เคยสมัครแล้ว → แก้ข้อมูล/เปลี่ยนเบอร์ของตัวเองได้ (เบอร์ใหม่ต้องไม่ซ้ำคนอื่น)
+  //  - เบอร์นี้มีเจ้าของที่ผูก LINE อื่นอยู่ → ปฏิเสธ (เดิมเขียนทับ line_user_id = ใครรู้เบอร์ก็ยึดบัญชี/แต้มคนอื่นได้) → ให้พนักงานปลด LINE เก่าในหน้าแอดมินก่อน
+  //  - เบอร์นี้มีในระบบแต่ยังไม่ผูก LINE (พนักงานสร้างให้/ถูกปลด) → รับ LINE นี้เข้าไป (เปลี่ยนเครื่อง/เปลี่ยน LINE ทำแบบนี้)
+  const mine = await getUserByLineId(lineUserId);
+  const byPhone = await getUserByPhone(phone);
+  if (mine) {
+    if (byPhone && byPhone.id !== mine.id) throw new RegisterError("เบอร์นี้เป็นของสมาชิกท่านอื่นแล้ว กรุณาติดต่อพนักงานที่ร้านค่ะ");
     await sql`
-      UPDATE users SET
-        line_user_id = ${lineUserId},
-        display_name = ${displayName ?? null},
-        first_name   = ${firstName  ?? null},
-        last_name    = ${lastName   ?? null},
-        company      = ${company    ?? null},
-        birthday     = ${birthday   ?? null}
-      WHERE phone = ${phone}
+      UPDATE users SET phone = ${phone}, display_name = ${displayName ?? null}, first_name = ${firstName ?? null},
+        last_name = ${lastName ?? null}, company = ${company ?? null}, birthday = ${birthday ?? null}
+      WHERE id = ${mine.id}
+    `;
+    return { isNew: false };
+  }
+  if (byPhone) {
+    if (byPhone.line_user_id && byPhone.line_user_id !== lineUserId) throw new RegisterError("เบอร์นี้ผูกกับบัญชี LINE อื่นอยู่แล้ว ถ้าเปลี่ยน LINE ใหม่ กรุณาแจ้งพนักงานที่ร้านให้ปลดบัญชีเดิมก่อนค่ะ");
+    await sql`
+      UPDATE users SET line_user_id = ${lineUserId}, display_name = ${displayName ?? null}, first_name = ${firstName ?? null},
+        last_name = ${lastName ?? null}, company = ${company ?? null}, birthday = ${birthday ?? null}
+      WHERE id = ${byPhone.id}
     `;
     return { isNew: false };
   }
@@ -146,6 +157,8 @@ export async function registerUser(
   `;
   return { isNew: true };
 }
+
+export class RegisterError extends Error {}
 
 export async function addPoints(
   phone: string,

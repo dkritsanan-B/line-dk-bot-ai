@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const rows = search
     ? await sql`
-        SELECT id, customer_id, first_name, last_name, phone, company, birthday, points, created_at
+        SELECT id, customer_id, suggested_customer_id, line_user_id, first_name, last_name, phone, company, birthday, points, created_at
         FROM users
         WHERE first_name  ILIKE ${"%" + search + "%"}
            OR last_name   ILIKE ${"%" + search + "%"}
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         ORDER BY created_at DESC
       `
     : await sql`
-        SELECT id, customer_id, first_name, last_name, phone, company, birthday, points, created_at
+        SELECT id, customer_id, suggested_customer_id, line_user_id, first_name, last_name, phone, company, birthday, points, created_at
         FROM users
         ORDER BY created_at DESC
       `;

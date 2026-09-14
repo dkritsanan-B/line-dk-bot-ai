@@ -1,16 +1,16 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByLineId, registerUser, migrateDB } from "@/lib/points";
+import { getUserByLineId, registerUser, migrateDB, RegisterError } from "@/lib/points";
 import { sql } from "@/lib/db";
+import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
 
+// ตัวตนมาจาก LIFF access token (Authorization: Bearer) ที่เซิร์ฟเวอร์ตรวจกับ LINE เอง — ไม่เชื่อ lineUserId ที่ client ส่งมาอีกแล้ว (14 ก.ย. 69)
 export async function GET(req: NextRequest) {
-  const lineUserId = req.nextUrl.searchParams.get("lineUserId");
-  if (!lineUserId) {
-    return NextResponse.json({ error: "missing lineUserId" }, { status: 400 });
-  }
+  const who = await verifyLiffUser(req);
+  if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
 
-  const user = await getUserByLineId(lineUserId);
+  const user = await getUserByLineId(who.userId);
   if (!user) return NextResponse.json({ registered: false });
 
   const expiryRows = await sql`
@@ -25,13 +25,23 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { lineUserId, phone, displayName, firstName, lastName, company, birthday } = await req.json();
-  if (!lineUserId || !phone || !firstName || !lastName || !birthday) {
+  const who = await verifyLiffUser(req);
+  if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
+
+  const { phone, displayName, firstName, lastName, company, birthday } = await req.json();
+  if (!phone || !firstName || !lastName || !birthday) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
+  const tel = String(phone).replace(/\D/g, "");
+  if (!/^0\d{9}$/.test(tel)) return NextResponse.json({ error: "เบอร์มือถือไม่ถูกต้อง (10 หลัก)" }, { status: 400 });
 
   await migrateDB();
-  const result = await registerUser(lineUserId, phone, displayName, firstName, lastName, company, birthday);
-  const user = await getUserByLineId(lineUserId);
-  return NextResponse.json({ success: true, isNew: result.isNew, user });
+  try {
+    const result = await registerUser(who.userId, tel, displayName, firstName, lastName, company, birthday);
+    const user = await getUserByLineId(who.userId);
+    return NextResponse.json({ success: true, isNew: result.isNew, user });
+  } catch (e) {
+    if (e instanceof RegisterError) return NextResponse.json({ error: e.message }, { status: 409 });
+    throw e;
+  }
 }

@@ -88,6 +88,7 @@ export default function LiffPage() {
   const [txList, setTxList]       = useState<TxItem[]>([]);
   const [txLoading, setTxLoading] = useState(false);
   const [txOpen, setTxOpen]       = useState(false);
+  const [token, setToken]         = useState("");   // LIFF access token — ใช้ยืนยันตัวตนกับ API
   const [txFilter, setTxFilter]   = useState<"all"|"earn"|"redeem"|"expire">("all");
 
   useEffect(() => {
@@ -99,9 +100,12 @@ export default function LiffPage() {
 
         const p = await liff.getProfile();
         setProfile({ userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl ?? "" });
-        sessionStorage.setItem("liff_uid", p.userId);
+        // ตัวตนส่งเป็น LIFF access token ให้เซิร์ฟเวอร์ตรวจกับ LINE เอง (ไม่ส่ง userId ดิบ ๆ อีกแล้ว)
+        const tok = liff.getAccessToken() ?? "";
+        setToken(tok);
+        sessionStorage.setItem("liff_token", tok);
 
-        const res  = await fetch(`/api/member?lineUserId=${p.userId}`);
+        const res  = await fetch("/api/member", { headers: { Authorization: `Bearer ${tok}` } });
         const data = await res.json();
         setRegistered(data.registered);
         if (data.registered) { setMember(data.user); setExpiry(data.expiry ?? null); }
@@ -117,7 +121,7 @@ export default function LiffPage() {
     if (!profile) return;
     setTxLoading(true);
     try {
-      const res  = await fetch(`/api/member/transactions?lineUserId=${profile.userId}`);
+      const res  = await fetch("/api/member/transactions", { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setTxList(data.transactions ?? []);
       setTxOpen(true);
@@ -133,9 +137,8 @@ export default function LiffPage() {
     try {
       const res  = await fetch("/api/member", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          lineUserId: profile!.userId,
           phone,
           displayName: profile!.displayName,
           firstName: firstName.trim(),

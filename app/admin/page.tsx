@@ -5,6 +5,8 @@ import * as XLSX from "xlsx";
 interface User {
   id: number;
   customer_id: string | null;
+  suggested_customer_id?: string | null;   // บอทเดาจากเบอร์โทร รอพนักงานกดยืนยัน
+  line_user_id?: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string;
@@ -304,6 +306,29 @@ export default function AdminPage() {
     } catch { setError("เชื่อมต่อ API ไม่ได้ — กรุณาตรวจสอบ Vercel deployment"); }
     finally { setLoading(false); }
   }, [savedUsername]);
+
+  // เปลี่ยนเบอร์ / ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่องหรือ LINE หาย → ปลดแล้วให้สมัครใหม่ด้วยเบอร์เดิม แต้มตามไป)
+  async function patchMember(userId: number, body: Record<string, unknown>, apply: (u: User) => User) {
+    const res = await fetch("/api/admin/update-member", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
+      body: JSON.stringify({ id: userId, ...body }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(d.error || `ไม่สำเร็จ (${res.status})`); return; }
+    setUsers(prev => prev.map(u => u.id === userId ? apply(u) : u));
+  }
+  function changePhone(u: User) {
+    const v = prompt(`เบอร์ใหม่ของ ${u.first_name ?? ""} ${u.last_name ?? ""} (10 หลัก)`, u.phone);
+    if (v == null) return;
+    const tel = v.replace(/\D/g, "");
+    if (!/^0\d{9}$/.test(tel)) { alert("เบอร์ต้องเป็น 10 หลัก ขึ้นต้น 0"); return; }
+    patchMember(u.id, { phone: tel }, x => ({ ...x, phone: tel }));
+  }
+  function resetLine(u: User) {
+    if (!confirm(`ปลดบัญชี LINE เดิมของ ${u.first_name ?? ""} ${u.last_name ?? ""}?\n\nหลังปลด ลูกค้าเปิด LINE ใหม่ → เมนูสมัครสมาชิก → กรอกเบอร์ ${u.phone} เดิม แต้ม/ระดับจะตามไปเอง`)) return;
+    patchMember(u.id, { reset_line: true }, x => ({ ...x, line_user_id: null }));
+  }
 
   async function saveCustomerId(userId: number, value: string) {
     setEditingId(null);
@@ -847,11 +872,18 @@ export default function AdminPage() {
                       />
                     ) : (
                       <div
-                        onClick={() => { setEditingId(u.id); setEditValue(u.customer_id ?? ""); }}
+                        onClick={() => { setEditingId(u.id); setEditValue(u.customer_id ?? u.suggested_customer_id ?? ""); }}
                         title="คลิกเพื่อแก้ไข"
                         style={{ cursor: "pointer", padding: "4px 8px", borderRadius: 6, minWidth: 80, minHeight: 24, border: "1.5px dashed #ddd", color: u.customer_id ? "#333" : "#bbb", fontSize: 13 }}>
                         {u.customer_id ?? "คลิกกรอก"}
                       </div>
+                    )}
+                    {!u.customer_id && u.suggested_customer_id && !isEditing && (
+                      // บอทเจอลูกค้า Hero ที่เบอร์ตรงกัน — ให้พนักงานเช็คชื่อแล้วกดยืนยัน (ไม่ผูกอัตโนมัติ กันคนสมัครด้วยเบอร์คนอื่น)
+                      <button type="button" onClick={() => saveCustomerId(u.id, u.suggested_customer_id!)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด"
+                        style={{ marginTop: 4, fontSize: 11.5, padding: "3px 8px", borderRadius: 6, border: "1px solid #F9A825", background: "#FFF8E1", color: "#7a5a00", cursor: "pointer" }}>
+                        เบอร์ตรง {u.suggested_customer_id} · กดผูก
+                      </button>
                     )}
                   </td>
                   <td style={s.td}>
@@ -859,7 +891,17 @@ export default function AdminPage() {
                       {u.first_name ? `${u.first_name} ${u.last_name}` : <span style={{ color: "#aaa" }}>-</span>}
                     </div>
                   </td>
-                  <td style={s.td}>{u.phone}</td>
+                  <td style={s.td}>
+                    {u.phone}
+                    {(role === "staff" || role === "super") && (
+                      <span style={{ marginLeft: 6, whiteSpace: "nowrap" }}>
+                        <button type="button" onClick={() => changePhone(u)} title="เปลี่ยนเบอร์" style={{ fontSize: 11, padding: "1px 5px", border: "1px solid #ddd", borderRadius: 5, background: "#fff", cursor: "pointer" }}>✏️</button>
+                        {u.line_user_id
+                          ? <button type="button" onClick={() => resetLine(u)} title="ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่อง/LINE หาย)" style={{ fontSize: 11, padding: "1px 5px", border: "1px solid #ddd", borderRadius: 5, background: "#fff", cursor: "pointer", marginLeft: 3 }}>🔓</button>
+                          : <span title="ยังไม่มี LINE ผูก — รอลูกค้าสมัครด้วยเบอร์นี้" style={{ fontSize: 11, color: "#c62828", marginLeft: 3 }}>ไม่มี LINE</span>}
+                      </span>
+                    )}
+                  </td>
                   <td style={s.td}>{u.company ?? <span style={{ color: "#ccc" }}>-</span>}</td>
                   <td style={s.td}>{formatBirthday(u.birthday)}</td>
                   <td style={{ ...s.td, fontWeight: 700, textAlign: "right" }}>{u.points.toLocaleString()}</td>

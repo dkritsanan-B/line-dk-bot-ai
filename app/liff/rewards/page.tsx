@@ -25,19 +25,18 @@ export default function RewardsPage() {
   useEffect(() => {
     async function init() {
       try {
-        let uid = sessionStorage.getItem("liff_uid") ?? "";
-        if (!uid) uid = new URLSearchParams(window.location.search).get("uid") ?? "";
-        if (!uid) {
-          try {
-            const liff = (await import("@line/liff")).default;
-            await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-            if (liff.isLoggedIn()) { const p = await liff.getProfile(); uid = p.userId; }
-          } catch {}
-        }
-        setLineUserId(uid);
+        // ตัวตน = LIFF access token เท่านั้น (เดิมรับ uid จาก URL ?uid= ได้ — ใครรู้ U-id คนอื่นก็กดแลกของแทนได้)
+        let tok = sessionStorage.getItem("liff_token") ?? "";
+        try {
+          const liff = (await import("@line/liff")).default;
+          await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          tok = liff.getAccessToken() ?? tok;
+        } catch {}
+        setLineUserId(tok);
 
         const [memberRes, rewardsRes] = await Promise.all([
-          uid ? fetch(`/api/member?lineUserId=${uid}`) : null,
+          tok ? fetch("/api/member", { headers: { Authorization: `Bearer ${tok}` } }) : null,
           fetch("/api/rewards"),
         ]);
 
@@ -64,8 +63,8 @@ export default function RewardsPage() {
     try {
       const res  = await fetch("/api/liff/redeem", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lineUserId, rewardId: reward.id }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${lineUserId}` },   // state นี้เก็บ token (ชื่อตัวแปรเดิม)
+        body: JSON.stringify({ rewardId: reward.id }),
       });
       const data = await res.json();
       if (!res.ok) {

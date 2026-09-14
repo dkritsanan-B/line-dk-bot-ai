@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -16,8 +17,12 @@ async function pushMessage(to: string, messages: object[]) {
 }
 
 export async function POST(req: NextRequest) {
-  const { lineUserId, rewardId } = await req.json();
-  if (!lineUserId || !rewardId) return NextResponse.json({ error: "missing fields" }, { status: 400 });
+  // ตัวตน = เจ้าของ LIFF token (ตรวจกับ LINE ฝั่งเซิร์ฟเวอร์) — ไม่รับ lineUserId จาก client แล้ว กันคนอื่นกดแลกของแทน
+  const who = await verifyLiffUser(req);
+  if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
+  const lineUserId = who.userId;
+  const { rewardId } = await req.json();
+  if (!rewardId) return NextResponse.json({ error: "missing fields" }, { status: 400 });
 
   const userRows = await sql`SELECT * FROM users WHERE line_user_id = ${lineUserId} LIMIT 1`;
   const user = userRows[0];

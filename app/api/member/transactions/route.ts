@@ -2,10 +2,12 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
 
+// ประวัติแต้มของ "เจ้าของ token" เท่านั้น — ตัวตนตรวจกับ LINE ฝั่งเซิร์ฟเวอร์ (14 ก.ย. 69)
 export async function GET(req: NextRequest) {
-  const lineUserId = req.nextUrl.searchParams.get("lineUserId");
-  if (!lineUserId) return NextResponse.json({ error: "missing lineUserId" }, { status: 400 });
+  const who = await verifyLiffUser(req);
+  if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
 
   const rows = await sql`
     SELECT
@@ -17,7 +19,7 @@ export async function GET(req: NextRequest) {
       t.created_at
     FROM transactions t
     JOIN users u ON u.id = t.user_id
-    WHERE u.line_user_id = ${lineUserId}
+    WHERE u.line_user_id = ${who.userId}
       AND t.cleared = FALSE
     ORDER BY t.created_at DESC
     LIMIT 50
