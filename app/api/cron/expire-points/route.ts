@@ -5,16 +5,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 import { usersWithDueLots, expireUserPoints, EXPIRE_USERS_PER_RUN } from "@/lib/points-ledger";
+import { pointsExpiredFlex } from "@/lib/line-ui";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
-async function pushMessage(lineUserId: string, text: string): Promise<boolean> {
+async function pushMessage(lineUserId: string, message: object): Promise<boolean> {
   try {
     const res = await fetch(LINE_PUSH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ to: lineUserId, messages: [{ type: "text", text }] }),
+      body: JSON.stringify({ to: lineUserId, messages: [message] }),
     });
     if (!res.ok) console.error(`[expire-points] ส่ง LINE ไม่ผ่าน ${res.status} ถึง ${lineUserId.slice(0, 6)}…`);
     return res.ok;
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
     if (r.expired > 0 && r.lineUserId) {
       const sent = await pushMessage(
         r.lineUserId,
-        `⚠️ แจ้งเตือนจาก DK Steel and Tools\n\nสวัสดีค่ะ ${r.firstName ?? "คุณ"} คะแนนสะสม ${r.expired.toLocaleString()} แต้มของคุณได้หมดอายุแล้วค่ะ\nแต้มคงเหลือตอนนี้ ${(r.balanceAfter ?? 0).toLocaleString()} แต้ม\n\nสะสมแต้มใหม่ได้ทุกการซื้อสินค้า ทุก 100 บาท = 1 แต้ม 🌟`,
+        pointsExpiredFlex({ name: r.firstName ?? "คุณ", points: r.expired, balance: r.balanceAfter ?? 0 }),
       );
       if (sent) notified++;
     }

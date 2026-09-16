@@ -4,15 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
+import { pointsExpiredFlex, pointsExpiringFlex } from "@/lib/line-ui";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
-async function pushMessage(lineUserId: string, text: string) {
+async function pushMessage(lineUserId: string, message: object) {
   const res = await fetch(LINE_PUSH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to: lineUserId, messages: [{ type: "text", text }] }),
+    body: JSON.stringify({ to: lineUserId, messages: [message] }),
   });
   return res.ok;
 }
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
     if (user.line_user_id && totalExpired > 0) {
       lineSent = await pushMessage(
         user.line_user_id,
-        `⚠️ แจ้งเตือนจาก DK Steel and Tools\n\n${user.first_name ?? "คุณ"} คะแนนสะสม ${totalExpired} แต้มของคุณได้หมดอายุแล้วค่ะ\n\nสะสมแต้มใหม่ได้ทุกการซื้อสินค้า ทุก 100 บาท = 1 แต้ม 🌟`
+        pointsExpiredFlex({ name: user.first_name ?? "คุณ", points: totalExpired, balance: Math.max(user.points - totalExpired, 0) })
       );
     }
 
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest) {
     if (user.line_user_id) {
       lineSent = await pushMessage(
         user.line_user_id,
-        `⏰ แจ้งเตือนจาก DK Steel and Tools\n\nสวัสดีค่ะ ${user.first_name ?? "คุณ"} คะแนนสะสม ${pts} แต้มของคุณจะหมดอายุในอีก 30 วัน\n📅 วันหมดอายุ: ${expDate}\n\nอย่าลืมมาแลกของรางวัลที่ร้านก่อนหมดอายุนะคะ 🎁`
+        pointsExpiringFlex({ name: user.first_name ?? "คุณ", points: Number(pts), daysLeft: 30, expiryDate: expDate })
       );
     }
     if (lineSent) {

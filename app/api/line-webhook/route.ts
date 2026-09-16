@@ -16,7 +16,6 @@ import {
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET ?? "";
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 const LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply";
-const LIFF_URL = "https://liff.line.me/2010392141-TXmVNdGl";
 const QUIZ_TRIGGER = "🎮 เล่นเกมตอบคำถาม";
 const MAX_QUESTIONS = 3;
 
@@ -114,7 +113,7 @@ async function startQuiz(lineUserId: string, replyToken: string): Promise<void> 
       replyToken,
       "สมัครสมาชิกก่อนเล่นเกมได้เลยค่ะ 🎮",
       "สมัครสมาชิก",
-      LIFF_URL,
+      SHOP.liffUrl,
     );
     return;
   }
@@ -184,7 +183,7 @@ async function handleMessage(
       replyToken,
       "กดปุ่มด้านล่างเพื่อสมัครสมาชิกหรือดูบัตรสมาชิกค่ะ 🎴",
       "สมัครสมาชิก / ดูบัตรสมาชิก",
-      LIFF_URL,
+      SHOP.liffUrl,
     ).catch((e) => console.error("[line] sendReplyButton error", e));
     return;
   }
@@ -213,7 +212,7 @@ async function handleMessage(
         replyToken,
         "ยังไม่ได้สมัครสมาชิกค่ะ 😊 กดปุ่มด้านล่างเพื่อสมัครได้เลยนะคะ",
         "สมัครสมาชิก",
-        LIFF_URL,
+        SHOP.liffUrl,
       ).catch((e) => console.error("[line] sendReplyButton error", e));
     }
     return;

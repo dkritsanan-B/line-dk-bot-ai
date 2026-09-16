@@ -4,15 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql, db } from "@/lib/db";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
 import { confirmRedemption, cancelRedemption } from "./logic";
+import { redemptionCancelledFlex, redemptionConfirmedFlex } from "@/lib/line-ui";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
-async function pushMessage(to: string, text: string) {
+async function pushMessage(to: string, message: object) {
   await fetch(LINE_PUSH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+    body: JSON.stringify({ to, messages: [message] }),
   });
 }
 
@@ -70,17 +71,13 @@ export async function POST(req: NextRequest) {
     const row = result.row;
     if (result.action === "confirmed") {
       if (row.line_user_id) {
-        await pushMessage(row.line_user_id,
-          `🎉 ยืนยันแลกของรางวัลแล้วค่ะ!\n\n🎁 ${row.reward_name}\n⭐ หักแต้ม ${row.points_required.toLocaleString()} แต้ม\n⭐ แต้มคงเหลือ ${result.pointsLeft.toLocaleString()} แต้ม\n\nขอบคุณที่ใช้บริการ DK Steel and Tools นะคะ 😊`
-        );
+        await pushMessage(row.line_user_id, redemptionConfirmedFlex({ rewardName: row.reward_name, points: row.points_required, balance: result.pointsLeft }));
       }
       return NextResponse.json({ success: true, action: "confirmed", points_left: result.pointsLeft, stock_left: result.stockLeft });
     }
 
     if (row.line_user_id) {
-      await pushMessage(row.line_user_id,
-        `❌ คำขอแลก ${row.reward_name} (#REQ-${row.id}) ถูกยกเลิกแล้วค่ะ\n\nแต้ม ${row.points_required.toLocaleString()} แต้มที่จองไว้ ถูกปล่อยคืนให้ใช้แลกรายการอื่นได้แล้ว\nหากมีข้อสงสัย กรุณาติดต่อพนักงานที่ร้านได้เลยค่ะ`
-      );
+      await pushMessage(row.line_user_id, redemptionCancelledFlex({ rewardName: row.reward_name, points: row.points_required, requestId: row.id }));
     }
     return NextResponse.json({ success: true, action: "cancelled" });
   } catch (e) {

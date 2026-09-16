@@ -50,6 +50,138 @@ export function locationMsg(): Msg {
 const btn = (label: string, action: Msg, color = BRAND.blue, style: "primary" | "secondary" | "link" = "primary"): Msg =>
   ({ type: "button", style, height: "sm", color: style === "primary" ? color : undefined, action: { label, ...action } });
 
+type NoticeRow = { label: string; value: string; color?: string };
+
+function memberNoticeFlex(o: {
+  altText: string;
+  eyebrow: string;
+  title: string;
+  message: string;
+  rows?: NoticeRow[];
+  buttonLabel: string;
+  buttonUri: string;
+}): Msg {
+  return {
+    type: "flex",
+    altText: o.altText,
+    contents: {
+      type: "bubble", size: "kilo",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: BRAND.navy, paddingAll: "18px", spacing: "sm",
+        contents: [
+          { type: "text", text: o.eyebrow, size: "xs", weight: "bold", color: BRAND.yellow },
+          { type: "text", text: o.title, size: "xl", weight: "bold", color: "#FFFFFF", wrap: true },
+        ],
+      },
+      body: {
+        type: "box", layout: "vertical", paddingAll: "18px", spacing: "md",
+        contents: [
+          { type: "text", text: o.message, size: "sm", color: BRAND.ink, wrap: true },
+          ...(o.rows ?? []).map((row) => ({
+            type: "box", layout: "horizontal", spacing: "sm",
+            contents: [
+              { type: "text", text: row.label, size: "xs", color: BRAND.muted, flex: 4, wrap: true },
+              { type: "text", text: row.value, size: "sm", weight: "bold", color: row.color ?? BRAND.navy, align: "end", flex: 6, wrap: true },
+            ],
+          })),
+        ],
+      },
+      footer: {
+        type: "box", layout: "vertical", paddingAll: "14px",
+        contents: [btn(o.buttonLabel, { type: "uri", uri: o.buttonUri }, BRAND.navy)],
+      },
+      styles: { footer: { separator: true } },
+    },
+  };
+}
+
+export function pointsEarnedFlex(o: { name: string; points: number; balance: number; billNo: string }): Msg {
+  return memberNoticeFlex({
+    altText: `ได้แต้มจากบิล ${o.points.toLocaleString()} แต้ม · คงเหลือ ${o.balance.toLocaleString()} แต้ม`,
+    eyebrow: "DK MEMBER · แต้มเข้าแล้ว",
+    title: `รับ ${o.points.toLocaleString()} แต้มค่ะ`,
+    message: `${o.name} ได้รับแต้มจากการซื้อสินค้าครั้งนี้แล้วค่ะ`,
+    rows: [{ label: "เลขที่บิล", value: o.billNo }, { label: "แต้มคงเหลือ", value: `${o.balance.toLocaleString()} แต้ม` }],
+    buttonLabel: "เปิดบัตรสมาชิก", buttonUri: SHOP.liffUrl,
+  });
+}
+
+export function tierUpFlex(o: { name: string; tierName: string; tierEmoji: string; points: number; earned: number; billNo: string }): Msg {
+  return memberNoticeFlex({
+    altText: `ยินดีด้วยค่ะ เลื่อนเป็นระดับ ${o.tierName} แล้ว`,
+    eyebrow: "DK MEMBER · เลื่อนระดับ",
+    title: `${o.tierEmoji} ${o.tierName} Member`,
+    message: `ยินดีด้วยค่ะ ${o.name} เลื่อนระดับสมาชิกแล้วค่ะ`,
+    rows: [{ label: "แต้มจากบิล", value: `+${o.earned.toLocaleString()} แต้ม` }, { label: "แต้มคงเหลือ", value: `${o.points.toLocaleString()} แต้ม` }, { label: "เลขที่บิล", value: o.billNo }],
+    buttonLabel: "เปิดบัตรสมาชิก", buttonUri: SHOP.liffUrl,
+  });
+}
+
+export function birthdayGiftFlex(o: { name: string; tierName: string; tierEmoji: string; points: number }): Msg {
+  return memberNoticeFlex({
+    altText: `สุขสันต์วันเกิดค่ะ รับของขวัญ ${o.points.toLocaleString()} แต้ม`,
+    eyebrow: "DK MEMBER · ของขวัญวันเกิด", title: "สุขสันต์วันเกิดค่ะ 🎂",
+    message: `${o.name} รับของขวัญวันเกิดสำหรับสมาชิก ${o.tierEmoji} ${o.tierName} แล้วค่ะ`,
+    rows: [{ label: "แต้มของขวัญ", value: `+${o.points.toLocaleString()} แต้ม` }],
+    buttonLabel: "ดูของรางวัล", buttonUri: SHOP.rewardsUrl,
+  });
+}
+
+export function pointsExpiringFlex(o: { name: string; points: number; daysLeft: number; expiryDate: string }): Msg {
+  return memberNoticeFlex({
+    altText: `แต้ม ${o.points.toLocaleString()} แต้ม จะหมดอายุใน ${o.daysLeft} วัน`,
+    eyebrow: "DK MEMBER · แจ้งเตือนแต้ม", title: "แต้มใกล้หมดอายุค่ะ",
+    message: `${o.name} อย่าลืมใช้แต้มก่อนหมดอายุค่ะ`,
+    rows: [{ label: "แต้มที่จะหมดอายุ", value: `${o.points.toLocaleString()} แต้ม` }, { label: "เหลือเวลา", value: `${o.daysLeft.toLocaleString()} วัน` }, { label: "วันหมดอายุ", value: o.expiryDate }],
+    buttonLabel: "ดูของรางวัล", buttonUri: SHOP.rewardsUrl,
+  });
+}
+
+export function pointsExpiredFlex(o: { name: string; points: number; balance: number }): Msg {
+  return memberNoticeFlex({
+    altText: `แต้มหมดอายุ ${o.points.toLocaleString()} แต้ม · คงเหลือ ${o.balance.toLocaleString()} แต้ม`,
+    eyebrow: "DK MEMBER · แจ้งผลแต้ม", title: "แต้มหมดอายุแล้วค่ะ",
+    message: `${o.name} แต้มที่ครบกำหนดถูกตัดออกแล้วค่ะ`,
+    rows: [{ label: "แต้มที่หมดอายุ", value: `${o.points.toLocaleString()} แต้ม` }, { label: "แต้มคงเหลือ", value: `${o.balance.toLocaleString()} แต้ม` }],
+    buttonLabel: "เปิดบัตรสมาชิก", buttonUri: SHOP.liffUrl,
+  });
+}
+
+export function redemptionRequestedFlex(o: { rewardName: string; points: number; requestId: number; availablePoints: number }): Msg {
+  return memberNoticeFlex({
+    altText: `ส่งคำขอแลก ${o.rewardName} สำเร็จแล้ว`, eyebrow: "DK MEMBER · แลกของรางวัล", title: "ส่งคำขอสำเร็จค่ะ",
+    message: "แต้มถูกจองไว้แล้ว มารับของที่ร้านและให้พนักงานยืนยันได้เลยค่ะ",
+    rows: [{ label: "ของรางวัล", value: o.rewardName }, { label: "แต้มที่จอง", value: `${o.points.toLocaleString()} แต้ม` }, { label: "แต้มใช้ได้", value: `${o.availablePoints.toLocaleString()} แต้ม` }, { label: "หมายเลขคำขอ", value: `#REQ-${o.requestId}` }],
+    buttonLabel: "ดูของรางวัล", buttonUri: SHOP.rewardsUrl,
+  });
+}
+
+export function redemptionConfirmedFlex(o: { rewardName: string; points: number; balance: number }): Msg {
+  return memberNoticeFlex({
+    altText: `พนักงานยืนยันแลก ${o.rewardName} แล้ว`, eyebrow: "DK MEMBER · แลกสำเร็จ", title: "ยืนยันรับของแล้วค่ะ",
+    message: "พนักงานยืนยันการแลกของรางวัลและหักแต้มเรียบร้อยแล้วค่ะ",
+    rows: [{ label: "ของรางวัล", value: o.rewardName }, { label: "แต้มที่ใช้", value: `${o.points.toLocaleString()} แต้ม` }, { label: "แต้มคงเหลือ", value: `${o.balance.toLocaleString()} แต้ม` }],
+    buttonLabel: "ดูของรางวัล", buttonUri: SHOP.rewardsUrl,
+  });
+}
+
+export function redemptionCancelledFlex(o: { rewardName: string; points: number; requestId: number }): Msg {
+  return memberNoticeFlex({
+    altText: `คำขอแลก ${o.rewardName} ถูกยกเลิกแล้ว`, eyebrow: "DK MEMBER · ยกเลิกคำขอ", title: "ยกเลิกคำขอแล้วค่ะ",
+    message: "แต้มที่จองไว้ถูกคืนให้ใช้แลกของรางวัลรายการอื่นแล้วค่ะ",
+    rows: [{ label: "ของรางวัล", value: o.rewardName }, { label: "แต้มที่คืน", value: `${o.points.toLocaleString()} แต้ม` }, { label: "หมายเลขคำขอ", value: `#REQ-${o.requestId}` }],
+    buttonLabel: "ดูของรางวัล", buttonUri: SHOP.rewardsUrl,
+  });
+}
+
+export function tierExpiryWarningFlex(o: { name: string }): Msg {
+  return memberNoticeFlex({
+    altText: "ใกล้ลดระดับสมาชิก เหลือเวลาอีก 1 เดือน", eyebrow: "DK MEMBER · รักษาระดับ", title: "ใกล้ลดระดับสมาชิกค่ะ",
+    message: `${o.name} ไม่ได้ซื้อสินค้ามา 11 เดือนแล้ว ซื้อสินค้าในอีก 1 เดือนเพื่อรักษาระดับสมาชิกได้ค่ะ`,
+    buttonLabel: "เปิดบัตรสมาชิก", buttonUri: SHOP.liffUrl,
+  });
+}
+
 // ข้อความต้อนรับตอนเพิ่มเพื่อน — การ์ดเดียว มีปุ่มพาไปทำสิ่งที่คนส่วนใหญ่ต้องการ
 export function welcomeFlex(): Msg {
   return {

@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
 import { reviewScenarioFrom, REVIEW_REWARDS, REVIEW_REWARD_RESERVED } from "@/lib/review-mode";
 import { apiError, apiOk, authError, dbError, reviewFaultResponse, type ApiErrorCode } from "@/app/api/_lib/api-error";
+import { redemptionRequestedFlex } from "@/lib/line-ui";
 import {
   createRedemptionRequest, decideRedemption, readPendingSummary,
   type RedeemErrorCode, type SqlTag,
@@ -135,10 +136,7 @@ export async function POST(req: NextRequest) {
         text: `🎁 มีคำขอแลกของรางวัล!\n\n👤 ${name}\n📱 ${user.phone as string}\n🎁 ${rewardName}\n⭐ ${cost.toLocaleString()} แต้ม\n\n🔗 ยืนยันที่ Admin Panel\n#REQ-${requestId}`,
       }]);
     }
-    await pushMessage(lineUserId, [{
-      type: "text",
-      text: `✅ ส่งคำขอแลกของรางวัลแล้วค่ะ!\n\n🎁 ${rewardName}\n⭐ ${cost.toLocaleString()} แต้ม\n\n📋 หมายเลขคำขอ: #REQ-${requestId}\n\nแต้มนี้ถูกจองไว้ให้แล้ว เหลือแต้มใช้ได้อีก ${decision.availableAfter.toLocaleString()} แต้ม\nมารับของที่ร้านได้เลยค่ะ พนักงานจะยืนยันและหักแต้มตอนรับของ 😊`,
-    }]);
+    await pushMessage(lineUserId, [redemptionRequestedFlex({ rewardName, points: cost, requestId, availablePoints: decision.availableAfter })]);
   } catch (e) {
     // คำขอบันทึกแล้ว ส่ง LINE ไม่ผ่านไม่ใช่เหตุให้บอกลูกค้าว่าล้มเหลว (จะกดซ้ำแล้วเจอ "มีคำขอค้างอยู่")
     console.error("[redeem] ส่ง LINE ไม่สำเร็จ แต่คำขอถูกบันทึกแล้ว #REQ-" + requestId, e);

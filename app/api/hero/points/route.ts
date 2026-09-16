@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { addPoints, getUserByPhone, getTierFromPoints, getEffectiveTier, migrateDB } from "@/lib/points";
 import { computeBonus, bonusPoints, tierIndex, ruleForLine, RULES, type HeroLine } from "@/lib/tierRules";
+import { tierUpFlex } from "@/lib/line-ui";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -44,12 +45,12 @@ async function ensureTable() {
   await sql`ALTER TABLE hero_point_bills ADD COLUMN IF NOT EXISTS bonus_detail JSONB`;
 }
 
-async function pushText(to: string, text: string) {
+async function pushMessage(to: string, message: object) {
   try {
     await fetch(LINE_PUSH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+      body: JSON.stringify({ to, messages: [message] }),
     });
   } catch (e) { console.error("[hero-points] push failed", e); }
 }
@@ -245,10 +246,7 @@ export async function POST(req: NextRequest) {
         const after = getTierFromPoints(Number(u.total_earned ?? 0) + pts);
         if (after.name !== before.name && after.min > before.min) {
           const fresh = await getUserByPhone(u.phone as string);
-          await pushText(u.line_user_id as string,
-            `🎉 ยินดีด้วยค่ะ ${name}!\n\nคุณเลื่อนระดับเป็น ${after.emoji} ${after.name} Member แล้วค่ะ\n` +
-            `แต้มสะสมล่าสุด ${(fresh?.points ?? 0).toLocaleString()} แต้ม (บิล ${billNo} +${pts} แต้ม)\n\n` +
-            `ดูบัตรสมาชิก/ของรางวัลได้ที่เมนู "สมัครสมาชิก" ด้านล่างค่ะ 🌟`);
+          await pushMessage(u.line_user_id as string, tierUpFlex({ name, tierName: after.name, tierEmoji: after.emoji, points: fresh?.points ?? 0, earned: pts, billNo }));
         }
       }
     } catch (e) {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getEffectiveTier, migrateDB } from "@/lib/points";
 import { tierIndex } from "@/lib/tierRules";
+import { birthdayGiftFlex } from "@/lib/line-ui";
 
 // คูปองวันเกิด (ตารางสิทธิ์ 13 ก.ย. 69): Bronze 100 · Silver 200 · Gold 500 · Platinum 800 · Diamond 1,000 — Welcome ไม่ได้
 // ให้เป็น "แต้มโบนัส" (1 แต้ม = มูลค่า 1 บาท เหมือนโบนัสตามหมวด) ไม่นับ total_earned ไม่ดันระดับ · หมดอายุ 1 ปี · ปีละครั้ง
@@ -11,9 +12,9 @@ import { tierIndex } from "@/lib/tierRules";
 const BIRTHDAY_POINTS = [0, 100, 200, 500, 800, 1000];   // index = tierIndex (Welcome..Diamond)
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 
-async function push(to: string, text: string) {
+async function push(to: string, message: object) {
   try {
-    const r = await fetch(LINE_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""}` }, body: JSON.stringify({ to, messages: [{ type: "text", text }] }) });
+    const r = await fetch(LINE_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""}` }, body: JSON.stringify({ to, messages: [message] }) });
     return r.ok;
   } catch { return false; }
 }
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
       VALUES (${u.id as number}, 0, ${pts}, 'earn', ${`${tag} — คูปองวันเกิดระดับ ${tier.name}`}, NOW() + INTERVAL '1 year')
     `;
     const pushed = u.line_user_id
-      ? await push(u.line_user_id as string, `🎂 สุขสันต์วันเกิดค่ะ ${name}!\n\nDK Steel and Tools มอบคูปองวันเกิดสมาชิก ${tier.emoji} ${tier.name} เป็นแต้ม ${pts.toLocaleString()} แต้ม เข้าบัญชีของคุณแล้วค่ะ 🎁\nใช้แลกของรางวัลได้ที่เมนู "สมัครสมาชิก" ด้านล่างเลยนะคะ ✨`)
+      ? await push(u.line_user_id as string, birthdayGiftFlex({ name, tierName: tier.name, tierEmoji: tier.emoji, points: pts }))
       : false;
     out.push({ id: u.id as number, name, tier: tier.name, points: pts, pushed });
   }
