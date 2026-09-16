@@ -276,11 +276,13 @@ export interface PendingSummary {
   pending: { id: number; reward_id: number; reward_name: string | null; points_required: number; created_at: unknown }[];
   /** ของรางวัลชิ้นไหนถูกจองไว้กี่ใบ (รวมทุกสมาชิก) — ของที่ยังแลกได้จริง = stock − ค่านี้ */
   reserved_by_reward: Record<string, number>;
+  /** บัญชีของผู้ใช้เองผูกรหัสลูกค้าแล้วหรือยัง (ยังไม่ผูก = ซื้อแล้วแต้มไม่เข้า) — เป็นสถานะของตัวเอง ไม่เผยข้อมูลใคร */
+  earns_points: boolean;
 }
 
 export async function readPendingSummary(sql: SqlTag, lineUserId: string): Promise<PendingSummary | null> {
   await ensureSchema(sql);
-  const userRows = await sql`SELECT id, points FROM users WHERE line_user_id = ${lineUserId} LIMIT 1`;
+  const userRows = await sql`SELECT id, points, customer_id FROM users WHERE line_user_id = ${lineUserId} LIMIT 1`;
   const user = userRows[0];
   if (!user) return null;
   const userId = n(user.id);
@@ -311,5 +313,6 @@ export async function readPendingSummary(sql: SqlTag, lineUserId: string): Promi
   return {
     points, pending_points: pendingPoints, available_points: points - pendingPoints,
     pending, reserved_by_reward: reserved,
+    earns_points: String(user.customer_id ?? "").trim().length > 0,
   };
 }

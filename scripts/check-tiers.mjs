@@ -134,6 +134,21 @@ else {
   else ok("lib/tierRules.ts TIER_ORDER ตรงกับ lib/points.ts");
 }
 
+
+/* ── 7. ตัวเลขที่หน้าเว็บต้องพูดตรงกับเซิร์ฟเวอร์ (อัตราสะสม / คูปองวันเกิด) ── */
+const PERKS_TS = read("app/liff/lib/perks.ts");
+const ppb = (POINTS.match(/const POINTS_PER_BAHT = (\d+)/) || [])[1];
+const bpp = (PERKS_TS.match(/export const BAHT_PER_POINT = (\d+)/) || [])[1];
+if (!ppb || !bpp) fail("อ่าน POINTS_PER_BAHT (lib/points.ts) หรือ BAHT_PER_POINT (app/liff/lib/perks.ts) ไม่ได้");
+else if (ppb !== bpp) fail(`app/liff/lib/perks.ts BAHT_PER_POINT=${bpp} ไม่ตรงกับ lib/points.ts POINTS_PER_BAHT=${ppb}`);
+else ok(`อัตราสะสมบนหน้าเว็บตรงกับเซิร์ฟเวอร์ (${ppb} บาท = 1 แต้ม)`);
+const bdSrv = (read("app/api/cron/birthday/route.ts").match(/const BIRTHDAY_POINTS = \[([^\]]+)\]/) || [])[1];
+const bdWeb = (PERKS_TS.match(/export const BIRTHDAY_POINTS = \[([^\]]+)\]/) || [])[1];
+const norm = s => (s || "").replace(/\s/g, "");
+if (!bdSrv || !bdWeb) fail("อ่าน BIRTHDAY_POINTS จาก cron วันเกิด หรือ app/liff/lib/perks.ts ไม่ได้");
+else if (norm(bdSrv) !== norm(bdWeb)) fail(`คูปองวันเกิดบนหน้าเว็บ [${norm(bdWeb)}] ไม่ตรงกับ cron [${norm(bdSrv)}]`);
+else ok(`คูปองวันเกิดบนหน้าเว็บตรงกับ cron (${norm(bdSrv)})`);
+
 /* ── สรุป ─────────────────────────────────────────────────────── */
 for (const m of oks) console.log("✅ " + m);
 for (const m of fails) console.log("❌ " + m);

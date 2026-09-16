@@ -537,3 +537,161 @@
 
 /* ข้อสำคัญที่สุดของกติกาท้ายหน้า — สิ่งที่ช่างต้องทำทุกครั้งหน้าเคาน์เตอร์ */
 .lf-foot-key { font-weight: var(--fw-black); color: var(--ink); margin-top: var(--sp-1); }
+
+/* ══ จอ/กล่องแจ้งปัญหา (16 ก.ย. 69) ══════════════════════════════
+ * ใช้ร่วม /liff และ /liff/rewards (components/ProblemNotice.tsx)
+ * ระบบล่ม = สีอำพัน (ไม่ใช่แดง — ไม่ใช่ความผิดลูกค้า และแต้มไม่หาย) · token หมดอายุ = สีแบรนด์ */
+.lf-problem { text-align: left; }
+.lf-problem-head { display: flex; align-items: center; gap: var(--sp-3); }
+.lf-problem-head i { font-style: normal; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: var(--sz-tx-ic); height: var(--sz-tx-ic); border-radius: var(--r-sm); background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn-line); }
+.lf-problem--auth .lf-problem-head i { background: var(--dk-sky); color: var(--dk-blue-strong); border-color: var(--dk-sky-line); }
+.lf-problem-head b { font-size: var(--fs-h2); font-weight: var(--fw-black); line-height: var(--lh-tight); color: var(--ink); }
+.lf-problem-body { margin: var(--sp-3) 0 var(--sp-4); font-size: var(--fs-body); line-height: var(--lh); color: var(--ink-2); }
+.lf-problem-acts { display: grid; gap: var(--sp-2); }
+.lf-problem-tel { text-decoration: none; color: var(--dk-blue-strong); box-sizing: border-box; }
+.lf-problem-code { margin-top: var(--sp-3); font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); text-align: center; letter-spacing: .3px; }
+.lf-problem--compact { padding: var(--sp-4) 0 var(--sp-1); }
+.lf-problem--compact .lf-problem-head b { font-size: var(--fs-lead); }
+.lf-problem--compact .lf-problem-body { margin: var(--sp-2) 0 var(--sp-3); }
+@media (min-width: 520px) {
+  .lf-problem-acts { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+}
+.lf-spin--inline { width: var(--sp-6); height: var(--sp-6); border-width: 3px; margin-bottom: var(--sp-2); }
+
+/* ══ บัตร: ยังไม่ผูกรหัสลูกค้า (แต้มยังไม่เข้า) ═══════════════════
+ * แทนกล่องตัวเลขแต้ม — สีทั้งหมดมาจากชุดสีตัวอักษรของบัตร (ผ่านการคำนวณคอนทราสต์แล้ว) */
+.lf-pendwell-tag {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  background: var(--card-badge-bg); color: var(--card-badge-ink);
+  border-radius: var(--r-pill); padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-body); font-weight: var(--fw-black); line-height: var(--lh-tight);
+}
+.lf-pendwell-big { margin-top: var(--sp-2); font-size: var(--fs-num); font-weight: var(--fw-heavy); line-height: var(--lh-tight); color: var(--card-ink); }
+.lf-pendwell-detail { margin: var(--sp-2) 0 0; font-size: var(--fs-body); font-weight: var(--fw-med); line-height: var(--lh); color: var(--card-ink); }
+.lf-pendwell-do {
+  margin-top: var(--sp-3); border-radius: var(--r-sm); padding: var(--sp-3);
+  background: var(--card-badge-bg); color: var(--card-badge-ink);
+  font-size: var(--fs-body); line-height: var(--lh);
+}
+.lf-pendwell-do b { display: block; font-weight: var(--fw-black); }
+.lf-pendwell-foot {
+  margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--card-well-line);
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--card-ink);
+}
+.lf-pendwell-foot svg { flex-shrink: 0; }
+.lf-pendwell-foot b { font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; }
+.lf-pendwell--overdue .lf-pendwell-foot {
+  border-top: none; padding: var(--sp-2) var(--sp-3);
+  background: var(--card-badge-bg); color: var(--card-badge-ink); border-radius: var(--r-sm);
+}
+
+/* ══ กล่องเตือนเพิ่มเติม ══════════════════════════════════════════ */
+.lf-note--info { background: var(--dk-sky); border-color: var(--dk-sky-line); color: var(--dk-blue-strong); }
+.lf-note-small { display: flex; align-items: center; gap: var(--sp-2); font-weight: var(--fw-bold); }
+.lf-note-tel { color: inherit; font-weight: var(--fw-black); white-space: nowrap; }
+
+/* ══ ประวัติแต้ม: ทุกบรรทัดรองสูงเท่ากัน ═════════════════════════ */
+.lf-tx-main > .lf-tx-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.lf-tx-main > .lf-tx-exp { margin-top: 0; }
+.lf-tx-main > .lf-tx-exp--soon { color: var(--warn); font-weight: var(--fw-bold); }
+
+/* ══ ของรางวัล: แต้มใช้ได้ / จองไว้ / คำขอที่รอรับของ ════════════ */
+.lf-balance-main { min-width: 0; }
+.lf-balance-split { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-1); }
+.lf-balance .lf-balance-held { color: var(--warn); }
+.lf-balance p { margin: var(--sp-1) 0 0; font-size: var(--fs-body); color: var(--ink-2); }
+.lf-balance--signup { flex-wrap: wrap; }
+.lf-balance--signup .lf-balance-main > span { color: var(--ink); font-size: var(--fs-lead); font-weight: var(--fw-black); }
+.lf-balance-cta { width: auto; flex-shrink: 0; }
+.lf-reqs { border-left: var(--bw-rail) solid var(--warn-line); }
+.lf-reqs h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ink); }
+.lf-reqs h3 svg { color: var(--warn); flex-shrink: 0; }
+.lf-reqs p { margin: var(--sp-1) 0 var(--sp-2); font-size: var(--fs-body); color: var(--ink-2); }
+.lf-reqs ul { list-style: none; margin: 0; padding: 0; }
+.lf-reqs li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.lf-req-main { min-width: 0; flex: 1; }
+.lf-req-main b { display: block; font-size: var(--fs-body); font-weight: var(--fw-black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-req-main > span { display: block; font-size: var(--fs-body); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-req-no { font-weight: var(--fw-black); color: var(--ink); font-variant-numeric: tabular-nums; }
+.lf-req-pts { font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--warn); white-space: nowrap; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--sp-1); }
+.lf-req-pts small { font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.lf-reward.mine { border-color: var(--warn-line); }
+.lf-badge--mine { background: var(--warn); color: var(--on-brand); }
+.lf-why { margin-top: var(--sp-3); display: flex; align-items: flex-start; gap: var(--sp-2); border-radius: var(--r-sm); padding: var(--sp-2) var(--sp-3); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); font-size: var(--fs-body); font-weight: var(--fw-med); line-height: 1.45; }
+.lf-why svg { flex-shrink: 0; margin-top: 3px; }
+.lf-why--mine { background: var(--warn-tint); border-color: var(--warn-line); color: var(--warn); font-weight: var(--fw-bold); }
+@media (min-width: 900px) {
+  .lf-wrap--catalog > .lf-reqs { grid-column: 1 / -1; }
+}
+
+/* ══ c2 — แก้ตามผู้ตรวจรอบ c1 ═══════════════════════════════════ */
+/* หัวหน้า: ชื่อร้านและปุ่มย้อนกลับห้ามตัดบรรทัด (เดิม "DK STEEL AND / TOOLS", "บัตร / สมาชิก") */
+.lf-brand > div { min-width: 0; }
+.lf-brand-name, .lf-brand-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-hero-back { white-space: nowrap; flex-shrink: 0; padding: 0 var(--sp-3); font-size: var(--fs-body); box-shadow: none; }
+@media (max-width: 419px) {
+  .lf-hero--short .lf-brand-name { font-size: var(--fs-body); }
+  .lf-hero--short .lf-brand img { width: var(--h-tap); height: var(--h-tap); }
+}
+
+/* บัตร: ระดับชั่วคราว + คำอธิบายระดับจริงในบัตร */
+.lf-tier-temp { font-size: var(--fs-label); font-weight: var(--fw-bold); margin-left: var(--sp-1); }
+.lf-prog-real { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--card-well-line); font-size: var(--fs-body); line-height: var(--lh); color: var(--card-ink); }
+.lf-prog-real > div { font-weight: var(--fw-bold); }
+.lf-prog-real > div b { font-weight: var(--fw-heavy); display: inline-flex; align-items: center; gap: var(--sp-1); }
+.lf-prog-real > span { display: block; margin-top: var(--sp-1); font-weight: var(--fw-med); }
+.lf-prog-real > span b { font-weight: var(--fw-black); }
+.lf-mcard-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-3); }
+
+/* บัตร: รอยืนยันตัวตน — หัวข้อชวนทำ ไม่ใช่พาดหัวเตือน */
+.lf-pendwell-big { font-size: var(--fs-h2); }
+.lf-pendwell-do > span { display: block; }
+.lf-pendwell-tip { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--line); font-weight: var(--fw-bold); }
+.lf-pendwell-foot span { min-width: 0; }
+
+/* กล่องยินดี (ผูกสำเร็จ) และวันเกิด */
+.lf-note--welcome { padding: var(--sp-4); }
+.lf-note--welcome b { font-size: var(--fs-lead); margin-bottom: var(--sp-1); }
+.lf-note--welcome > span { display: block; color: var(--ink); }
+.lf-note--gift { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-strong); }
+.lf-note--gift strong { color: var(--ink); }
+@media (max-width: 899px) {
+  .lf-wrap--split .lf-note--welcome, .lf-wrap--split .lf-note--gift { order: 2; }
+}
+
+/* สิทธิ์: "ตอนนี้คุณได้แล้ว" สำหรับระดับที่ยังไม่มีส่วนลด */
+.lf-perknow { background: var(--ok-tint); border: 1px solid var(--ok-line); border-radius: var(--r-sm); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-4); font-size: var(--fs-body); line-height: 1.45; }
+.lf-perknow > b { display: block; color: var(--ok); font-weight: var(--fw-black); }
+.lf-perknow > span { color: var(--ink); }
+.lf-perknow > span b { font-weight: var(--fw-black); }
+.lf-perkrow span svg { vertical-align: -3px; margin-right: var(--sp-1); color: var(--accent-strong); }
+.lf-ladder-min small { font-size: var(--fs-body); color: var(--ink-3); }
+
+/* ประวัติแต้ม: ยอดบิล + คำอธิบายสูตร · เว้นจังหวะแถวให้หายใจ */
+.lf-histnote { margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
+.lf-tx { padding: var(--sp-4) 0; }
+.lf-tx-main > .lf-tx-amtline { color: var(--ink-2); font-weight: var(--fw-med); }
+
+/* จอระบบล่ม: ระหว่างนี้ทำอะไรได้ + บัตรล่าสุดที่เครื่องจำไว้ */
+.lf-problem-code { font-weight: var(--fw-med); letter-spacing: 0; }
+.lf-meanwhile h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ok); }
+.lf-meanwhile p { margin: var(--sp-2) 0 0; font-size: var(--fs-body); line-height: var(--lh); color: var(--ink-2); }
+.lf-meanwhile p b { color: var(--ink); }
+.lf-snap { margin-top: var(--sp-4); border: var(--bw) solid var(--dk-sky-line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); background: var(--surface-2); }
+.lf-snap-head b { display: block; font-size: var(--fs-body); font-weight: var(--fw-black); color: var(--ink); }
+.lf-snap-head span { display: block; font-size: var(--fs-body); color: var(--ink-3); margin-bottom: var(--sp-1); }
+.lf-snap-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; border-top: 1px solid var(--line); font-size: var(--fs-body); }
+.lf-snap-row span { color: var(--ink-2); }
+.lf-snap-row b { font-weight: var(--fw-black); text-align: right; min-width: 0; }
+.lf-snap-num { font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); white-space: nowrap; }
+
+/* ของรางวัล: ยืนยันก่อนแลก + วิธียกเลิก */
+.lf-reqs .lf-reqs-cancel { margin-top: 0; color: var(--ink-2); }
+.lf-confirm { margin-top: var(--sp-3); border: var(--bw) solid var(--accent); border-radius: var(--r-sm); background: var(--accent-tint); padding: var(--sp-3); }
+.lf-confirm > b { display: block; font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ink); }
+.lf-confirm-math { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--sp-3); margin-top: var(--sp-2); font-size: var(--fs-body); }
+.lf-confirm-math span { color: var(--ink-2); }
+.lf-confirm-math b { text-align: right; font-weight: var(--fw-black); color: var(--ink); font-variant-numeric: tabular-nums; }
+.lf-confirm p { margin: var(--sp-2) 0 var(--sp-3); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
+.lf-confirm-acts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }

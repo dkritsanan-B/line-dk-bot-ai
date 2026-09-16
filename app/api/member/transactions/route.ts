@@ -8,6 +8,7 @@ import { apiOk, authError, dbError, reviewFaultResponse } from "@/app/api/_lib/a
 
 // ประวัติแต้มของ "เจ้าของ token" เท่านั้น — ตัวตนตรวจกับ LINE ฝั่งเซิร์ฟเวอร์ (14 ก.ย. 69)
 //
+// expires_at ส่งด้วย (16 ก.ย. 69) — หน้าเว็บแสดง "ใช้ได้ถึง" ของแต้มแต่ละก้อน · เดิมไม่ได้ SELECT มา ลูกค้าจริงเลยไม่เห็น
 // 200 { transactions: [...] } = อ่านได้จริง (ลิสต์ว่าง = ยังไม่เคยมีรายการจริง ๆ)
 // 4xx/5xx { ok:false, code, error } = อ่านไม่ได้ ห้ามโชว์ "ไม่มีรายการ" (16 ก.ย. 69)
 // เดิมคิวรีล้มแล้ว throw ออกไปเป็นหน้า error ของ Next ที่ไม่ใช่ JSON → หน้าเว็บ parse ไม่ได้ ปุ่มดูประวัติกดแล้วเงียบ
@@ -30,7 +31,8 @@ export async function GET(req: NextRequest) {
         t.points_earned,
         t.type,
         t.note,
-        t.created_at
+        t.created_at,
+        t.expires_at
       FROM transactions t
       JOIN users u ON u.id = t.user_id
       WHERE u.line_user_id = ${who.userId}

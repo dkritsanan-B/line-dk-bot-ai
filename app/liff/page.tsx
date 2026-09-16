@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell, Loading } from "./ui";
-import Icon from "./components/Icon";
 import { isReview, reviewQS } from "./review";
 import { getEffectiveTier, getNextTier, getTierFromPoints, monthsSince } from "./lib/tiers";
-import type { Expiry, Member, Profile, TxItem } from "./lib/types";
+import type { ClientLink, Expiry, Member, MemberResponse, Profile, TxItem } from "./lib/types";
+import { callApi, problemOf, SHOP_PHONE, type Problem } from "./lib/api";
 import SignupCard from "./components/SignupCard";
 import MemberForm from "./components/MemberForm";
 import MemberCard from "./components/MemberCard";
@@ -12,14 +12,34 @@ import AlertNotes from "./components/AlertNotes";
 import QuickActions from "./components/QuickActions";
 import HistoryList, { type TxFilter } from "./components/HistoryList";
 import TierPerks from "./components/TierPerks";
+import { ProblemScreen } from "./components/ProblemNotice";
+import { saveCard } from "./lib/cardCache";
+import { daysToBirthday } from "./lib/perks";
 
-// หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม · ตรรกะเดิม (16 ก.ย. 69 ผ่าเป็นคอมโพเนนต์ย่อยใน components/ หน้าตาเท่าเดิม)
-// ไฟล์นี้เหลือแค่ state + โหลดข้อมูล + ประกอบคอมโพเนนต์
+// หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม
+// ไฟล์นี้เหลือแค่ state + โหลดข้อมูล + ประกอบคอมโพเนนต์ (คอมโพเนนต์ย่อยอยู่ใน components/)
+//
+// 16 ก.ย. 69 — ระบบล่ม ≠ ยังไม่สมัคร:
+//   จอสมัครขึ้นได้เฉพาะเมื่อ API ตอบ registered:false + code:"NOT_REGISTERED" เท่านั้น
+//   อย่างอื่นที่ไม่ใช่ "สมาชิก" หรือ "ยังไม่สมัคร" → จอแจ้งปัญหา (ProblemScreen) พร้อมปุ่มลองใหม่
+const DEFAULT_REVIEW_PROFILE: Profile = { userId: "review", displayName: "ผู้ตรวจ", pictureUrl: "" };
+
+function registerErrorText(p: Problem): string {
+  if (["PHONE_TAKEN", "INVALID_PHONE", "BAD_REQUEST"].includes(p.code) && p.serverMessage) return p.serverMessage;
+  if (p.kind === "auth") return "หมดเวลาใช้งาน กรุณาปิดหน้านี้แล้วเปิดใหม่จาก LINE";
+  if (p.kind === "offline") return "ส่งข้อมูลไม่ได้ อินเทอร์เน็ตอาจหลุด เช็คสัญญาณแล้วกดใหม่อีกครั้ง";
+  return `ระบบขัดข้องชั่วคราว ยังบันทึกไม่ได้ กรุณากดใหม่อีกครั้ง หรือโทร ${SHOP_PHONE}`;
+}
+
 export default function LiffPage() {
   const [profile, setProfile]     = useState<Profile | null>(null);
   const [member, setMember]       = useState<Member | null>(null);
   const [expiry, setExpiry]       = useState<Expiry | null>(null);
+  const [expiryUnavailable, setExpiryUnavailable] = useState(false);
+  const [link, setLink]           = useState<ClientLink | null>(null);
   const [registered, setRegistered] = useState<boolean | null>(null);
+  const [problem, setProblem]     = useState<Problem | null>(null);
+  const [retrying, setRetrying]   = useState(false);
   const [phone, setPhone]         = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName]   = useState("");
@@ -31,55 +51,96 @@ export default function LiffPage() {
   const [editing, setEditing]     = useState(false);
   const [txList, setTxList]       = useState<TxItem[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [txProblem, setTxProblem] = useState<Problem | null>(null);
   const [txOpen, setTxOpen]       = useState(false);
   const [token, setToken]         = useState("");   // LIFF access token — ใช้ยืนยันตัวตนกับ API
   const [txFilter, setTxFilter]   = useState<TxFilter>("all");
+  const liffReady = useRef(false);
 
-  useEffect(() => {
-    (async () => {
+  /** รับคำตอบ /api/member แล้วตัดสินว่าเป็นจอไหน — ไม่มีทางตกไปจอสมัครเพราะระบบล่ม */
+  const fetchMember = useCallback(async (tok: string) => {
+    const r = await callApi<MemberResponse>("/api/member" + reviewQS(), { headers: { Authorization: `Bearer ${tok}` } });
+    if (!r.ok) { setProblem(r.problem); return; }
+    const d = r.data;
+    if (isReview()) setProfile(d.profile ?? DEFAULT_REVIEW_PROFILE);
+    if (d.registered === false && d.code === "NOT_REGISTERED") {
+      setProblem(null); setRegistered(false);
+      return;
+    }
+    if (d.registered === true && d.user) {
+      setProblem(null); setRegistered(true);
+      setMember(d.user);
+      setExpiry(d.expiry ?? null);
+      setExpiryUnavailable(!!d.expiryUnavailable);
+      setLink(d.link ?? null);
+      return;
+    }
+    // ตอบ 200 แต่รูปแบบไม่ครบ — ไม่เดาว่าเป็นใคร
+    setProblem(problemOf("SERVER_ERROR"));
+  }, []);
+
+  const boot = useCallback(async () => {
+    // โหมดรีวิว — ข้ามการล็อกอิน LINE ทั้งหมด ใช้ข้อมูลจำลองจากเซิร์ฟเวอร์ (ปิดตายบน production)
+    if (isReview()) {
+      if (!liffReady.current) { setProfile(DEFAULT_REVIEW_PROFILE); liffReady.current = true; }
+      await fetchMember("review");
+      return;
+    }
+    let tok = token;
+    if (!liffReady.current) {
       try {
-        // โหมดรีวิว — ข้ามการล็อกอิน LINE ทั้งหมด ใช้ข้อมูลจำลองจากเซิร์ฟเวอร์ (ปิดตายบน production)
-        if (isReview()) {
-          const res = await fetch("/api/member" + reviewQS());
-          const data = await res.json();
-          setProfile(data.profile ?? { userId: "review", displayName: "ผู้ตรวจ", pictureUrl: "" });
-          setRegistered(data.registered);
-          if (data.registered) { setMember(data.user); setExpiry(data.expiry ?? null); }
-          setLoading(false);
-          return;
-        }
-
         const liff = (await import("@line/liff")).default;
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
         if (!liff.isLoggedIn()) { liff.login(); return; }
-
         const p = await liff.getProfile();
         setProfile({ userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl ?? "" });
-        // ตัวตนส่งเป็น LIFF access token ให้เซิร์ฟเวอร์ตรวจกับ LINE เอง (ไม่ส่ง userId ดิบ ๆ อีกแล้ว)
-        const tok = liff.getAccessToken() ?? "";
+        // ตัวตนส่งเป็น LIFF access token ให้เซิร์ฟเวอร์ตรวจกับ LINE เอง (ไม่ส่ง userId ดิบ ๆ)
+        tok = liff.getAccessToken() ?? "";
         setToken(tok);
-        sessionStorage.setItem("liff_token", tok);
-
-        const res  = await fetch("/api/member", { headers: { Authorization: `Bearer ${tok}` } });
-        const data = await res.json();
-        setRegistered(data.registered);
-        if (data.registered) { setMember(data.user); setExpiry(data.expiry ?? null); }
+        try { sessionStorage.setItem("liff_token", tok); } catch {}
+        liffReady.current = true;
       } catch {
-        setError("กรุณาเปิดใน LINE เท่านั้นค่ะ");
-      } finally {
-        setLoading(false);
+        // เปิดนอก LINE / LIFF เริ่มไม่ได้ — ให้ปิดแล้วเปิดใหม่จากเมนู LINE
+        setProblem({ kind: "auth", code: "LIFF_INIT", serverMessage: null });
+        return;
       }
-    })();
+    }
+    await fetchMember(tok);
+  }, [fetchMember, token]);
+
+  useEffect(() => {
+    boot().finally(() => setLoading(false));
+    // โหลดครั้งเดียวตอนเปิดหน้า
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function retry() {
+    // token หมดอายุ → ต้องให้ LINE ออก token ใหม่ = โหลดหน้าใหม่ทั้งหน้า
+    if (problem?.kind === "auth") { window.location.reload(); return; }
+    setRetrying(true);
+    try { await boot(); } finally { setRetrying(false); }
+  }
+
+  // จำบัตรล่าสุดไว้ในเครื่อง — วันระบบล่มยังมีข้อมูลให้โชว์พนักงาน (ดู components/ProblemNotice)
+  useEffect(() => {
+    if (!member || registered !== true) return;
+    const t = getEffectiveTier(member.total_earned ?? 0, member.points ?? 0, member.last_purchase_at ?? null);
+    saveCard({
+      name: member.first_name ? `${member.first_name} ${member.last_name ?? ""}`.trim() : (member.display_name ?? ""),
+      phone: member.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "",
+      tier: t.name,
+      points: link?.status === "pending" ? 0 : (member.points ?? 0),
+    });
+  }, [member, registered, link]);
+
   async function loadTransactions() {
-    if (!profile) return;
+    setTxOpen(true);
     setTxLoading(true);
+    setTxProblem(null);
     try {
-      const res  = await fetch("/api/member/transactions" + reviewQS(), { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setTxList(data.transactions ?? []);
-      setTxOpen(true);
+      const r = await callApi<{ transactions?: TxItem[] }>("/api/member/transactions" + reviewQS(), { headers: { Authorization: `Bearer ${token}` } });
+      if (r.ok && Array.isArray(r.data.transactions)) setTxList(r.data.transactions);
+      else setTxProblem(r.ok ? problemOf("SERVER_ERROR") : r.problem);   // ห้ามตีความว่า "ยังไม่มีรายการ"
     } finally { setTxLoading(false); }
   }
 
@@ -90,26 +151,32 @@ export default function LiffPage() {
     if (!birthday)                  { setError("กรุณาเลือกวันเกิด"); return; }
     setSubmitting(true); setError("");
     try {
-      const res  = await fetch("/api/member" + reviewQS(), {
+      const r = await callApi<{ success?: boolean; user?: Member; link?: ClientLink | null }>("/api/member" + reviewQS(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           phone,
-          displayName: profile!.displayName,
+          displayName: profile?.displayName ?? "",
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           company: company.trim() || null,
           birthday,
         }),
       });
-      const data = await res.json();
-      if (data.success) { setRegistered(true); setMember(data.user); setEditing(false); }
-      else setError(data.error || "เกิดข้อผิดพลาด กรุณาลองใหม่");   // 409 = เบอร์เป็นของคนอื่น/ผูก LINE อื่น — บอกลูกค้าตรง ๆ
-    } catch { setError("เกิดข้อผิดพลาด กรุณาลองใหม่"); }
-    finally { setSubmitting(false); }
+      if (!r.ok) { setError(registerErrorText(r.problem)); return; }
+      if (!r.data.success || !r.data.user) { setError(registerErrorText(problemOf("SERVER_ERROR"))); return; }
+      const wasNew = !registered;
+      setRegistered(true);
+      setMember(r.data.user);
+      // สมัครเสร็จ → เซิร์ฟเวอร์ส่งสถานะการผูกมาด้วย → ขึ้นจอ "รอพนักงานยืนยันตัวตน" ทันที
+      if (r.data.link !== undefined) setLink(r.data.link ?? null);
+      if (wasNew) { setExpiry(null); setExpiryUnavailable(false); }
+      setEditing(false);
+      if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    } finally { setSubmitting(false); }
   }
 
-  // props ของฟอร์ม — ชุดเดียวใช้ทั้งจอสมัครและจอแก้ไข (เหมือนตอนที่ยังเป็นฟังก์ชัน form(isEdit) ในไฟล์เดียว)
+  // props ของฟอร์ม — ชุดเดียวใช้ทั้งจอสมัครและจอแก้ไข
   const formProps = {
     firstName, lastName, phone, birthday, company,
     onFirstName: setFirstName,
@@ -125,18 +192,21 @@ export default function LiffPage() {
   /* ── Loading ── */
   if (loading) return <Loading />;
 
-  /* ── Error (ไม่มี profile) ── */
-  if (error && !profile) return (
-    <Shell sub="ระบบสมาชิกสะสมแต้ม" short>
-      <div className="lf-card lf-center"><i><Icon name="alert" size={40} /></i>{error}</div>
-    </Shell>
+  /* ── มีปัญหา (ระบบล่ม / token หมดอายุ / เน็ตหลุด) — ห้ามตกไปจอสมัคร ── */
+  if (problem) return (
+    <ProblemScreen sub="บัตรสมาชิกสะสมแต้ม" what="บัตรสมาชิก" problem={problem} onRetry={retry} retrying={retrying} />
   );
 
-  /* ── สมัครสมาชิก ── */
-  if (!registered) return <SignupCard profile={profile} form={formProps} />;
+  /* ── สมัครสมาชิก — เฉพาะ registered:false ที่เซิร์ฟเวอร์ยืนยันแล้วเท่านั้น ── */
+  if (registered === false) return <SignupCard profile={profile} form={formProps} />;
+
+  /* ── ยังไม่รู้สถานะ (ไม่ควรเกิด) — ถือเป็นปัญหา ไม่ใช่จอสมัคร ── */
+  if (registered !== true) return (
+    <ProblemScreen sub="บัตรสมาชิกสะสมแต้ม" what="บัตรสมาชิก" problem={problemOf("SERVER_ERROR")} onRetry={retry} retrying={retrying} />
+  );
 
   /* ── แก้ไขข้อมูล ── */
-  if (registered && editing) return (
+  if (editing) return (
     <Shell sub="แก้ไขข้อมูลสมาชิก" layout="form">
       <div className="lf-card">
         <h2 className="lf-title">แก้ไขข้อมูล</h2>
@@ -154,21 +224,26 @@ export default function LiffPage() {
   const baseTier = getTierFromPoints(totalEarned);
   const isInactive = tier.name !== baseTier.name;
   const months = monthsSince(lastPurchaseAt);
-  const isNearDrop = months !== null && months >= 11 && months < 12;
+  // เตือนล่วงหน้า 3 เดือนก่อนครบ 1 ปี (ผู้ตรวจ c1: ระดับลดโดยไม่ได้บอกล่วงหน้า) — กติกา 1 ปีเองไม่ได้เปลี่ยน
+  const isNearDrop = months !== null && months >= 9 && months < 12;
   const nextTier = getNextTier(tier);
   const progress = nextTier ? Math.min(100, ((totalEarned - tier.min) / (nextTier.min - tier.min)) * 100) : 100;
   const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
   const formattedPhone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
+  const pendingLink = link?.status === "pending" ? link : null;
+  // ผูกแล้วแต่ยังไม่เคยได้แต้ม = เพิ่งยืนยันตัวตน → แสดงข้อความยินดี (เดิมป้ายเตือนหายไปเงียบ ๆ)
+  const justLinked = link?.status === "linked" && totalEarned === 0 && points === 0 && !lastPurchaseAt ? link : null;
+  const birthdayIn = daysToBirthday(member?.birthday);
 
   return (
     <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
       {/* มือถือ: คอลัมน์เดียว เรียงตาม order ใน liff.css → บัตร · ปุ่มลัด · คำเตือน · ประวัติ · สิทธิ์ · กติกา
-          เดสก์ท็อป: ซ้าย = บัตร+ปุ่มลัด+คำเตือน (ของที่ต้องเห็นก่อน) · ขวา = ประวัติ+สิทธิ์+กติกา
-          (ผู้ตรวจ r5: ซ้ายมีบัตรก้อนเดียวแล้วว่าง ขวายาวเกิน → สองคอลัมน์ไม่สมดุล) */}
+          เดสก์ท็อป: ซ้าย = บัตร+ปุ่มลัด+คำเตือน (ของที่ต้องเห็นก่อน) · ขวา = ประวัติ+สิทธิ์+กติกา */}
       <div className="lf-col lf-col--main">
         <MemberCard
           tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
-          name={name} formattedPhone={formattedPhone} member={member} profile={profile}
+          name={name} formattedPhone={formattedPhone} member={member} profile={profile} pendingLink={pendingLink}
+          realTier={isInactive ? baseTier : null}
         />
         <QuickActions
           txLoading={txLoading} txOpen={txOpen}
@@ -179,20 +254,38 @@ export default function LiffPage() {
           }}
         />
         <AlertNotes
-          isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} months={months} expiry={expiry} points={points}
-          onViewExpiring={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); setTxOpen(true); }}
+          isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry} points={points}
+          totalEarned={totalEarned} lastPurchaseAt={lastPurchaseAt}
+          expiryUnavailable={expiryUnavailable} justLinked={justLinked} birthdayIn={pendingLink ? null : birthdayIn}
+          onViewExpiring={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); }}
         />
       </div>
 
       <div className="lf-col lf-col--side">
-        {txOpen &&<HistoryList txList={txList} txFilter={txFilter} onFilter={setTxFilter} />}
-        {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน ผู้ตรวจ r5) · ปิดประวัติแล้วกลับมา */}
+        {txOpen && (
+          <HistoryList
+            txList={txList} txFilter={txFilter} onFilter={setTxFilter}
+            loading={txLoading} problem={txProblem} onRetry={loadTransactions}
+          />
+        )}
+        {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
         <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} />
         <div className="lf-foot">
-          {/* กติกา 3 ข้อ บรรทัดละข้อ — ไม่ต่อกันด้วย · ที่ตัดบรรทัดกลางข้อ */}
-          <div>ซื้อทุก 100 บาท = 1 แต้ม</div>
-          <div>แต้มใช้ได้ 1 ปี นับจากวันที่ได้</div>
-          <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์นะคะ</span></div>
+          {pendingLink ? (
+            // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
+            <>
+              <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
+              <div>ซื้อทุก 100 บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
+              <div><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์</span></div>
+            </>
+          ) : (
+            <>
+              {/* กติกา 3 ข้อ บรรทัดละข้อ */}
+              <div>ซื้อทุก 100 บาท = 1 แต้ม</div>
+              <div>แต้มใช้ได้ 1 ปี นับจากวันที่ได้</div>
+              <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์นะคะ</span></div>
+            </>
+          )}
         </div>
       </div>
     </Shell>

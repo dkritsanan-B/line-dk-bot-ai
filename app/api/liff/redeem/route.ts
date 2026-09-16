@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
     const pendingPoints = pending.reduce((s, p) => s + p.points_required, 0);
     return apiOk({
       review: true,
+      earns_points: Boolean(String(rv.member.customer_id ?? "").trim()),
       points: rv.member.points,
       pending_points: pendingPoints,
       available_points: rv.member.points - pendingPoints,

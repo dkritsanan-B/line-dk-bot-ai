@@ -70,9 +70,9 @@ export function makeSql(db: FakeDb) {
       const u = db.users.find(x => x.line_user_id === values[0]);
       return u ? [{ ...u }] : [];
     }
-    if (/^SELECT id, points FROM users WHERE line_user_id/.test(text)) {
+    if (/^SELECT id, points(, customer_id)? FROM users WHERE line_user_id/.test(text)) {
       const u = db.users.find(x => x.line_user_id === values[0]);
-      return u ? [{ id: u.id, points: u.points }] : [];
+      return u ? [{ id: u.id, points: u.points, customer_id: (u as { customer_id?: string | null }).customer_id ?? null }] : [];
     }
 
     // ---- อ่านของรางวัล

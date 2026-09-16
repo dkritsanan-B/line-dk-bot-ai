@@ -20,6 +20,13 @@ export function isReviewEnabled(): boolean {
 const day = 86400000;
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
 const dateOnly = (offsetDays: number) => iso(offsetDays).slice(0, 10);
+/** วันเกิดที่ "เดือน-วัน" ตรงกับอีก offsetDays วันข้างหน้าเสมอ (เดิมใช้ -365*อายุ ซึ่งเลื่อนตามปีอธิกสุรทิน วันเกิดเลยไม่ใช่วันนี้จริง) */
+const birthdayIn = (offsetDays: number, age: number) => {
+  const d = new Date(Date.now() + 7 * 3600 * 1000 + offsetDays * day);
+  return `${d.getUTCFullYear() - age}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+/** โน้ตคูปองวันเกิด — รูปแบบเดียวกับ app/api/cron/birthday (ปี ค.ศ. ตามเวลาไทย) */
+const birthdayNote = (tier: string) => `วันเกิด ${new Date(Date.now() + 7 * 3600 * 1000).getUTCFullYear()} — คูปองวันเกิดระดับ ${tier}`;
 
 export interface ReviewMember {
   id: number;
@@ -45,6 +52,8 @@ export interface ReviewTx {
   note: string | null;
   created_at: string;
   expires_at: string | null;
+  /** ก้อนที่ตัวตัดแต้มประมวลผลแล้ว (เหมือนคอลัมน์ transactions.expired) */
+  expired?: boolean;
 }
 
 /**
@@ -90,7 +99,7 @@ const member = (over: Partial<ReviewMember>): ReviewMember => ({
   first_name: "สมชาย",
   last_name: "ใจดี",
   company: null,
-  birthday: dateOnly(-365 * 42),
+  birthday: birthdayIn(150, 42),   // ไกลจากวันนี้ ไม่ให้กล่องวันเกิดขึ้นทุกสถานการณ์
   points: 0,
   total_earned: 0,
   last_purchase_at: iso(-2),
@@ -117,7 +126,7 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     key: "new",
     label: "ลูกค้าใหม่ ยังไม่สมัคร",
     registered: false,
-    profile: profileOf("ช่างวิชัย"),
+    profile: profileOf("ช่างสมชาย"),   // คนเดียวกับ pending/linkedNew — ผู้ตรวจเดินทั้งเส้นทาง ชื่อต้องต่อกัน
     member: null,
     transactions: [],
   },
@@ -162,7 +171,7 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     label: "ผูกรหัสแล้ว รอบิลแรก",
     registered: true,
     profile: profileOf("ช่างสมชาย"),
-    member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-2), customer_id: "CUS-00912", suggested_customer_id: null }),
+    member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-0.02), customer_id: "CUS-00912", suggested_customer_id: null }),
     transactions: [],
   },
 
@@ -172,7 +181,7 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     label: "Bronze 120 แต้ม เพิ่งได้แต้มแรก",
     registered: true,
     profile: profileOf("ช่างสมชาย"),
-    member: member({ points: 120, total_earned: 120, company: "หจก. สมชายก่อสร้าง" }),
+    member: member({ points: 120, total_earned: 120, company: "หจก. สมชายก่อสร้าง", birthday: birthdayIn(10, 42) }),
     transactions: [
       earn(5, 4200, 42, 2, "บิล IV-690231 · เหล็กกล่อง ท่อ PVC"),
       earn(4, 7800, 78, 9, "บิล IV-690118 · สีทาภายนอก 5 แกลลอน"),
@@ -187,6 +196,7 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     profile: profileOf("ช่างสมชาย"),
     member: member({ points: 2300, total_earned: 2760, company: "หจก. สมชายก่อสร้าง" }),
     transactions: [
+      { id: 13, purchase_amount: 0, points_earned: 240, type: "earn", note: "โบนัส Gold บิล IV-690402 (เมทัลชีท (บาท/เมตร) 2บ/ม)", created_at: iso(-3), expires_at: iso(362) },
       earn(12, 18500, 185, 3, "บิล IV-690402 · เมทัลชีท 120 เมตร"),
       { id: 11, purchase_amount: 0, points_earned: 300, type: "redeem", note: "แลกส่วนลด 300 บาท", created_at: iso(-16), expires_at: null },
       earn(10, 32000, 320, 24, "บิล IV-690255 · เหล็กเส้น + ลวดผูก"),
@@ -241,8 +251,24 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     label: "หายไป 14 เดือน ระดับลดชั่วคราว",
     registered: true,
     profile: profileOf("ช่างมานพ"),
-    member: member({ id: 9003, phone: "0867778888", first_name: "มานพ", last_name: "ทองดี", points: 260, total_earned: 2600, last_purchase_at: iso(-425), created_at: iso(-900) }),
-    transactions: [earn(20, 26000, 260, 425, "บิล IV-688010 · วัสดุก่อสร้าง")],
+    // หลังตัวตัดแต้มทำงานแล้ว: บิลเก่ากว่า 1 ปีหมดอายุไปแล้ว เหลือแต่คูปองวันเกิดเมื่อ 2 เดือนก่อน
+    // ระดับจริง Gold (ยอดซื้อสะสม 2,600) แต่ไม่ซื้อเกิน 1 ปี → ระดับคิดจากแต้มคงเหลือชั่วคราว (200 = Bronze) ตามกติกาเดิม
+    member: member({ id: 9003, phone: "0867778888", first_name: "มานพ", last_name: "ทองดี", points: 200, total_earned: 2600, last_purchase_at: iso(-425), created_at: iso(-900) }),
+    transactions: [
+      { id: 22, purchase_amount: 0, points_earned: 200, type: "earn", note: "วันเกิด — คูปองวันเกิดระดับ Gold", created_at: iso(-60), expires_at: iso(305) },
+      { id: 21, purchase_amount: 0, points_earned: 260, type: "expire", note: "แต้มหมดอายุ 1 ปี", created_at: iso(-60), expires_at: null },
+      { ...earn(20, 26000, 260, 425, "บิล IV-688010 · วัสดุก่อสร้าง"), expired: true },
+    ],
+  },
+
+  // 6.5) ใกล้ครบ 1 ปีที่ไม่ได้ซื้อ — ต้องเห็นคำเตือนล่วงหน้าพร้อมวันที่ ก่อนระดับลด
+  nearDrop: {
+    key: "nearDrop",
+    label: "Gold ไม่ได้ซื้อ 10 เดือน ใกล้ลดระดับ",
+    registered: true,
+    profile: profileOf("ช่างมานพ"),
+    member: member({ id: 9006, phone: "0867778888", first_name: "มานพ", last_name: "ทองดี", points: 2100, total_earned: 2600, last_purchase_at: iso(-300), created_at: iso(-900) }),
+    transactions: [earn(21, 26000, 260, 300, "บิล IV-688010 · วัสดุก่อสร้าง")],
   },
 
   // 7) วันเกิดวันนี้ — ทดสอบชิปวันเกิดและโบนัส
@@ -251,9 +277,10 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     label: "วันเกิดวันนี้ ได้แต้มโบนัส",
     registered: true,
     profile: profileOf("ช่างสมชาย"),
-    member: member({ points: 820, total_earned: 820, birthday: dateOnly(-365 * 45) }),
+    // คูปองวันเกิดไม่นับยอดสะสม (ตาม cron) → total_earned 620 = Silver · คูปอง Silver 200 แต้ม
+    member: member({ points: 820, total_earned: 620, birthday: birthdayIn(0, 45) }),
     transactions: [
-      { id: 40, purchase_amount: 0, points_earned: 200, type: "earn", note: "ของขวัญวันเกิด 2569", created_at: iso(-0.1), expires_at: iso(365) },
+      { id: 40, purchase_amount: 0, points_earned: 200, type: "earn", note: birthdayNote("Silver"), created_at: iso(-0.1), expires_at: iso(365) },
       earn(39, 62000, 620, 30, "บิล IV-690090 · เหล็ก + ปูน"),
     ],
   },
