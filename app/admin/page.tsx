@@ -1,6 +1,10 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
+import "./admin.css";
+
+// หน้าแอดมินระบบสมาชิก — รื้อหน้าตา 16 ก.ย. 69: แบ่งเป็นแท็บ (ภาพรวม/สมาชิก/แลกของ/แต้ม/ประวัติ/ตั้งค่า) แทนหน้าเดียวยาว · ตรรกะ/API เดิมทั้งหมด
+// สไตล์อยู่ admin.css (คลาส ad-*) · จำการล็อกอินใน sessionStorage (ปิดแท็บ = หลุด)
 
 interface User {
   id: number;
@@ -16,18 +20,32 @@ interface User {
   created_at: string;
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("th-TH", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
+type Tab = "overview" | "members" | "redeem" | "points" | "history" | "settings";
 
+// เกณฑ์ระดับ (ตรงกับ lib/points.ts) — ของเดิมบนหน้านี้พิมพ์ผิด (Platinum 4,000 / Gold 1,000)
+const TIERS = [
+  { name: "Diamond",  emoji: "💎", min: 10000, color: "#1565C0" },
+  { name: "Platinum", emoji: "🔱", min: 5000,  color: "#546E7A" },
+  { name: "Gold",     emoji: "🥇", min: 2000,  color: "#F9A825" },
+  { name: "Silver",   emoji: "🥈", min: 500,   color: "#78909C" },
+  { name: "Bronze",   emoji: "🥉", min: 100,   color: "#8D6E63" },
+  { name: "Welcome",  emoji: "👋", min: 0,     color: "#2B5FB8" },
+];
+const tierOf = (points: number) => TIERS.find(t => points >= t.min) ?? TIERS[TIERS.length - 1];
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+}
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+}
 function formatBirthday(iso: string | null) {
   if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("th-TH", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 }
+const fmtPhone = (p: string) => p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+const initials = (u: User) => (u.first_name?.[0] ?? u.phone.slice(-2)).toUpperCase();
 
 function exportCSV(users: User[]) {
   const header = ["ลำดับ", "รหัสลูกค้า", "ชื่อ", "นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "สมัครเมื่อ"];
@@ -42,11 +60,9 @@ function exportCSV(users: User[]) {
     u.points,
     u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "",
   ]);
-
   const csv = "﻿" + [header, ...rows]
     .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
     .join("\n");
-
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
@@ -67,6 +83,9 @@ export default function AdminPage() {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
   const [savedPw, setSavedPw]     = useState("");
+  const [tab, setTab]             = useState<Tab>("overview");
+  const [memberFilter, setMemberFilter] = useState<"all" | "unlinked" | "suggested" | "noline">("all");
+  const [restoring, setRestoring] = useState(true);
 
   // เพิ่มแต้มรายเดียว
   const [apPhone, setApPhone]     = useState("");
@@ -179,6 +198,7 @@ export default function AdminPage() {
   const [txFrom, setTxFrom]         = useState("");
   const [txTo, setTxTo]             = useState("");
   const [txLoading, setTxLoading]   = useState(false);
+  const [txLoaded, setTxLoaded]     = useState(false);
 
   async function handleAddPoints() {
     if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
@@ -236,7 +256,6 @@ export default function AdminPage() {
           const ws = wb.Sheets[wb.SheetNames[0]];
           rows2d = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, raw: false });
         } else {
-          // CSV
           const text = new TextDecoder("utf-8").decode(data as ArrayBuffer);
           rows2d = text.split(/\r?\n/).filter(l => l.trim()).map(l =>
             l.split(",").map(c => c.trim().replace(/^"|"$/g, ""))
@@ -307,6 +326,26 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, [savedUsername]);
 
+  // จำการล็อกอินไว้ใน sessionStorage (เหมือนหน้า /admin/rewards) — รีเฟรชหน้าไม่ต้องล็อกอินใหม่
+  useEffect(() => {
+    const pw = sessionStorage.getItem("admin_pw") ?? "";
+    const uname = sessionStorage.getItem("admin_username") ?? "";
+    const r = sessionStorage.getItem("admin_role") ?? "";
+    const t = sessionStorage.getItem("admin_tab") as Tab | null;
+    if (t) setTab(t);
+    if (pw && uname) {
+      if (r === "super" || r === "staff" || r === "viewer") setRole(r);
+      setSavedUsername(uname);
+      fetchUsers(pw, "", uname).finally(() => setRestoring(false));
+    } else setRestoring(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function go(t: Tab) { setTab(t); sessionStorage.setItem("admin_tab", t); }
+  function logout() {
+    sessionStorage.removeItem("admin_pw"); sessionStorage.removeItem("admin_username"); sessionStorage.removeItem("admin_role");
+    setAuthed(false); setSavedPw(""); setPassword(""); setUsers([]);
+  }
+
   // เปลี่ยนเบอร์ / ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่องหรือ LINE หาย → ปลดแล้วให้สมัครใหม่ด้วยเบอร์เดิม แต้มตามไป)
   async function patchMember(userId: number, body: Record<string, unknown>, apply: (u: User) => User) {
     const res = await fetch("/api/admin/update-member", {
@@ -344,7 +383,7 @@ export default function AdminPage() {
       alert(d.error || `บันทึกรหัสลูกค้าไม่สำเร็จ (${res.status})`);
       return;
     }
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: code } : u));
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: code, suggested_customer_id: null } : u));
   }
 
   function exportTxExcel() {
@@ -400,6 +439,7 @@ export default function AdminPage() {
       });
       const data = await res.json();
       setTxRows(data.transactions ?? []);
+      setTxLoaded(true);
     } catch { /* silent */ }
     finally { setTxLoading(false); }
   }
@@ -420,40 +460,6 @@ export default function AdminPage() {
       await fetchUsers(password, "", username.trim());
     } catch { setError("เชื่อมต่อไม่ได้"); setLoading(false); }
   }
-
-  /* ── Login ── */
-  if (!authed) return (
-    <div style={s.page}>
-      <div style={s.loginCard}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
-        <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 4 }}>Admin Panel</div>
-        <div style={{ color: "#888", fontSize: 13, marginBottom: 24 }}>ร้าน DK วัสดุก่อสร้าง</div>
-        <input
-          type="text"
-          placeholder="ชื่อผู้ใช้"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleLogin()}
-          style={s.input}
-          autoFocus
-          autoComplete="username"
-        />
-        <input
-          type="password"
-          placeholder="รหัสผ่าน"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleLogin()}
-          style={s.input}
-          autoComplete="current-password"
-        />
-        {error && <div style={{ color: "#e53935", fontSize: 13, margin: "8px 0" }}>{error}</div>}
-        <button onClick={handleLogin} disabled={loading} style={s.btn}>
-          {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
-        </button>
-      </div>
-    </div>
-  );
 
   async function fetchAdminUsers() {
     setAdminUsersLoading(true);
@@ -497,802 +503,432 @@ export default function AdminPage() {
     fetchAdminUsers();
   }
 
-  /* ── Dashboard ── */
+  // โหลดข้อมูลของแท็บตอนเปิดครั้งแรก
+  useEffect(() => {
+    if (!authed) return;
+    if (tab === "settings" && role === "super" && adminUsers.length === 0) fetchAdminUsers();
+    if (tab === "history" && !txLoaded && !txLoading) fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, authed]);
+
+  const canEdit = role === "staff" || role === "super";
+  const pending = redeemRows.filter(r => r.status === "pending").length;
+
+  /* ── Login ── */
+  if (!authed) return (
+    <div className="ad"><div className="ad-login">
+      <div className="ad-login-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/dk-logo.jpg" alt="DK" />
+        <h1>DK Admin</h1>
+        <p>ระบบสมาชิกสะสมแต้ม · DK Steel and Tools</p>
+        {restoring ? <div className="ad-empty">กำลังตรวจสอบการเข้าสู่ระบบ…</div> : (
+          <div className="ad-form">
+            <div className="ad-field"><label>ชื่อผู้ใช้</label>
+              <input className="ad-input" type="text" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} autoFocus autoComplete="username" placeholder="admin" /></div>
+            <div className="ad-field"><label>รหัสผ่าน</label>
+              <input className="ad-input" type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} autoComplete="current-password" /></div>
+            {error && <div className="ad-alert ad-alert--err">{error}</div>}
+            <button className="ad-btn ad-btn--primary" onClick={handleLogin} disabled={loading} style={{ height: 46 }}>{loading ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}</button>
+          </div>
+        )}
+      </div>
+    </div></div>
+  );
+
+  /* ── ข้อมูลสรุป ── */
   const totalPoints = users.reduce((s, u) => s + u.points, 0);
+  const unlinked = users.filter(u => !u.customer_id);
+  const suggested = users.filter(u => !u.customer_id && u.suggested_customer_id);
+  const noLine = users.filter(u => !u.line_user_id);
+  const shown = users.filter(u => memberFilter === "all" ? true : memberFilter === "unlinked" ? !u.customer_id : memberFilter === "suggested" ? (!u.customer_id && !!u.suggested_customer_id) : !u.line_user_id);
+  const tierCount = (name: string) => users.filter(u => tierOf(u.points).name === name).length;
+
+  const TabBtn = ({ id, label, icon, badge }: { id: Tab; label: string; icon: string; badge?: number }) => (
+    <button className={`ad-tab${tab === id ? " on" : ""}`} onClick={() => go(id)}>{icon} {label}{badge ? <span className="ad-badge">{badge}</span> : null}</button>
+  );
 
   return (
-    <div style={s.page}>
-      {/* Header */}
-      <div style={s.header}>
+    <div className="ad">
+      {/* แถบบน */}
+      <div className="ad-top"><div className="ad-top-in">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/dk-logo.jpg" alt="DK" />
         <div>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>🏗️ DK Admin Panel</div>
-          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
-            {savedUsername} &nbsp;
-            <span style={{ padding: "2px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: role === "super" ? "#1565C0" : role === "staff" ? "#2e7d32" : "#888", color: "white" }}>
-              {role === "super" ? "Super Admin" : role === "staff" ? "Staff" : "Viewer"}
-            </span>
-          </div>
+          <div className="ad-top-name">DK Admin · ระบบสมาชิก</div>
+          <div className="ad-top-sub">{savedUsername} <span className="ad-role">{role === "super" ? "Super Admin" : role === "staff" ? "Staff" : "Viewer"}</span></div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <a href="/admin/rewards"
-            style={{ padding: "9px 18px", background: "white", color: "#1565C0", borderRadius: 10, fontSize: 14, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-            🎁 ของรางวัล
-          </a>
-          <button onClick={() => exportCSV(users)} style={s.exportBtn}>
-            ⬇️ Export CSV
-          </button>
+        <div className="ad-top-actions">
+          {role === "super" && <a className="ad-tbtn" href="/admin/rewards">🎁 ของรางวัล</a>}
+          <button className="ad-tbtn" onClick={() => exportCSV(users)}>⬇️ Export CSV</button>
+          <button className="ad-tbtn" onClick={logout}>ออกจากระบบ</button>
         </div>
-      </div>
+      </div></div>
 
-      {/* Stats */}
-      <div style={s.statsRow}>
-        <div style={s.statCard}>
-          <div style={s.statNum}>{users.length.toLocaleString()}</div>
-          <div style={s.statLabel}>สมาชิกทั้งหมด</div>
-        </div>
-        <div style={s.statCard}>
-          <div style={s.statNum}>{totalPoints.toLocaleString()}</div>
-          <div style={s.statLabel}>แต้มรวม</div>
-        </div>
-        <div style={s.statCard}>
-          <div style={s.statNum}>{users.filter(u => u.points >= 10000).length}</div>
-          <div style={s.statLabel}>💎 Diamond (10,000+)</div>
-        </div>
-        <div style={s.statCard}>
-          <div style={s.statNum}>{users.filter(u => u.points >= 5000 && u.points < 10000).length}</div>
-          <div style={s.statLabel}>🔱 Platinum (4,000+)</div>
-        </div>
-        <div style={s.statCard}>
-          <div style={s.statNum}>{users.filter(u => u.points >= 1000 && u.points < 4000).length}</div>
-          <div style={s.statLabel}>🥇 Gold (1,000+)</div>
-        </div>
-      </div>
+      {/* แท็บ */}
+      <div className="ad-tabs"><div className="ad-tabs-in">
+        <TabBtn id="overview" label="ภาพรวม" icon="📊" />
+        <TabBtn id="members" label="สมาชิก" icon="👥" badge={suggested.length || undefined} />
+        {canEdit && <TabBtn id="redeem" label="คำขอแลกของ" icon="🎁" badge={pending || undefined} />}
+        {canEdit && <TabBtn id="points" label="เพิ่ม/หักแต้ม" icon="⭐" />}
+        <TabBtn id="history" label="ประวัติแต้ม" icon="📋" />
+        {role === "super" && <TabBtn id="settings" label="ตั้งค่า" icon="⚙️" />}
+      </div></div>
 
-      {/* เพิ่มแต้ม — staff+ */}
-      {role === "viewer" && (
-        <div style={{ width: "100%", maxWidth: 1100, background: "#FFF8E1", borderRadius: 12, padding: "14px 20px", marginBottom: 16, fontSize: 14, color: "#E65100" }}>
-          👁️ คุณมีสิทธิ์ดูข้อมูลเท่านั้น ไม่สามารถเพิ่ม/หักแต้มได้
-        </div>
-      )}
-      {/* เพิ่มแต้ม */}
-      {(role === "staff" || role === "super") && (
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>⭐ เพิ่มแต้มให้ลูกค้า</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
-            <input
-              type="tel" inputMode="numeric" maxLength={10}
-              placeholder="0812345678"
-              value={apPhone}
-              onChange={e => { setApPhone(e.target.value.replace(/\D/g, "")); setApResult(null); setApError(""); }}
-              style={{ ...s.input, width: 180, marginBottom: 0 }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ยอดซื้อ (บาท)</div>
-            <input
-              type="number" min={100} step={100}
-              placeholder="1500"
-              value={apAmount}
-              onChange={e => { setApAmount(e.target.value); setApResult(null); setApError(""); }}
-              onKeyDown={e => e.key === "Enter" && handleAddPoints()}
-              style={{ ...s.input, width: 160, marginBottom: 0 }}
-            />
-          </div>
-          {apAmount && parseInt(apAmount) >= 100 && (
-            <div style={{ fontSize: 13, color: "#888", paddingBottom: 10 }}>
-              = <strong style={{ color: "#1976D2", fontSize: 16 }}>{Math.floor(parseInt(apAmount) / 100)}</strong> แต้ม
-            </div>
-          )}
-          <button onClick={handleAddPoints} disabled={apLoading} style={{ ...s.btn, paddingBottom: 12, paddingTop: 12 }}>
-            {apLoading ? "กำลังเพิ่ม..." : "➕ เพิ่มแต้ม"}
-          </button>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ (ถ้ามี)</div>
-          <input type="text" placeholder="เช่น ซื้อปูน 10 ถุง" value={apNote}
-            onChange={e => setApNote(e.target.value)}
-            style={{ ...s.input, maxWidth: 400, marginBottom: 0 }} />
-        </div>
-        {apError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {apError}</div>}
-        {apResult && (
-          <div style={{ marginTop: 12, padding: "12px 16px", background: "#E8F5E9", borderRadius: 10, fontSize: 14, color: "#2e7d32" }}>
-            ✅ เพิ่มแต้มสำเร็จ! <strong>{apResult.name}</strong> ได้รับ <strong>{apResult.pointsEarned} แต้ม</strong> — แต้มรวม: <strong>{apResult.totalPoints.toLocaleString()} แต้ม</strong>
-          </div>
-        )}
-      </div>
-      )}
+      <div className="ad-main">
+        {error && <div className="ad-alert ad-alert--err" style={{ marginBottom: 12 }}>{error}</div>}
+        {role === "viewer" && <div className="ad-alert ad-alert--warn" style={{ marginBottom: 12 }}>👁️ บัญชีนี้ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม/หักแต้มหรือยืนยันการแลกของได้</div>}
 
-      {/* หักแต้ม (คืนสินค้า) — staff+ */}
-      {(role === "staff" || role === "super") && (
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>↩️ หักแต้ม (กรณีลูกค้าคืนสินค้า)</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
-            <input type="tel" inputMode="numeric" maxLength={10} placeholder="0812345678"
-              value={dpPhone}
-              onChange={e => { setDpPhone(e.target.value.replace(/\D/g, "")); setDpResult(null); setDpError(""); }}
-              style={{ ...s.input, width: 180, marginBottom: 0 }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ยอดเงินที่คืน (บาท)</div>
-            <input type="number" min={100} step={100} placeholder="1500"
-              value={dpAmount}
-              onChange={e => { setDpAmount(e.target.value); setDpResult(null); setDpError(""); }}
-              onKeyDown={e => e.key === "Enter" && handleDeductPoints()}
-              style={{ ...s.input, width: 160, marginBottom: 0 }} />
-          </div>
-          {dpAmount && parseInt(dpAmount) >= 100 && (
-            <div style={{ fontSize: 13, color: "#888", paddingBottom: 10 }}>
-              = หัก <strong style={{ color: "#e53935", fontSize: 16 }}>{Math.floor(parseInt(dpAmount) / 100)}</strong> แต้ม
-            </div>
-          )}
-          <button onClick={handleDeductPoints} disabled={dpLoading}
-            style={{ ...s.btn, background: "#e53935", paddingBottom: 12, paddingTop: 12 }}>
-            {dpLoading ? "กำลังบันทึก..." : "↩️ หักแต้ม"}
-          </button>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>หมายเหตุ (ถ้ามี)</div>
-          <input type="text" placeholder="เช่น คืนปูน 5 ถุง" value={dpNote}
-            onChange={e => setDpNote(e.target.value)}
-            style={{ ...s.input, maxWidth: 400, marginBottom: 0 }} />
-        </div>
-        {dpError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {dpError}</div>}
-        {dpResult && (
-          <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
-            ✅ หักแต้มสำเร็จ! <strong>{dpResult.name}</strong> ถูกหัก <strong>{dpResult.pointsDeducted} แต้ม</strong> — แต้มคงเหลือ: <strong>{dpResult.totalPoints.toLocaleString()} แต้ม</strong>
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* ── คำขอแลกของรางวัล — staff+ ── */}
-      {(role === "staff" || role === "super") && (
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>
-            📬 คำขอแลกของรางวัล
-            {redeemRows.filter(r => r.status === "pending").length > 0 && (
-              <span style={{ marginLeft: 8, background: "#e53935", color: "white", borderRadius: 20, padding: "2px 10px", fontSize: 13, fontWeight: 800 }}>
-                {redeemRows.filter(r => r.status === "pending").length} รายการใหม่
-              </span>
-            )}
-          </div>
-          <button onClick={() => fetchRedemptions()} disabled={redeemLoading}
-            style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
-            {redeemLoading ? "กำลังโหลด..." : "🔄 รีเฟรช"}
-          </button>
-        </div>
-
-        {redeemError && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>❌ {redeemError}</div>}
-
-        {redeemRows.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "24px 0", color: "#aaa", fontSize: 14 }}>ไม่มีคำขอ</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={s.table}>
-              <thead>
-                <tr style={{ background: "#f5f7fa" }}>
-                  {["#REQ", "สถานะ", "วันที่ร้องขอ", "ชื่อลูกค้า", "เบอร์", "ของรางวัล", "แต้ม", "การดำเนินการ"].map(h => (
-                    <th key={h} style={s.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {redeemRows.map((r, i) => {
-                  const name    = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-");
-                  const dt      = new Date(r.created_at);
-                  const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " " + dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
-                  const isPending   = r.status === "pending";
-                  const isConfirmed = r.status === "confirmed";
-                  const statusBg    = isPending ? "#FFF8E1" : isConfirmed ? "#E8F5E9" : "#FFEBEE";
-                  const statusColor = isPending ? "#E65100" : isConfirmed ? "#2e7d32" : "#b71c1c";
-                  const statusLabel = isPending ? "⏳ รอยืนยัน" : isConfirmed ? "✅ ยืนยันแล้ว" : "❌ ยกเลิก";
-                  const busy        = redeemAction[r.id];
-                  return (
-                    <tr key={r.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
-                      <td style={{ ...s.td, fontWeight: 700, color: "#1565C0" }}>#{r.id}</td>
-                      <td style={s.td}>
-                        <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: statusBg, color: statusColor }}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td style={{ ...s.td, fontSize: 12, color: "#888" }}>{dateStr}</td>
-                      <td style={{ ...s.td, fontWeight: 600 }}>{name}</td>
-                      <td style={s.td}>{r.phone}</td>
-                      <td style={{ ...s.td, fontWeight: 600 }}>{r.reward_name}</td>
-                      <td style={{ ...s.td, fontWeight: 700, textAlign: "right", color: "#e65100" }}>{r.points_required.toLocaleString()}</td>
-                      <td style={{ ...s.td, whiteSpace: "nowrap" }}>
-                        {isPending ? (
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button
-                              onClick={() => handleRedeemAction(r.id, "confirm")}
-                              disabled={busy}
-                              style={{ padding: "6px 14px", background: "#2e7d32", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
-                              {busy ? "..." : "✅ ยืนยัน"}
-                            </button>
-                            <button
-                              onClick={() => handleRedeemAction(r.id, "cancel")}
-                              disabled={busy}
-                              style={{ padding: "6px 14px", background: "#e53935", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Leelawadee UI, Tahoma, sans-serif" }}>
-                              {busy ? "..." : "❌ ยกเลิก"}
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: 12, color: "#aaa" }}>
-                            {isConfirmed && r.confirmed_at ? new Date(r.confirmed_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* เพิ่มแต้มแบบ CSV — staff+ */}
-      {(role === "staff" || role === "super") && (
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>📂 เพิ่มแต้มหลายรายจาก CSV</div>
-          <button onClick={downloadTemplate} style={{ ...s.btn, background: "#f5f5f5", color: "#555", fontSize: 13, padding: "8px 14px" }}>
-            ⬇️ ดาวน์โหลด Template CSV
-          </button>
-        </div>
-
-        <label
-          style={{ border: "2px dashed #ccc", borderRadius: 12, padding: "28px", textAlign: "center", cursor: "pointer", background: "#fafafa", display: "block" }}
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
-        >
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
-          <div style={{ fontSize: 14, color: "#666" }}>คลิกหรือลากไฟล์มาวางที่นี่</div>
-          <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>รองรับ Excel (.xlsx) และ CSV · คอลัมน์: เบอร์มือถือ, ยอดซื้อ (บาท)</div>
-          <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: "none" }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = ""; }} />
-        </label>
-
-        {csvError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {csvError}</div>}
-
-        {csvRows.length > 0 && (
+        {/* ═══ ภาพรวม ═══ */}
+        {tab === "overview" && (
           <>
-            <div style={{ marginTop: 16, overflowX: "auto" }}>
-              <table style={{ ...s.table, fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "#f5f7fa" }}>
-                    {["#", "เบอร์มือถือ", "ยอดซื้อ (บาท)", "แต้มที่จะได้", ...(csvDone ? ["ชื่อลูกค้า", "ผลลัพธ์"] : [])].map(h => (
-                      <th key={h} style={s.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {csvRows.map((r, i) => (
-                    <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={s.td}>{i + 1}</td>
-                      <td style={s.td}>{r.phone}</td>
-                      <td style={s.td}>{r.amount.toLocaleString()}</td>
-                      <td style={{ ...s.td, fontWeight: 600, color: "#1976D2" }}>{Math.floor(r.amount / 100)}</td>
-                      {csvDone && <td style={s.td}>{r.name ?? "-"}</td>}
-                      {csvDone && (
-                        <td style={{ ...s.td, color: r.status === "success" ? "#2e7d32" : "#e53935", fontWeight: 600 }}>
-                          {r.status === "success" ? `✅ +${r.pointsEarned} แต้ม (รวม ${r.totalPoints?.toLocaleString()})` : `❌ ${r.message}`}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="ad-stats">
+              <div className="ad-stat"><i>👥</i><div><b>{users.length.toLocaleString()}</b><span>สมาชิกทั้งหมด</span></div></div>
+              <div className="ad-stat"><i>⭐</i><div><b>{totalPoints.toLocaleString()}</b><span>แต้มคงเหลือรวม</span></div></div>
+              <div className={`ad-stat${pending ? " hot" : ""}`}><i>🎁</i><div><b>{pending}</b><span>คำขอแลกของรอยืนยัน</span></div></div>
+              <div className={`ad-stat${suggested.length ? " hot" : ""}`}><i>🔗</i><div><b>{suggested.length}</b><span>รอกดผูกรหัส Hero (เบอร์ตรง)</span></div></div>
+              <div className="ad-stat"><i>❔</i><div><b>{unlinked.length}</b><span>ยังไม่ผูกรหัส Hero</span></div></div>
             </div>
-
-            {!csvDone && (
-              <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
-                <button onClick={handleBulkAddPoints} disabled={csvLoading} style={s.btn}>
-                  {csvLoading ? "กำลังเพิ่มแต้ม..." : `➕ ยืนยันเพิ่มแต้ม ${csvRows.length} รายการ`}
-                </button>
-                <button onClick={() => { setCsvRows([]); setCsvDone(false); setCsvError(""); }}
-                  style={{ ...s.btn, background: "#eee", color: "#555" }}>
-                  ยกเลิก
-                </button>
+            <div className="ad-grid ad-grid--2">
+              <div className="ad-card">
+                <div className="ad-card-h"><div><h3>🏅 สมาชิกแยกตามระดับ</h3><p>นับจากแต้มคงเหลือ · เกณฑ์ Bronze 100 · Silver 500 · Gold 2,000 · Platinum 5,000 · Diamond 10,000</p></div></div>
+                <div className="ad-twrap"><table className="ad-table"><tbody>
+                  {TIERS.map(t => (
+                    <tr key={t.name}><td><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.emoji} {t.name}</span></td><td className="ad-note">{t.min > 0 ? `${t.min.toLocaleString()} แต้มขึ้นไป` : "เริ่มต้น"}</td><td className="r"><b>{tierCount(t.name).toLocaleString()}</b> คน</td></tr>
+                  ))}
+                </tbody></table></div>
               </div>
-            )}
-            {csvDone && (
-              <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
-                <div style={{ fontSize: 14, color: "#2e7d32", fontWeight: 600 }}>
-                  ✅ สำเร็จ {csvRows.filter(r => r.status === "success").length} / {csvRows.length} รายการ
+              <div className="ad-card">
+                <div className="ad-card-h"><div><h3>⚡ งานที่ควรทำ</h3><p>สิ่งที่รอพนักงานอยู่ตอนนี้</p></div></div>
+                <div className="ad-form">
+                  {pending > 0 && <div className="ad-alert ad-alert--warn" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>🎁 คำขอแลกของรอยืนยัน <b>{pending}</b> รายการ</span>{canEdit && <button className="ad-btn ad-btn--warn ad-btn--sm" onClick={() => go("redeem")}>ไปยืนยัน</button>}</div>}
+                  {suggested.length > 0 && <div className="ad-alert ad-alert--warn" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>🔗 บอทพบเบอร์ตรงกับลูกค้า Hero <b>{suggested.length}</b> คน — เช็คชื่อแล้วกดผูก</span>{canEdit && <button className="ad-btn ad-btn--warn ad-btn--sm" onClick={() => { setMemberFilter("suggested"); go("members"); }}>ไปดู</button>}</div>}
+                  {unlinked.length - suggested.length > 0 && <div className="ad-alert ad-alert--info" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>❔ สมาชิกที่ยังไม่มีรหัส Hero <b>{unlinked.length - suggested.length}</b> คน — ยังไม่ได้แต้มจากบิล</span><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setMemberFilter("unlinked"); go("members"); }}>ไปดู</button></div>}
+                  {pending === 0 && suggested.length === 0 && unlinked.length === 0 && <div className="ad-empty"><i>✅</i>ไม่มีงานค้าง</div>}
+                  <div className="ad-note" style={{ marginTop: 6 }}>
+                    <b>วิธีให้แต้มอัตโนมัติ:</b> ลูกค้าสมัครใน LINE → ผูกรหัส Hero ที่แท็บ "สมาชิก" → บิลขายสด/โอนของรหัสนั้นจะกลายเป็นแต้มเองภายใน 1–2 นาที (บิลเชื่อ K1/K2 และลูกค้าเครดิตไม่นับ)
+                  </div>
                 </div>
-                <button onClick={() => { setCsvRows([]); setCsvDone(false); }}
-                  style={{ ...s.btn, background: "#eee", color: "#555", fontSize: 13, padding: "8px 14px" }}>
-                  อัพโหลดไฟล์ใหม่
-                </button>
               </div>
-            )}
+            </div>
           </>
         )}
-      </div>
-      )}
 
-      {/* Search */}
-      <div style={{ width: "100%", maxWidth: 1100, marginBottom: 16, display: "flex", gap: 8 }}>
-        <input
-          type="text"
-          placeholder="ค้นหา ชื่อ / นามสกุล / เบอร์ / บริษัท..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchUsers(savedPw, search)}
-          style={{ ...s.input, flex: 1, marginBottom: 0 }}
-        />
-        <button onClick={() => fetchUsers(savedPw, search)} style={s.btn}>
-          🔍 ค้นหา
-        </button>
-        {search && (
-          <button onClick={() => { setSearch(""); fetchUsers(savedPw, ""); }}
-            style={{ ...s.btn, background: "#eee", color: "#555" }}>
-            ล้าง
-          </button>
-        )}
-      </div>
-
-      {/* Table */}
-      <div style={s.tableWrap}>
-        <table style={s.table}>
-          <thead>
-            <tr style={{ background: "#f5f7fa" }}>
-              {["#", "รหัสลูกค้า", "ชื่อ-นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "ระดับ", "สมัครเมื่อ"].map(h => (
-                <th key={h} style={s.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 && (
-              <tr><td colSpan={9} style={{ textAlign: "center", padding: 32, color: "#aaa" }}>ไม่พบข้อมูล</td></tr>
-            )}
-            {users.map((u, i) => {
-              const level = u.points >= 10000 ? "💎 Diamond" : u.points >= 5000 ? "🔱 Platinum" : u.points >= 2000 ? "🥇 Gold" : u.points >= 500 ? "🥈 Silver" : u.points >= 100 ? "🥉 Bronze" : "👋 Welcome";
-              const levelColor = u.points >= 10000 ? "#1565C0" : u.points >= 5000 ? "#607D8B" : u.points >= 2000 ? "#F9A825" : u.points >= 500 ? "#78909C" : u.points >= 100 ? "#A1887F" : "#888888";
-              const isEditing = editingId === u.id;
-              return (
-                <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0", background: i % 2 === 0 ? "white" : "#fafafa" }}>
-                  <td style={s.td}>{i + 1}</td>
-                  <td style={{ ...s.td, minWidth: 110 }}>
-                    {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        onBlur={() => saveCustomerId(u.id, editValue)}
-                        onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }}
-                        style={{ width: 100, padding: "4px 8px", border: "1.5px solid #1976D2", borderRadius: 6, fontSize: 13 }}
-                      />
-                    ) : (
-                      <div
-                        onClick={() => { setEditingId(u.id); setEditValue(u.customer_id ?? u.suggested_customer_id ?? ""); }}
-                        title="คลิกเพื่อแก้ไข"
-                        style={{ cursor: "pointer", padding: "4px 8px", borderRadius: 6, minWidth: 80, minHeight: 24, border: "1.5px dashed #ddd", color: u.customer_id ? "#333" : "#bbb", fontSize: 13 }}>
-                        {u.customer_id ?? "คลิกกรอก"}
-                      </div>
-                    )}
-                    {!u.customer_id && u.suggested_customer_id && !isEditing && (
-                      // บอทเจอลูกค้า Hero ที่เบอร์ตรงกัน — ให้พนักงานเช็คชื่อแล้วกดยืนยัน (ไม่ผูกอัตโนมัติ กันคนสมัครด้วยเบอร์คนอื่น)
-                      <button type="button" onClick={() => saveCustomerId(u.id, u.suggested_customer_id!)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด"
-                        style={{ marginTop: 4, fontSize: 11.5, padding: "3px 8px", borderRadius: 6, border: "1px solid #F9A825", background: "#FFF8E1", color: "#7a5a00", cursor: "pointer" }}>
-                        เบอร์ตรง {u.suggested_customer_id} · กดผูก
-                      </button>
-                    )}
-                  </td>
-                  <td style={s.td}>
-                    <div style={{ fontWeight: 600 }}>
-                      {u.first_name ? `${u.first_name} ${u.last_name}` : <span style={{ color: "#aaa" }}>-</span>}
-                    </div>
-                  </td>
-                  <td style={s.td}>
-                    {u.phone}
-                    {(role === "staff" || role === "super") && (
-                      <span style={{ marginLeft: 6, whiteSpace: "nowrap" }}>
-                        <button type="button" onClick={() => changePhone(u)} title="เปลี่ยนเบอร์" style={{ fontSize: 11, padding: "1px 5px", border: "1px solid #ddd", borderRadius: 5, background: "#fff", cursor: "pointer" }}>✏️</button>
-                        {u.line_user_id
-                          ? <button type="button" onClick={() => resetLine(u)} title="ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่อง/LINE หาย)" style={{ fontSize: 11, padding: "1px 5px", border: "1px solid #ddd", borderRadius: 5, background: "#fff", cursor: "pointer", marginLeft: 3 }}>🔓</button>
-                          : <span title="ยังไม่มี LINE ผูก — รอลูกค้าสมัครด้วยเบอร์นี้" style={{ fontSize: 11, color: "#c62828", marginLeft: 3 }}>ไม่มี LINE</span>}
-                      </span>
-                    )}
-                  </td>
-                  <td style={s.td}>{u.company ?? <span style={{ color: "#ccc" }}>-</span>}</td>
-                  <td style={s.td}>{formatBirthday(u.birthday)}</td>
-                  <td style={{ ...s.td, fontWeight: 700, textAlign: "right" }}>{u.points.toLocaleString()}</td>
-                  <td style={{ ...s.td, color: levelColor, fontWeight: 600 }}>{level}</td>
-                  <td style={s.td}>{formatDate(u.created_at)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── เคลียร์ประวัติสมาชิก — super only ── */}
-      {role === "super" && <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🗑️ เคลียร์ประวัติแต้มสมาชิก</div>
-        <div style={{ fontSize: 13, color: "#e53935", marginBottom: 16 }}>⚠️ ลบประวัติทั้งหมดและรีเซ็ตแต้มเป็น 0 — ข้อมูลจะถูกซ่อน (soft delete) และบันทึก audit log</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>เบอร์มือถือลูกค้า</div>
-            <input type="tel" inputMode="numeric" maxLength={10} placeholder="0812345678"
-              value={clrPhone}
-              onChange={e => { setClrPhone(e.target.value.replace(/\D/g, "")); setClrResult(null); setClrError(""); }}
-              style={{ ...s.input, width: 180, marginBottom: 0 }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>รหัสผ่าน Admin (ยืนยัน)</div>
-            <input type="password" placeholder="รหัสผ่าน"
-              value={clrPw}
-              onChange={e => { setClrPw(e.target.value); setClrResult(null); setClrError(""); }}
-              style={{ ...s.input, width: 180, marginBottom: 0 }} />
-          </div>
-          <button onClick={handleClearPoints} disabled={clrLoading}
-            style={{ ...s.btn, background: "#b71c1c", paddingBottom: 12, paddingTop: 12 }}>
-            {clrLoading ? "กำลังดำเนินการ..." : "🗑️ เคลียร์ประวัติ"}
-          </button>
-        </div>
-        {clrError && <div style={{ color: "#e53935", fontSize: 13, marginTop: 10 }}>❌ {clrError}</div>}
-        {clrResult && (
-          <div style={{ marginTop: 12, padding: "12px 16px", background: "#FFF3E0", borderRadius: 10, fontSize: 14, color: "#e65100" }}>
-            ✅ เคลียร์ประวัติของ <strong>{clrResult.name}</strong> สำเร็จ — แต้มที่ถูกซ่อน: <strong>{clrResult.clearedPoints.toLocaleString()} แต้ม</strong>
-          </div>
-        )}
-      </div>}
-
-      {/* ── จัดการ Admin Users — super only ── */}
-      {role === "super" && (
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>👥 จัดการ Admin</div>
-          <button onClick={fetchAdminUsers} disabled={adminUsersLoading}
-            style={{ ...s.btn, fontSize: 13, padding: "8px 14px" }}>
-            {adminUsersLoading ? "..." : "🔄 โหลด"}
-          </button>
-        </div>
-
-        {/* ฟอร์มสร้าง admin ใหม่ */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>ชื่อผู้ใช้</div>
-            <input type="text" placeholder="เช่น staff01" value={newAdminUsername}
-              onChange={e => setNewAdminUsername(e.target.value)}
-              style={{ ...s.input, width: 160, marginBottom: 0 }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>รหัสผ่าน</div>
-            <input type="text" placeholder="รหัสผ่าน" value={newAdminPassword}
-              onChange={e => setNewAdminPassword(e.target.value)}
-              style={{ ...s.input, width: 160, marginBottom: 0 }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>สิทธิ์</div>
-            <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value)}
-              style={{ ...s.input, width: 140, marginBottom: 0 }}>
-              <option value="staff">Staff (เพิ่ม/ยืนยันแลก)</option>
-              <option value="viewer">Viewer (ดูอย่างเดียว)</option>
-            </select>
-          </div>
-          <button onClick={handleCreateAdmin} style={{ ...s.btn, paddingBottom: 12, paddingTop: 12 }}>
-            ➕ เพิ่ม Admin
-          </button>
-        </div>
-        {newAdminError && <div style={{ color: "#e53935", fontSize: 13, marginBottom: 10 }}>❌ {newAdminError}</div>}
-        {newAdminSuccess && <div style={{ color: "#2e7d32", fontSize: 13, marginBottom: 10 }}>✅ {newAdminSuccess}</div>}
-
-        {/* รายชื่อ admin */}
-        {adminUsers.length > 0 && (
-          <div style={{ overflowX: "auto", marginTop: 8 }}>
-            <table style={s.table}>
-              <thead>
-                <tr style={{ background: "#f5f7fa" }}>
-                  {["ชื่อผู้ใช้", "สิทธิ์", "สถานะ", "สร้างเมื่อ", "จัดการ"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {adminUsers.map(u => (
-                  <tr key={u.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                    <td style={{ ...s.td, fontWeight: 600 }}>{u.username}</td>
-                    <td style={s.td}>
-                      <span style={{ padding: "2px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: u.role === "staff" ? "#E8F5E9" : "#EDE7F6", color: u.role === "staff" ? "#2e7d32" : "#6A1B9A" }}>
-                        {u.role === "staff" ? "Staff" : "Viewer"}
-                      </span>
-                    </td>
-                    <td style={s.td}>
-                      <span style={{ fontSize: 12, color: u.active ? "#2e7d32" : "#e53935", fontWeight: 600 }}>
-                        {u.active ? "✅ ใช้งาน" : "❌ ปิดใช้"}
-                      </span>
-                    </td>
-                    <td style={{ ...s.td, fontSize: 12, color: "#aaa" }}>
-                      {new Date(u.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
-                    </td>
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }}>
-                      <button onClick={() => handleToggleAdmin(u.id, u.active)}
-                        style={{ padding: "5px 12px", marginRight: 6, background: u.active ? "#FF8F00" : "#2e7d32", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        {u.active ? "ปิดใช้" : "เปิดใช้"}
-                      </button>
-                      <button onClick={() => handleDeleteAdmin(u.id, u.username)}
-                        style={{ padding: "5px 12px", background: "#e53935", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
+        {/* ═══ สมาชิก ═══ */}
+        {tab === "members" && (
+          <div className="ad-card">
+            <div className="ad-card-h">
+              <div><h3>👥 สมาชิก <span className="ad-chip ad-chip--muted">{shown.length.toLocaleString()} คน</span></h3><p>คลิกช่องรหัส Hero เพื่อผูก/แก้ · ✏️ เปลี่ยนเบอร์ · 🔓 ปลด LINE เดิมเมื่อลูกค้าเปลี่ยนเครื่อง</p></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchUsers(savedPw, search)} disabled={loading}>{loading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button></div>
+            </div>
+            <div className="ad-toolbar">
+              <input className="ad-input" type="text" placeholder="ค้นหา ชื่อ / เบอร์ / บริษัท / รหัส Hero…" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchUsers(savedPw, search)} />
+              <button className="ad-btn ad-btn--primary" onClick={() => fetchUsers(savedPw, search)}>ค้นหา</button>
+              {search && <button className="ad-btn ad-btn--ghost" onClick={() => { setSearch(""); fetchUsers(savedPw, ""); }}>ล้าง</button>}
+              <div className="ad-filters" style={{ marginLeft: "auto" }}>
+                {([["all", "ทั้งหมด"], ["suggested", `รอกดผูก ${suggested.length}`], ["unlinked", `ยังไม่ผูก ${unlinked.length}`], ["noline", `ไม่มี LINE ${noLine.length}`]] as const).map(([k, l]) => (
+                  <button key={k} className={`ad-filter${memberFilter === k ? " on" : ""}`} onClick={() => setMemberFilter(k)}>{l}</button>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* ── Audit Log — super only ── */}
-      {role === "super" && <div style={{ width: "100%", maxWidth: 1100, marginTop: 40, textAlign: "center" }}>
-        <span
-          onClick={() => { setAuditOpen(o => !o); if (!auditOpen) fetchAuditLog(""); }}
-          style={{ fontSize: 12, color: "#bbb", cursor: "pointer", userSelect: "none", letterSpacing: 1 }}>
-          · · · system log · · ·
-        </span>
-      </div>}
-
-      {auditOpen && (
-        <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, color: "#555" }}>🔍 Audit Log</div>
-
-          {/* ค้นหา cleared transactions */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-            <input type="tel" inputMode="numeric" maxLength={10} placeholder="กรอกเบอร์เพื่อดูประวัติที่ถูกลบ"
-              value={auditPhone}
-              onChange={e => setAuditPhone(e.target.value.replace(/\D/g, ""))}
-              onKeyDown={e => e.key === "Enter" && fetchAuditLog()}
-              style={{ ...s.input, maxWidth: 280, marginBottom: 0 }} />
-            <button onClick={() => fetchAuditLog()} disabled={auditLoading}
-              style={{ ...s.btn, fontSize: 13, padding: "10px 16px" }}>
-              {auditLoading ? "..." : "🔍 ค้นหา"}
-            </button>
-            {auditPhone && (
-              <button onClick={() => { setAuditPhone(""); fetchAuditLog(""); }}
-                style={{ ...s.btn, background: "#eee", color: "#555", fontSize: 13, padding: "10px 16px" }}>
-                ล้าง
-              </button>
-            )}
-          </div>
-
-          {/* Cleared Transactions */}
-          {auditPhone && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#e53935", marginBottom: 8 }}>
-                ประวัติที่ถูกลบ {auditPhone ? `(เบอร์ ${auditPhone})` : ""}
               </div>
-              {auditCleared.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#aaa" }}>ไม่มีรายการที่ถูกลบ</div>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={s.table}>
-                    <thead>
-                      <tr style={{ background: "#fff3f3" }}>
-                        {["#", "ประเภท", "วันที่", "แต้ม", "ยอดซื้อ (บาท)", "หมายเหตุ"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {auditCleared.map((t, i) => {
-                        const isRedeem = t.type === "redeem";
-                        const dt = new Date(t.created_at);
-                        return (
-                          <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                            <td style={s.td}>{i + 1}</td>
-                            <td style={s.td}>
-                              <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 20, background: isRedeem ? "#FFE0B2" : "#E3F2FD", color: isRedeem ? "#e65100" : "#1565C0", fontWeight: 600 }}>
-                                {isRedeem ? "🎁 แลกรางวัล" : "⭐ เพิ่มแต้ม"}
-                              </span>
-                            </td>
-                            <td style={s.td}>{dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })} {dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</td>
-                            <td style={{ ...s.td, color: isRedeem ? "#e53935" : "#2e7d32", fontWeight: 700 }}>
-                              {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
-                            </td>
-                            <td style={{ ...s.td, textAlign: "right" }}>{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td>
-                            <td style={{ ...s.td, color: "#888" }}>{t.note ?? "-"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          )}
-
-          {/* Audit Log Table */}
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 8 }}>บันทึกการดำเนินการ admin</div>
-          {auditLogs.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#aaa" }}>ไม่มีบันทึก</div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={s.table}>
-                <thead>
-                  <tr style={{ background: "#f5f7fa" }}>
-                    {["#", "วันเวลา", "Action", "รายละเอียด"].map(h => <th key={h} style={s.th}>{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map((log, i) => (
-                    <tr key={log.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={s.td}>{i + 1}</td>
-                      <td style={{ ...s.td, color: "#888", fontSize: 12 }}>
-                        {new Date(log.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}{" "}
-                        {new Date(log.created_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                      <td style={s.td}>
-                        <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 20, background: "#FCE4EC", color: "#b71c1c", fontWeight: 600 }}>
-                          {log.action}
-                        </span>
-                      </td>
-                      <td style={{ ...s.td, color: "#555", maxWidth: 400 }}>{log.detail}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── ประวัติการเพิ่มแต้ม ── */}
-      <div style={{ width: "100%", maxWidth: 1100, background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)", padding: "24px", marginTop: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>📋 ประวัติการเพิ่มแต้ม</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {txRows.length > 0 && (
-              <button onClick={exportTxExcel} style={{ ...s.exportBtn, fontSize: 13, padding: "8px 14px" }}>
-                ⬇️ Export Excel
-              </button>
-            )}
-            <button onClick={() => fetchTransactions()} style={{ ...s.btn, fontSize: 13, padding: "8px 16px" }}>
-              {txLoading ? "กำลังโหลด..." : "🔄 โหลดประวัติ"}
-            </button>
-          </div>
-        </div>
-
-        {/* Filter */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-          <input
-            type="text" placeholder="ค้นหาชื่อ / เบอร์..."
-            value={txSearch} onChange={e => setTxSearch(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && fetchTransactions()}
-            style={{ ...s.input, flex: 1, minWidth: 180, marginBottom: 0 }}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>ตั้งแต่</span>
-            <input type="date" value={txFrom} onChange={e => setTxFrom(e.target.value)}
-              style={{ ...s.input, width: 160, marginBottom: 0 }} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>ถึง</span>
-            <input type="date" value={txTo} onChange={e => setTxTo(e.target.value)}
-              style={{ ...s.input, width: 160, marginBottom: 0 }} />
-          </div>
-          <button onClick={() => fetchTransactions()} style={s.btn}>🔍 ค้นหา</button>
-          {(txSearch || txFrom || txTo) && (
-            <button onClick={() => { setTxSearch(""); setTxFrom(""); setTxTo(""); fetchTransactions("", "", ""); }}
-              style={{ ...s.btn, background: "#eee", color: "#555" }}>ล้าง</button>
-          )}
-        </div>
-
-        {txRows.length === 0 && !txLoading && (
-          <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 14 }}>
-            กด "โหลดประวัติ" เพื่อดูข้อมูล
-          </div>
-        )}
-
-        {txRows.length > 0 && (
-          <div style={{ overflowX: "auto" }}>
-            <table style={s.table}>
-              <thead>
-                <tr style={{ background: "#f5f7fa" }}>
-                  {["#", "ประเภท", "วันที่", "เวลา", "ชื่อลูกค้า", "เบอร์", "ยอดซื้อ (บาท)", "แต้ม", "หมายเหตุ"].map(h => (
-                    <th key={h} style={s.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
+            <div className="ad-twrap"><table className="ad-table">
+              <thead><tr><th>#</th><th>สมาชิก</th><th>เบอร์ / LINE</th><th>รหัส Hero</th><th>ระดับ</th><th className="r">แต้ม</th><th>วันเกิด</th><th>สมัครเมื่อ</th></tr></thead>
               <tbody>
-                {txRows.map((t, i) => {
-                  const dt = new Date(t.created_at);
-                  const dateStr = dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
-                  const timeStr = dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                  const name = t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-");
-                  const isRedeem = t.type === "redeem";
+                {shown.length === 0 && <tr><td colSpan={8}><div className="ad-empty"><i>🔍</i>{users.length === 0 ? "ยังไม่มีสมาชิก — รอลูกค้าสมัครผ่าน LINE" : "ไม่พบข้อมูลตามตัวกรอง"}</div></td></tr>}
+                {shown.map((u, i) => {
+                  const t = tierOf(u.points);
+                  const isEditing = editingId === u.id;
                   return (
-                    <tr key={t.id} style={{ borderBottom: "1px solid #f0f0f0", background: isRedeem ? "#FFF8F5" : (i % 2 === 0 ? "white" : "#fafafa") }}>
-                      <td style={s.td}>{i + 1}</td>
-                      <td style={s.td}>
-                        <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: isRedeem ? "#FFE0B2" : "#E3F2FD", color: isRedeem ? "#e65100" : "#1565C0" }}>
-                          {isRedeem ? "🎁 แลกรางวัล" : "⭐ เพิ่มแต้ม"}
-                        </span>
+                    <tr key={u.id}>
+                      <td className="ad-note">{i + 1}</td>
+                      <td><span className="ad-av">{initials(u)}</span><span className="ad-name" style={{ display: "inline-block", verticalAlign: "middle" }}><b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b>{u.company && <span>🏢 {u.company}</span>}</span></td>
+                      <td>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtPhone(u.phone)}</span>
+                        {canEdit && <button className="ad-icon" onClick={() => changePhone(u)} title="เปลี่ยนเบอร์">✏️</button>}
+                        <div style={{ marginTop: 4 }}>
+                          {u.line_user_id
+                            ? <span className="ad-chip ad-chip--ok">LINE ✓{canEdit && <button className="ad-icon" style={{ marginLeft: 6 }} onClick={() => resetLine(u)} title="ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่อง/LINE หาย)">🔓</button>}</span>
+                            : <span className="ad-chip ad-chip--danger" title="รอลูกค้าสมัครด้วยเบอร์นี้">ไม่มี LINE</span>}
+                        </div>
                       </td>
-                      <td style={s.td}>{dateStr}</td>
-                      <td style={s.td}>{timeStr}</td>
-                      <td style={{ ...s.td, fontWeight: 600 }}>{name}</td>
-                      <td style={s.td}>{t.phone}</td>
-                      <td style={{ ...s.td, textAlign: "right" }}>{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td>
-                      <td style={{ ...s.td, textAlign: "right", fontWeight: 700, color: isRedeem ? "#e53935" : "#2e7d32" }}>
-                        {isRedeem ? `-${t.points_earned}` : `+${t.points_earned}`}
+                      <td>
+                        {isEditing ? (
+                          <input className="ad-code-in" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => saveCustomerId(u.id, editValue)}
+                            onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }} placeholder="CUS-xxxxx" />
+                        ) : (
+                          <span className={`ad-code${u.customer_id ? "" : " empty"}`} title={canEdit ? "คลิกเพื่อแก้ไข" : ""} onClick={() => { if (!canEdit) return; setEditingId(u.id); setEditValue(u.customer_id ?? u.suggested_customer_id ?? ""); }}>{u.customer_id ?? "ยังไม่ผูก"}</span>
+                        )}
+                        {!u.customer_id && u.suggested_customer_id && !isEditing && canEdit && (
+                          // บอทเจอลูกค้า Hero ที่เบอร์ตรงกัน — ให้พนักงานเช็คชื่อแล้วกดยืนยัน (ไม่ผูกอัตโนมัติ กันคนสมัครด้วยเบอร์คนอื่น)
+                          <button className="ad-suggest" onClick={() => saveCustomerId(u.id, u.suggested_customer_id!)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด">🔗 เบอร์ตรง {u.suggested_customer_id} · กดผูก</button>
+                        )}
                       </td>
-                      <td style={{ ...s.td, color: "#888", maxWidth: 200 }}>{t.note ?? "-"}</td>
+                      <td><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.emoji} {t.name}</span></td>
+                      <td className="r"><b>{u.points.toLocaleString()}</b></td>
+                      <td className="ad-note">{formatBirthday(u.birthday)}</td>
+                      <td className="ad-note">{formatDate(u.created_at)}</td>
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
-            <div style={{ padding: "12px 14px", fontSize: 12, color: "#aaa" }}>
-              แสดง {txRows.length} รายการล่าสุด
-            </div>
+            </table></div>
           </div>
+        )}
+
+        {/* ═══ คำขอแลกของรางวัล ═══ */}
+        {tab === "redeem" && canEdit && (
+          <div className="ad-card">
+            <div className="ad-card-h">
+              <div><h3>🎁 คำขอแลกของรางวัล {pending > 0 && <span className="ad-badge">{pending} รอยืนยัน</span>}</h3><p>ลูกค้ากดแลกใน LINE → มารับที่ร้าน → ตรวจบัตรสมาชิกแล้วกดยืนยัน ระบบหักแต้มให้</p></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchRedemptions()} disabled={redeemLoading}>{redeemLoading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button></div>
+            </div>
+            {redeemError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{redeemError}</div>}
+            {redeemRows.length === 0 ? <div className="ad-empty"><i>🎁</i>ยังไม่มีคำขอ</div> : (
+              <div className="ad-twrap"><table className="ad-table">
+                <thead><tr><th>#REQ</th><th>สถานะ</th><th>ขอเมื่อ</th><th>ลูกค้า</th><th>เบอร์</th><th>ของรางวัล</th><th className="r">แต้ม</th><th></th></tr></thead>
+                <tbody>
+                  {[...redeemRows].sort((a, b) => (a.status === "pending" ? -1 : 1) - (b.status === "pending" ? -1 : 1)).map(r => {
+                    const name = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-");
+                    const isPending = r.status === "pending", isConfirmed = r.status === "confirmed";
+                    const busy = redeemAction[r.id];
+                    return (
+                      <tr key={r.id}>
+                        <td><b style={{ color: "var(--ad-blue)" }}>#{r.id}</b></td>
+                        <td><span className={`ad-chip ${isPending ? "ad-chip--warn" : isConfirmed ? "ad-chip--ok" : "ad-chip--danger"}`}>{isPending ? "⏳ รอยืนยัน" : isConfirmed ? "✅ ยืนยันแล้ว" : "❌ ยกเลิก"}</span></td>
+                        <td className="ad-note">{formatDateTime(r.created_at)}</td>
+                        <td><b>{name}</b></td>
+                        <td>{fmtPhone(r.phone)}</td>
+                        <td><b>{r.reward_name}</b></td>
+                        <td className="r" style={{ color: "var(--ad-orange)", fontWeight: 800 }}>{r.points_required.toLocaleString()}</td>
+                        <td>
+                          {isPending ? (
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button className="ad-btn ad-btn--ok ad-btn--sm" onClick={() => handleRedeemAction(r.id, "confirm")} disabled={busy}>{busy ? "…" : "✅ ยืนยัน"}</button>
+                              <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => handleRedeemAction(r.id, "cancel")} disabled={busy}>{busy ? "…" : "ยกเลิก"}</button>
+                            </div>
+                          ) : <span className="ad-note">{isConfirmed && r.confirmed_at ? formatDate(r.confirmed_at) : "-"}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table></div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ เพิ่ม / หักแต้ม ═══ */}
+        {tab === "points" && canEdit && (
+          <>
+            <div className="ad-alert ad-alert--info" style={{ marginBottom: 14 }}>💡 ปกติแต้มเข้าอัตโนมัติจากบิล Hero — ใช้หน้านี้เฉพาะกรณีพิเศษ (บิลก่อนผูกรหัส, แก้ผิด, คืนสินค้า)</div>
+            <div className="ad-grid ad-grid--2">
+              <div className="ad-card">
+                <div className="ad-card-h"><div><h3>⭐ เพิ่มแต้ม</h3><p>ทุก 100 บาท = 1 แต้ม (ปัดเศษทิ้ง)</p></div></div>
+                <div className="ad-form">
+                  <div className="ad-row">
+                    <div className="ad-field" style={{ flex: 1 }}><label>เบอร์มือถือลูกค้า</label><input className="ad-input ad-input--num" type="tel" inputMode="numeric" maxLength={10} placeholder="08XXXXXXXX" value={apPhone} onChange={e => { setApPhone(e.target.value.replace(/\D/g, "")); setApResult(null); setApError(""); }} /></div>
+                    <div className="ad-field" style={{ flex: 1 }}><label>ยอดซื้อ (บาท)</label><input className="ad-input ad-input--num" type="number" min={100} step={100} placeholder="1500" value={apAmount} onChange={e => { setApAmount(e.target.value); setApResult(null); setApError(""); }} onKeyDown={e => e.key === "Enter" && handleAddPoints()} /></div>
+                  </div>
+                  <div className="ad-field"><label>หมายเหตุ (ถ้ามี)</label><input className="ad-input" type="text" placeholder="เช่น บิล IV-690914-0012 ก่อนผูกรหัส" value={apNote} onChange={e => setApNote(e.target.value)} /></div>
+                  <div className="ad-row">
+                    <button className="ad-btn ad-btn--primary" onClick={handleAddPoints} disabled={apLoading}>{apLoading ? "กำลังเพิ่ม…" : "➕ เพิ่มแต้ม"}</button>
+                    {apAmount && parseInt(apAmount) >= 100 && <div className="ad-calc">= <b style={{ color: "var(--ad-blue)" }}>{Math.floor(parseInt(apAmount) / 100)}</b> แต้ม</div>}
+                  </div>
+                  {apError && <div className="ad-alert ad-alert--err">{apError}</div>}
+                  {apResult && <div className="ad-alert ad-alert--ok">✅ <b>{apResult.name}</b> ได้รับ <b>{apResult.pointsEarned} แต้ม</b> · แต้มรวม {apResult.totalPoints.toLocaleString()}</div>}
+                </div>
+              </div>
+              <div className="ad-card">
+                <div className="ad-card-h"><div><h3>↩️ หักแต้ม (คืนสินค้า)</h3><p>หักตามยอดเงินที่คืน ทุก 100 บาท = 1 แต้ม</p></div></div>
+                <div className="ad-form">
+                  <div className="ad-row">
+                    <div className="ad-field" style={{ flex: 1 }}><label>เบอร์มือถือลูกค้า</label><input className="ad-input ad-input--num" type="tel" inputMode="numeric" maxLength={10} placeholder="08XXXXXXXX" value={dpPhone} onChange={e => { setDpPhone(e.target.value.replace(/\D/g, "")); setDpResult(null); setDpError(""); }} /></div>
+                    <div className="ad-field" style={{ flex: 1 }}><label>ยอดเงินที่คืน (บาท)</label><input className="ad-input ad-input--num" type="number" min={100} step={100} placeholder="1500" value={dpAmount} onChange={e => { setDpAmount(e.target.value); setDpResult(null); setDpError(""); }} onKeyDown={e => e.key === "Enter" && handleDeductPoints()} /></div>
+                  </div>
+                  <div className="ad-field"><label>หมายเหตุ (ถ้ามี)</label><input className="ad-input" type="text" placeholder="เช่น คืนปูน 5 ถุง" value={dpNote} onChange={e => setDpNote(e.target.value)} /></div>
+                  <div className="ad-row">
+                    <button className="ad-btn ad-btn--danger" onClick={handleDeductPoints} disabled={dpLoading}>{dpLoading ? "กำลังบันทึก…" : "↩️ หักแต้ม"}</button>
+                    {dpAmount && parseInt(dpAmount) >= 100 && <div className="ad-calc">= หัก <b style={{ color: "var(--ad-danger)" }}>{Math.floor(parseInt(dpAmount) / 100)}</b> แต้ม</div>}
+                  </div>
+                  {dpError && <div className="ad-alert ad-alert--err">{dpError}</div>}
+                  {dpResult && <div className="ad-alert ad-alert--warn">✅ <b>{dpResult.name}</b> ถูกหัก <b>{dpResult.pointsDeducted} แต้ม</b> · คงเหลือ {dpResult.totalPoints.toLocaleString()}</div>}
+                </div>
+              </div>
+            </div>
+
+            <div className="ad-card" style={{ marginTop: 14 }}>
+              <div className="ad-card-h">
+                <div><h3>📂 เพิ่มแต้มหลายรายจากไฟล์</h3><p>Excel (.xlsx) หรือ CSV · 2 คอลัมน์: เบอร์มือถือ, ยอดซื้อ (บาท)</p></div>
+                <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={downloadTemplate}>⬇️ ดาวน์โหลด Template</button></div>
+              </div>
+              <label className="ad-drop" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}>
+                <i>📄</i><b>คลิกเลือกไฟล์ หรือลากมาวางที่นี่</b><span>ระบบจะแสดงรายการให้ตรวจก่อน แล้วค่อยกดยืนยัน</span>
+                <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) handleCSVFile(f); e.target.value = ""; }} />
+              </label>
+              {csvError && <div className="ad-alert ad-alert--err" style={{ marginTop: 10 }}>{csvError}</div>}
+              {csvRows.length > 0 && (
+                <>
+                  <div className="ad-twrap" style={{ marginTop: 14 }}><table className="ad-table">
+                    <thead><tr><th>#</th><th>เบอร์มือถือ</th><th className="r">ยอดซื้อ (บาท)</th><th className="r">แต้มที่จะได้</th>{csvDone && <><th>ชื่อลูกค้า</th><th>ผลลัพธ์</th></>}</tr></thead>
+                    <tbody>
+                      {csvRows.map((r, i) => (
+                        <tr key={i}>
+                          <td className="ad-note">{i + 1}</td><td>{fmtPhone(r.phone)}</td><td className="r">{r.amount.toLocaleString()}</td><td className="r"><b style={{ color: "var(--ad-blue)" }}>{Math.floor(r.amount / 100)}</b></td>
+                          {csvDone && <td>{r.name ?? "-"}</td>}
+                          {csvDone && <td>{r.status === "success" ? <span className="ad-chip ad-chip--ok">✅ +{r.pointsEarned} แต้ม (รวม {r.totalPoints?.toLocaleString()})</span> : <span className="ad-chip ad-chip--danger">❌ {r.message}</span>}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table></div>
+                  <div className="ad-row" style={{ marginTop: 12 }}>
+                    {!csvDone ? (
+                      <>
+                        <button className="ad-btn ad-btn--primary" onClick={handleBulkAddPoints} disabled={csvLoading}>{csvLoading ? "กำลังเพิ่มแต้ม…" : `➕ ยืนยันเพิ่มแต้ม ${csvRows.length} รายการ`}</button>
+                        <button className="ad-btn ad-btn--ghost" onClick={() => { setCsvRows([]); setCsvDone(false); setCsvError(""); }}>ยกเลิก</button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="ad-alert ad-alert--ok">✅ สำเร็จ {csvRows.filter(r => r.status === "success").length} / {csvRows.length} รายการ</div>
+                        <button className="ad-btn ad-btn--ghost" onClick={() => { setCsvRows([]); setCsvDone(false); }}>อัปโหลดไฟล์ใหม่</button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ═══ ประวัติแต้ม ═══ */}
+        {tab === "history" && (
+          <div className="ad-card">
+            <div className="ad-card-h">
+              <div><h3>📋 ประวัติแต้ม</h3><p>รายการได้รับ/ใช้แต้มของสมาชิกทุกคน (ล่าสุดก่อน)</p></div>
+              <div className="ad-h-actions">
+                {txRows.length > 0 && <button className="ad-btn ad-btn--ok ad-btn--sm" onClick={exportTxExcel}>⬇️ Export Excel</button>}
+                <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchTransactions()} disabled={txLoading}>{txLoading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button>
+              </div>
+            </div>
+            <div className="ad-toolbar">
+              <input className="ad-input" type="text" placeholder="ค้นหาชื่อ / เบอร์…" value={txSearch} onChange={e => setTxSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchTransactions()} style={{ maxWidth: 260 }} />
+              <div className="ad-field" style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><label>ตั้งแต่</label><input className="ad-input" type="date" value={txFrom} onChange={e => setTxFrom(e.target.value)} style={{ width: 160 }} /></div>
+              <div className="ad-field" style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><label>ถึง</label><input className="ad-input" type="date" value={txTo} onChange={e => setTxTo(e.target.value)} style={{ width: 160 }} /></div>
+              <button className="ad-btn ad-btn--primary" onClick={() => fetchTransactions()}>ค้นหา</button>
+              {(txSearch || txFrom || txTo) && <button className="ad-btn ad-btn--ghost" onClick={() => { setTxSearch(""); setTxFrom(""); setTxTo(""); fetchTransactions("", "", ""); }}>ล้าง</button>}
+            </div>
+            {txRows.length === 0 ? <div className="ad-empty"><i>📋</i>{txLoading ? "กำลังโหลด…" : "ยังไม่มีรายการ"}</div> : (
+              <div className="ad-twrap"><table className="ad-table">
+                <thead><tr><th>#</th><th>ประเภท</th><th>วันเวลา</th><th>ลูกค้า</th><th>เบอร์</th><th className="r">ยอดซื้อ (บาท)</th><th className="r">แต้ม</th><th>หมายเหตุ</th></tr></thead>
+                <tbody>
+                  {txRows.map((t, i) => {
+                    const name = t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-");
+                    const isRedeem = t.type === "redeem";
+                    return (
+                      <tr key={t.id}>
+                        <td className="ad-note">{i + 1}</td>
+                        <td><span className={`ad-chip ${isRedeem ? "ad-chip--warn" : "ad-chip--blue"}`}>{isRedeem ? "🎁 แลกรางวัล" : "⭐ ได้รับแต้ม"}</span></td>
+                        <td className="ad-note">{formatDateTime(t.created_at)}</td>
+                        <td><b>{name}</b></td>
+                        <td>{fmtPhone(t.phone)}</td>
+                        <td className="r">{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td>
+                        <td className="r"><b style={{ color: isRedeem ? "var(--ad-danger)" : "var(--ad-ok)" }}>{isRedeem ? "−" : "+"}{t.points_earned.toLocaleString()}</b></td>
+                        <td className="ad-note" style={{ whiteSpace: "normal", maxWidth: 320 }}>{t.note ?? "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table><div className="ad-note" style={{ padding: "10px 0 0" }}>แสดง {txRows.length} รายการล่าสุด</div></div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ ตั้งค่า (super) ═══ */}
+        {tab === "settings" && role === "super" && (
+          <>
+            <div className="ad-card">
+              <div className="ad-card-h">
+                <div><h3>👥 บัญชีพนักงาน (Admin)</h3><p>Staff = ผูกรหัส/เพิ่มแต้ม/ยืนยันแลกของ · Viewer = ดูอย่างเดียว</p></div>
+                <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={fetchAdminUsers} disabled={adminUsersLoading}>{adminUsersLoading ? "…" : "🔄 รีเฟรช"}</button></div>
+              </div>
+              <div className="ad-row" style={{ marginBottom: 12 }}>
+                <div className="ad-field"><label>ชื่อผู้ใช้</label><input className="ad-input" type="text" placeholder="เช่น cashier1" value={newAdminUsername} onChange={e => setNewAdminUsername(e.target.value)} style={{ width: 170 }} /></div>
+                <div className="ad-field"><label>รหัสผ่าน</label><input className="ad-input" type="text" placeholder="รหัสผ่าน" value={newAdminPassword} onChange={e => setNewAdminPassword(e.target.value)} style={{ width: 170 }} /></div>
+                <div className="ad-field"><label>สิทธิ์</label><select className="ad-input" value={newAdminRole} onChange={e => setNewAdminRole(e.target.value)} style={{ width: 200 }}><option value="staff">Staff (ผูกรหัส/แต้ม/แลกของ)</option><option value="viewer">Viewer (ดูอย่างเดียว)</option></select></div>
+                <button className="ad-btn ad-btn--primary" onClick={handleCreateAdmin}>➕ เพิ่มบัญชี</button>
+              </div>
+              {newAdminError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{newAdminError}</div>}
+              {newAdminSuccess && <div className="ad-alert ad-alert--ok" style={{ marginBottom: 10 }}>✅ {newAdminSuccess}</div>}
+              {adminUsers.length === 0 ? <div className="ad-empty">ยังไม่มีบัญชีพนักงาน (มีแค่ admin หลัก)</div> : (
+                <div className="ad-twrap"><table className="ad-table">
+                  <thead><tr><th>ชื่อผู้ใช้</th><th>สิทธิ์</th><th>สถานะ</th><th>สร้างเมื่อ</th><th></th></tr></thead>
+                  <tbody>
+                    {adminUsers.map(u => (
+                      <tr key={u.id}>
+                        <td><b>{u.username}</b></td>
+                        <td><span className={`ad-chip ${u.role === "staff" ? "ad-chip--ok" : "ad-chip--muted"}`}>{u.role === "staff" ? "Staff" : "Viewer"}</span></td>
+                        <td><span className={`ad-chip ${u.active ? "ad-chip--ok" : "ad-chip--danger"}`}>{u.active ? "ใช้งาน" : "ปิดใช้"}</span></td>
+                        <td className="ad-note">{formatDate(u.created_at)}</td>
+                        <td style={{ display: "flex", gap: 6 }}>
+                          <button className={`ad-btn ad-btn--xs ${u.active ? "ad-btn--warn" : "ad-btn--ok"}`} onClick={() => handleToggleAdmin(u.id, u.active)}>{u.active ? "ปิดใช้" : "เปิดใช้"}</button>
+                          <button className="ad-btn ad-btn--xs ad-btn--ghost" onClick={() => handleDeleteAdmin(u.id, u.username)}>ลบ</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table></div>
+              )}
+            </div>
+
+            <div className="ad-card ad-danger-zone">
+              <div className="ad-card-h"><div><h3>🗑️ เคลียร์ประวัติแต้มสมาชิก</h3><p>รีเซ็ตแต้มเป็น 0 และซ่อนประวัติทั้งหมดของเบอร์นี้ (ย้อนกลับไม่ได้ · บันทึก audit log)</p></div></div>
+              <div className="ad-row">
+                <div className="ad-field"><label>เบอร์มือถือลูกค้า</label><input className="ad-input ad-input--num" type="tel" inputMode="numeric" maxLength={10} placeholder="08XXXXXXXX" value={clrPhone} onChange={e => { setClrPhone(e.target.value.replace(/\D/g, "")); setClrResult(null); setClrError(""); }} style={{ width: 180 }} /></div>
+                <div className="ad-field"><label>รหัสผ่าน Admin (ยืนยัน)</label><input className="ad-input" type="password" value={clrPw} onChange={e => { setClrPw(e.target.value); setClrResult(null); setClrError(""); }} style={{ width: 180 }} /></div>
+                <button className="ad-btn ad-btn--danger" onClick={handleClearPoints} disabled={clrLoading}>{clrLoading ? "กำลังดำเนินการ…" : "🗑️ เคลียร์ประวัติ"}</button>
+              </div>
+              {clrError && <div className="ad-alert ad-alert--err" style={{ marginTop: 10 }}>{clrError}</div>}
+              {clrResult && <div className="ad-alert ad-alert--warn" style={{ marginTop: 10 }}>✅ เคลียร์ประวัติของ <b>{clrResult.name}</b> แล้ว · แต้มที่ถูกซ่อน {clrResult.clearedPoints.toLocaleString()}</div>}
+            </div>
+
+            <div className="ad-card">
+              <div className="ad-card-h">
+                <div><h3>🔍 Audit log</h3><p>บันทึกทุกการกระทำของแอดมิน/บอท · ใส่เบอร์เพื่อดูประวัติที่ถูกลบของลูกค้าคนนั้น</p></div>
+                <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setAuditOpen(true); fetchAuditLog(""); }} disabled={auditLoading}>{auditLoading ? "…" : auditOpen ? "🔄 รีเฟรช" : "โหลด log"}</button></div>
+              </div>
+              {auditOpen && (
+                <>
+                  <div className="ad-toolbar">
+                    <input className="ad-input ad-input--num" type="tel" inputMode="numeric" maxLength={10} placeholder="เบอร์ลูกค้า (ดูประวัติที่ถูกลบ)" value={auditPhone} onChange={e => setAuditPhone(e.target.value.replace(/\D/g, ""))} onKeyDown={e => e.key === "Enter" && fetchAuditLog()} style={{ maxWidth: 260 }} />
+                    <button className="ad-btn ad-btn--primary ad-btn--sm" onClick={() => fetchAuditLog()} disabled={auditLoading}>ค้นหา</button>
+                    {auditPhone && <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setAuditPhone(""); fetchAuditLog(""); }}>ล้าง</button>}
+                  </div>
+                  {auditPhone && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div className="ad-note" style={{ fontWeight: 700, color: "var(--ad-danger)", marginBottom: 6 }}>ประวัติที่ถูกลบ (เบอร์ {auditPhone})</div>
+                      {auditCleared.length === 0 ? <div className="ad-note">ไม่มีรายการที่ถูกลบ</div> : (
+                        <div className="ad-twrap"><table className="ad-table">
+                          <thead><tr><th>#</th><th>ประเภท</th><th>วันเวลา</th><th className="r">แต้ม</th><th className="r">ยอดซื้อ</th><th>หมายเหตุ</th></tr></thead>
+                          <tbody>{auditCleared.map((t, i) => { const isRedeem = t.type === "redeem"; return (
+                            <tr key={t.id}><td className="ad-note">{i + 1}</td><td><span className={`ad-chip ${isRedeem ? "ad-chip--warn" : "ad-chip--blue"}`}>{isRedeem ? "🎁 แลกรางวัล" : "⭐ ได้รับแต้ม"}</span></td><td className="ad-note">{formatDateTime(t.created_at)}</td><td className="r"><b style={{ color: isRedeem ? "var(--ad-danger)" : "var(--ad-ok)" }}>{isRedeem ? "−" : "+"}{t.points_earned}</b></td><td className="r">{isRedeem ? "-" : Number(t.purchase_amount).toLocaleString()}</td><td className="ad-note">{t.note ?? "-"}</td></tr>
+                          ); })}</tbody>
+                        </table></div>
+                      )}
+                    </div>
+                  )}
+                  {auditLogs.length === 0 ? <div className="ad-empty">ไม่มีบันทึก</div> : (
+                    <div className="ad-twrap"><table className="ad-table">
+                      <thead><tr><th>#</th><th>วันเวลา</th><th>การกระทำ</th><th>รายละเอียด</th></tr></thead>
+                      <tbody>{auditLogs.map((log, i) => (
+                        <tr key={log.id}><td className="ad-note">{i + 1}</td><td className="ad-note">{formatDateTime(log.created_at)}</td><td><span className="ad-chip ad-chip--muted">{log.action}</span></td><td style={{ whiteSpace: "normal", maxWidth: 520 }}>{log.detail}</td></tr>
+                      ))}</tbody>
+                    </table></div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh", background: "#f4f6f9",
-    fontFamily: "Leelawadee UI, Tahoma, sans-serif",
-    display: "flex", flexDirection: "column", alignItems: "center",
-    padding: "0 16px 40px",
-  },
-  loginCard: {
-    marginTop: 120, background: "white", borderRadius: 20,
-    boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-    padding: "40px 32px", width: "100%", maxWidth: 360,
-    display: "flex", flexDirection: "column", alignItems: "center",
-  },
-  header: {
-    width: "100%", maxWidth: 1100, display: "flex",
-    justifyContent: "space-between", alignItems: "center",
-    padding: "28px 0 16px",
-  },
-  statsRow: {
-    width: "100%", maxWidth: 1100,
-    display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
-    gap: 12, marginBottom: 20,
-  },
-  statCard: {
-    background: "white", borderRadius: 14,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-    padding: "16px 20px", textAlign: "center",
-  },
-  statNum: { fontSize: 28, fontWeight: 800, color: "#1976D2" },
-  statLabel: { fontSize: 12, color: "#888", marginTop: 4 },
-  tableWrap: {
-    width: "100%", maxWidth: 1100, background: "white",
-    borderRadius: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-    overflow: "auto",
-  },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
-  th: { padding: "12px 14px", textAlign: "left", fontSize: 13, color: "#555", fontWeight: 600, whiteSpace: "nowrap" },
-  td: { padding: "12px 14px", color: "#333", whiteSpace: "nowrap" },
-  input: {
-    width: "100%", padding: "12px 14px", fontSize: 15,
-    border: "1.5px solid #ddd", borderRadius: 10, outline: "none",
-    boxSizing: "border-box", marginBottom: 12,
-    fontFamily: "Leelawadee UI, Tahoma, sans-serif",
-  },
-  btn: {
-    padding: "12px 24px", background: "#1976D2",
-    color: "white", border: "none", borderRadius: 10,
-    fontSize: 15, fontWeight: 700, cursor: "pointer",
-    fontFamily: "Leelawadee UI, Tahoma, sans-serif",
-    whiteSpace: "nowrap",
-  },
-  exportBtn: {
-    padding: "10px 20px", background: "#2e7d32",
-    color: "white", border: "none", borderRadius: 10,
-    fontSize: 14, fontWeight: 700, cursor: "pointer",
-    fontFamily: "Leelawadee UI, Tahoma, sans-serif",
-  },
-};
