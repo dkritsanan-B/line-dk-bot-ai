@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { isReview, reviewQS } from "../review";
 import { Shell, Loading } from "../ui";
 
 // หน้าของรางวัล — ตรรกะเดิม (ตัวตน = LIFF access token) · รื้อหน้าตาเป็นชุดเดียวกับ /liff (14 ก.ย. 69) สไตล์อยู่ ../liff.css
@@ -40,7 +41,8 @@ export default function RewardsPage() {
       try {
         // ตัวตน = LIFF access token เท่านั้น (เดิมรับ uid จาก URL ?uid= ได้ — ใครรู้ U-id คนอื่นก็กดแลกของแทนได้)
         let tok = sessionStorage.getItem("liff_token") ?? "";
-        try {
+        if (isReview()) tok = "review";
+        else try {
           const liff = (await import("@line/liff")).default;
           await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
           if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -49,8 +51,8 @@ export default function RewardsPage() {
         setLineUserId(tok);
 
         const [memberRes, rewardsRes] = await Promise.all([
-          tok ? fetch("/api/member", { headers: { Authorization: `Bearer ${tok}` } }) : null,
-          fetch("/api/rewards"),
+          tok ? fetch("/api/member" + reviewQS(), { headers: { Authorization: `Bearer ${tok}` } }) : null,
+          fetch("/api/rewards" + reviewQS()),
         ]);
 
         if (memberRes) {
@@ -74,7 +76,7 @@ export default function RewardsPage() {
     setRedeemingId(reward.id);
     setRedeemMsg(null);
     try {
-      const res  = await fetch("/api/liff/redeem", {
+      const res  = await fetch("/api/liff/redeem" + reviewQS(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${lineUserId}` },
         body: JSON.stringify({ rewardId: reward.id }),
@@ -97,7 +99,7 @@ export default function RewardsPage() {
   const userPoints = member?.points ?? 0;
 
   return (
-    <Shell sub="ของรางวัล · แลกแต้มสะสม" back={{ label: "‹ บัตรสมาชิก", href: "/liff" }} short>
+    <Shell sub="ของรางวัล · แลกแต้มสะสม" back={{ label: "‹ บัตรสมาชิก", href: "/liff" + reviewQS() }} short>
       <div className="lf-balance" style={{ marginTop: -14 }}>
         <div><span>แต้มของคุณ</span><br /><b style={{ color: "#fff" }}>{userPoints.toLocaleString()}</b></div>
         <span style={{ fontSize: 28 }}>⭐</span>

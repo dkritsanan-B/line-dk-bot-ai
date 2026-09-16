@@ -3,9 +3,13 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
+import { reviewScenarioFrom } from "@/lib/review-mode";
 
 // ประวัติแต้มของ "เจ้าของ token" เท่านั้น — ตัวตนตรวจกับ LINE ฝั่งเซิร์ฟเวอร์ (14 ก.ย. 69)
 export async function GET(req: NextRequest) {
+  const rv = reviewScenarioFrom(new URL(req.url));
+  if (rv) return NextResponse.json({ transactions: rv.transactions });
+
   const who = await verifyLiffUser(req);
   if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
 

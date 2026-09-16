@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Shell, Loading, Field } from "./ui";
+import { isReview, reviewQS } from "./review";
 
 // หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม · ตรรกะเดิม (14 ก.ย. 69 รื้อเฉพาะหน้าตา — สไตล์อยู่ liff.css, ชิ้นส่วนร่วม ui.tsx)
 interface TxItem {
@@ -94,6 +95,17 @@ export default function LiffPage() {
   useEffect(() => {
     (async () => {
       try {
+        // โหมดรีวิว — ข้ามการล็อกอิน LINE ทั้งหมด ใช้ข้อมูลจำลองจากเซิร์ฟเวอร์ (ปิดตายบน production)
+        if (isReview()) {
+          const res = await fetch("/api/member" + reviewQS());
+          const data = await res.json();
+          setProfile(data.profile ?? { userId: "review", displayName: "ผู้ตรวจ", pictureUrl: "" });
+          setRegistered(data.registered);
+          if (data.registered) { setMember(data.user); setExpiry(data.expiry ?? null); }
+          setLoading(false);
+          return;
+        }
+
         const liff = (await import("@line/liff")).default;
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
         if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -121,7 +133,7 @@ export default function LiffPage() {
     if (!profile) return;
     setTxLoading(true);
     try {
-      const res  = await fetch("/api/member/transactions", { headers: { Authorization: `Bearer ${token}` } });
+      const res  = await fetch("/api/member/transactions" + reviewQS(), { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setTxList(data.transactions ?? []);
       setTxOpen(true);
@@ -135,7 +147,7 @@ export default function LiffPage() {
     if (!birthday)                  { setError("กรุณาเลือกวันเกิด"); return; }
     setSubmitting(true); setError("");
     try {
-      const res  = await fetch("/api/member", {
+      const res  = await fetch("/api/member" + reviewQS(), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -312,7 +324,7 @@ export default function LiffPage() {
 
       {/* ปุ่มลัด */}
       <div className="lf-actions" style={{ marginTop: 14 }}>
-        <button className="lf-action lf-action--accent" onClick={() => (window.location.href = "/liff/rewards")}>
+        <button className="lf-action lf-action--accent" onClick={() => (window.location.href = "/liff/rewards" + reviewQS())}>
           <i>🎁</i><b>ของรางวัล</b><span>แลกแต้ม</span>
         </button>
         <button className="lf-action" onClick={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}>

@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
+import { reviewScenarioFrom, REVIEW_REWARDS } from "@/lib/review-mode";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -17,6 +18,17 @@ async function pushMessage(to: string, messages: object[]) {
 }
 
 export async function POST(req: NextRequest) {
+  // โหมดรีวิว: ตอบเหมือนแลกจริงตามข้อมูลจำลอง แต่ไม่เขียนฐานข้อมูลและไม่ส่ง LINE เลย (โควตา push มีจำกัด)
+  const rv = reviewScenarioFrom(new URL(req.url));
+  if (rv) {
+    const { rewardId } = await req.json().catch(() => ({ rewardId: 0 }));
+    const rw = REVIEW_REWARDS.find(x => x.id === rewardId);
+    if (!rw) return NextResponse.json({ error: "ไม่พบของรางวัล" }, { status: 404 });
+    if (rw.stock === 0) return NextResponse.json({ error: "ของรางวัลหมดชั่วคราว" }, { status: 400 });
+    if ((rv.member?.points ?? 0) < rw.points_required) return NextResponse.json({ error: "แต้มไม่พอ" }, { status: 400 });
+    return NextResponse.json({ success: true, requestId: 9000 + rw.id, review: true });
+  }
+
   // ตัวตน = เจ้าของ LIFF token (ตรวจกับ LINE ฝั่งเซิร์ฟเวอร์) — ไม่รับ lineUserId จาก client แล้ว กันคนอื่นกดแลกของแทน
   const who = await verifyLiffUser(req);
   if (isAuthError(who)) return NextResponse.json({ error: who.error }, { status: who.status });
