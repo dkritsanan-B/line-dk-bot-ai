@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
   if (user.points < points) return NextResponse.json({ error: `แต้มไม่พอ (มี ${user.points} แต้ม)` }, { status: 400 });
 
   const result = await deductPoints(phone, points, note);
-  if (!result) return NextResponse.json({ error: "ลดแต้มไม่สำเร็จ" }, { status: 500 });
+  // เช็คแต้มด้านบนเป็นแค่ข้อความให้พนักงาน — ตัวกันจริงอยู่ในคำสั่งหักแต้ม (กดซ้ำ/สองหน้าจอพร้อมกันก็ไม่ติดลบ)
+  if (!result) return NextResponse.json({ error: "แต้มไม่พอแล้ว (อาจเพิ่งถูกหักจากอีกหน้าจอ) กรุณารีเฟรช" }, { status: 409 });
 
   return NextResponse.json({
     success: true,

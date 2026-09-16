@@ -68,6 +68,7 @@ test("สมาชิกที่ผูกรหัสแล้ว ยังไ�
   const u = { id: 7, phone: "0812345678", line_user_id: null, first_name: "สมชาย", display_name: null, total_earned: 0, points: 0, last_purchase_at: null };
   onQuery("TRIM(customer_id)", [u]);
   onQuery("FROM users WHERE phone", [u]);
+  onQuery("WITH u AS ( UPDATE users SET points = points +", [{ points: 42 }]);   // addPoints (คำสั่งเดียว) คืนยอดหลังบวก
   const d = await (await route.POST(post([{ customer_code: "CUS-00912", bill_no: "IV-690504", amount: 4250, date: "2569-09-15" }]))).json();
   eq(d.results[0].status, "ok");
   eq(d.results[0].points, 42, "4,250 บาท = 42 แต้ม (กติกาเดิม ปัดลง)");

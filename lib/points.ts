@@ -175,49 +175,65 @@ export async function registerUser(
 
 export class RegisterError extends Error {}
 
+// ให้แต้ม / หักแต้ม — คำสั่งเดียว ปรับยอดกับลงประวัติต้องเกิดคู่กันเสมอ (16 ก.ย. 69)
+// เดิมเป็น 2 คำสั่งแยกกัน ถ้าคำสั่งที่สองล้ม ยอดแต้มจะเปลี่ยนโดยไม่มีประวัติ (และตัวตัดแต้มหมดอายุไม่รู้ว่าแต้มก้อนนั้นอยู่ไหน)
+// ยอดที่คืนกลับมาอ่านจากแถวหลังแก้ ไม่ใช่เอาค่าที่อ่านไว้ก่อนมาบวกลบเอง
+
 export async function addPoints(
   phone: string,
   purchaseAmount: number,
   note?: string,
+  database: Db = defaultDb,
 ): Promise<{ pointsEarned: number; totalPoints: number } | null> {
-  const user = await getUserByPhone(phone);
-  if (!user) return null;
-
   const pointsEarned = Math.floor(purchaseAmount / POINTS_PER_BAHT);
-  if (pointsEarned <= 0) return null;
+  if (!(pointsEarned > 0)) return null;
 
-  await sql`
-    UPDATE users SET
-      points               = points + ${pointsEarned},
-      total_earned         = total_earned + ${pointsEarned},
-      last_purchase_at     = NOW(),
-      notified_inactive_11m = FALSE
-    WHERE phone = ${phone}
-  `;
-  await sql`
-    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
-    VALUES (${user.id}, ${purchaseAmount}, ${pointsEarned}, 'earn', ${note ?? null}, NOW() + INTERVAL '1 year')
-  `;
-
-  return { pointsEarned, totalPoints: user.points + pointsEarned };
+  const rows = await database.query(
+    `WITH u AS (
+       UPDATE users SET
+         points                = points + $2,
+         total_earned          = total_earned + $2,
+         last_purchase_at      = NOW(),
+         notified_inactive_11m = FALSE
+        WHERE phone = $1
+       RETURNING id, points
+     ), t AS (
+       INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
+       SELECT id, $3, $2, 'earn', $4, NOW() + INTERVAL '1 year' FROM u
+       RETURNING id
+     )
+     SELECT points FROM u`,
+    [phone, pointsEarned, purchaseAmount, note ?? null],
+  );
+  if (!rows[0]) return null;
+  return { pointsEarned, totalPoints: Number(rows[0].points) };
 }
 
+/** หักแต้ม (แอดมินหักเอง) — ไม่พบสมาชิก / แต้มไม่พอ / จำนวนไม่ถูกต้อง = null และไม่เขียนอะไรเลย · แต้มไม่มีทางติดลบ */
 export async function deductPoints(
   phone: string,
   points: number,
   note?: string,
+  database: Db = defaultDb,
 ): Promise<{ pointsDeducted: number; totalPoints: number } | null> {
-  const user = await getUserByPhone(phone);
-  if (!user) return null;
-  if (user.points < points) return null;
+  const pts = Math.trunc(Number(points));
+  if (!(pts > 0)) return null;
 
-  await sql`UPDATE users SET points = points - ${points} WHERE phone = ${phone}`;
-  await sql`
-    INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
-    VALUES (${user.id}, 0, ${points}, 'redeem', ${note ?? null})
-  `;
-
-  return { pointsDeducted: points, totalPoints: user.points - points };
+  const rows = await database.query(
+    `WITH u AS (
+       UPDATE users SET points = points - $2
+        WHERE phone = $1 AND points >= $2
+       RETURNING id, points
+     ), t AS (
+       INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
+       SELECT id, 0, $2, 'redeem', $3 FROM u
+       RETURNING id
+     )
+     SELECT points FROM u`,
+    [phone, pts, note ?? null],
+  );
+  if (!rows[0]) return null;
+  return { pointsDeducted: pts, totalPoints: Number(rows[0].points) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

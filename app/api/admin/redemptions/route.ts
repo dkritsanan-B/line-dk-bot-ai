@@ -1,9 +1,8 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql, db } from "@/lib/db";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
-import type { SqlTag } from "@/app/api/liff/redeem/logic";
 import { confirmRedemption, cancelRedemption } from "./logic";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
@@ -61,9 +60,7 @@ export async function POST(req: NextRequest) {
     if (!id || !action) return NextResponse.json({ error: "missing fields" }, { status: 400 });
     if (action !== "confirm" && action !== "cancel") return NextResponse.json({ error: "invalid action" }, { status: 400 });
 
-    // ตรรกะทั้งหมด (ยึดคำขอ → ตัดสต๊อกเฉพาะที่ยังเหลือจริง → หักแต้มเฉพาะที่ยังพอ → ถอยคืนถ้าติดขัด)
-    // อยู่ใน ./logic.ts ทดสอบได้โดยไม่ต่อฐานข้อมูล — tests/admin-confirm.test.ts
-    const db = sql as unknown as SqlTag;
+    // ตรรกะทั้งหมดอยู่ใน ./logic.ts — ยืนยัน = คำสั่งเดียวที่สำเร็จทั้งหมดหรือไม่เขียนอะไรเลย (tests/admin-confirm-pg.test.mjs)
     const result = action === "confirm"
       ? await confirmRedemption(db, Number(id))
       : await cancelRedemption(db, Number(id));

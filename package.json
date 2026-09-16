@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node tests/run.mjs && tsx tests/expiry.test.ts && tsx tests/redeem-guard.test.ts && tsx tests/admin-confirm.test.ts"
+    "test": "node tests/run.mjs && tsx tests/expiry.test.ts && tsx tests/redeem-guard.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1084.0",
