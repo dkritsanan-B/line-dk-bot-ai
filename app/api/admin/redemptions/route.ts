@@ -3,6 +3,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
+import type { SqlTag } from "@/app/api/liff/redeem/logic";
+import { confirmRedemption, cancelRedemption } from "./logic";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -57,55 +59,33 @@ export async function POST(req: NextRequest) {
   try {
     const { id, action } = await req.json(); // action: 'confirm' | 'cancel'
     if (!id || !action) return NextResponse.json({ error: "missing fields" }, { status: 400 });
+    if (action !== "confirm" && action !== "cancel") return NextResponse.json({ error: "invalid action" }, { status: 400 });
 
-    const rows = await sql`
-      SELECT r.*, u.line_user_id, u.points, rw.name AS reward_name, rw.stock, rw.id AS reward_id
-      FROM redemption_requests r
-      JOIN users u  ON u.id  = r.user_id
-      JOIN rewards rw ON rw.id = r.reward_id
-      WHERE r.id = ${id} AND r.status = 'pending'
-      LIMIT 1
-    `;
-    if (rows.length === 0) return NextResponse.json({ error: "ไม่พบคำขอ หรือดำเนินการไปแล้ว" }, { status: 404 });
-    const req2 = rows[0];
+    // ตรรกะทั้งหมด (ยึดคำขอ → ตัดสต๊อกเฉพาะที่ยังเหลือจริง → หักแต้มเฉพาะที่ยังพอ → ถอยคืนถ้าติดขัด)
+    // อยู่ใน ./logic.ts ทดสอบได้โดยไม่ต่อฐานข้อมูล — tests/admin-confirm.test.ts
+    const db = sql as unknown as SqlTag;
+    const result = action === "confirm"
+      ? await confirmRedemption(db, Number(id))
+      : await cancelRedemption(db, Number(id));
 
-    if (action === "confirm") {
-      if ((req2.points as number) < (req2.points_required as number)) {
-        return NextResponse.json({ error: "แต้มลูกค้าไม่พอแล้ว" }, { status: 400 });
-      }
-      // หักแต้ม
-      await sql`UPDATE users SET points = points - ${req2.points_required as number} WHERE id = ${req2.user_id as number}`;
-      // บันทึก transaction
-      await sql`
-        INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note)
-        VALUES (${req2.user_id as number}, 0, ${req2.points_required as number}, 'redeem', ${`แลก: ${req2.reward_name as string} (#REQ-${id as number})`})
-      `;
-      // ลด stock
-      if (req2.stock !== null) {
-        await sql`UPDATE rewards SET stock = GREATEST(0, stock - 1) WHERE id = ${req2.reward_id as number}`;
-      }
-      // อัพเดต status
-      await sql`UPDATE redemption_requests SET status = 'confirmed', confirmed_at = NOW() WHERE id = ${id}`;
-      // แจ้งลูกค้า
-      if (req2.line_user_id) {
-        await pushMessage(req2.line_user_id as string,
-          `🎉 ยืนยันแลกของรางวัลแล้วค่ะ!\n\n🎁 ${req2.reward_name as string}\n⭐ หักแต้ม ${(req2.points_required as number).toLocaleString()} แต้ม\n\nขอบคุณที่ใช้บริการ DK Steel and Tools นะคะ 😊`
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+
+    const row = result.row;
+    if (result.action === "confirmed") {
+      if (row.line_user_id) {
+        await pushMessage(row.line_user_id,
+          `🎉 ยืนยันแลกของรางวัลแล้วค่ะ!\n\n🎁 ${row.reward_name}\n⭐ หักแต้ม ${row.points_required.toLocaleString()} แต้ม\n⭐ แต้มคงเหลือ ${result.pointsLeft.toLocaleString()} แต้ม\n\nขอบคุณที่ใช้บริการ DK Steel and Tools นะคะ 😊`
         );
       }
-      return NextResponse.json({ success: true, action: "confirmed" });
+      return NextResponse.json({ success: true, action: "confirmed", points_left: result.pointsLeft, stock_left: result.stockLeft });
     }
 
-    if (action === "cancel") {
-      await sql`UPDATE redemption_requests SET status = 'cancelled' WHERE id = ${id}`;
-      if (req2.line_user_id) {
-        await pushMessage(req2.line_user_id as string,
-          `❌ คำขอแลก ${req2.reward_name as string} (#REQ-${id as number}) ถูกยกเลิกแล้วค่ะ\n\nหากมีข้อสงสัย กรุณาติดต่อพนักงานที่ร้านได้เลยค่ะ`
-        );
-      }
-      return NextResponse.json({ success: true, action: "cancelled" });
+    if (row.line_user_id) {
+      await pushMessage(row.line_user_id,
+        `❌ คำขอแลก ${row.reward_name} (#REQ-${row.id}) ถูกยกเลิกแล้วค่ะ\n\nแต้ม ${row.points_required.toLocaleString()} แต้มที่จองไว้ ถูกปล่อยคืนให้ใช้แลกรายการอื่นได้แล้ว\nหากมีข้อสงสัย กรุณาติดต่อพนักงานที่ร้านได้เลยค่ะ`
+      );
     }
-
-    return NextResponse.json({ error: "invalid action" }, { status: 400 });
+    return NextResponse.json({ success: true, action: "cancelled" });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

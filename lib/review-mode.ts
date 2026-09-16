@@ -8,6 +8,8 @@
 // ข้อมูลทั้งหมดในไฟล์นี้เป็นของปลอมที่แต่งขึ้น ไม่มีการอ่าน/เขียนฐานข้อมูลจริง
 // วันที่ทั้งหมดคิดจาก "ตอนนี้" เพื่อให้ความหมายของสถานการณ์คงที่ (เช่น "อีก 21 วันหมดอายุ" ยังเป็น 21 วันเสมอ)
 
+import { summarizeExpiring, type ExpirySummary, type PendingBillSummary } from "./points";
+
 export const REVIEW_ENABLED_NOTE = "โหมดรีวิว: ข้อมูลจำลอง ไม่ใช่ลูกค้าจริง";
 
 export function isReviewEnabled(): boolean {
@@ -45,14 +47,34 @@ export interface ReviewTx {
   expires_at: string | null;
 }
 
+/**
+ * อาการล่มจำลอง — ให้ทีมหน้าเว็บทดสอบ "จอแจ้งเตือน" ได้จริงโดยไม่ต้องรอระบบล่มจริง
+ *   auth   = token หมดอายุ (401)            line = ติดต่อ LINE ไม่ได้ (503)
+ *   db     = ต่อฐานข้อมูลไม่ได้ (503)        server = พังอย่างอื่น (500)
+ *   expiry = ตัวสมาชิกอ่านได้ แต่ยอดแต้มใกล้หมดอายุอ่านไม่ได้ (บัตรขึ้นปกติ + ธง expiryUnavailable)
+ */
+export type ReviewFault = "auth" | "line" | "db" | "server" | "expiry";
+
+/** คำขอแลกของรางวัลที่ยังรอรับของ — แต้มก้อนนี้ถูกจองไว้แล้ว เอาไปแลกชิ้นอื่นซ้ำไม่ได้ */
+export interface ReviewPendingRedemption {
+  reward_id: number;
+  points_required: number;
+}
+
 export interface ReviewScenario {
   key: string;
   label: string;
   registered: boolean;
   profile: { userId: string; displayName: string; pictureUrl: string };
   member: ReviewMember | null;
-  expiry: { earliest_expiry: string | null; expiring_points: number | null } | null;
+  expiry: ExpirySummary;
   transactions: ReviewTx[];
+  /** ปกติไม่ใส่ = ทุกอย่างทำงานดี · ใส่เมื่ออยากให้ API ตอบแบบระบบมีปัญหา */
+  fault?: ReviewFault;
+  /** คำขอแลกที่ยังค้าง = แต้มถูกจองไว้แล้ว (กติกาเดียวกับของจริง ดู app/api/liff/redeem/logic.ts) */
+  pendingRedemptions?: ReviewPendingRedemption[];
+  /** บิลที่ระบบเห็นแล้วแต่ยังให้แต้มไม่ได้ (มีได้เฉพาะสถานการณ์ที่ยังไม่ผูกรหัส) — /api/member เอาไปคิดเป็น link.pending_bills */
+  pendingBills?: PendingBillSummary | null;
 }
 
 const profileOf = (name: string): ReviewScenario["profile"] => ({
@@ -88,7 +110,8 @@ const earn = (id: number, baht: number, pts: number, daysAgo: number, note: stri
   expires_at: iso(365 - daysAgo),
 });
 
-export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
+// ข้อมูลดิบของแต่ละสถานการณ์ — ไม่มีช่อง expiry เพราะคำนวณจาก transactions ด้วยกติกาเดียวกับของจริง (ดูท้ายไฟล์)
+const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
   // 1) ยังไม่สมัคร — จอแรกสุดที่ลูกค้าใหม่เห็นหลังสแกน QR
   new: {
     key: "new",
@@ -96,7 +119,6 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: false,
     profile: profileOf("ช่างวิชัย"),
     member: null,
-    expiry: null,
     transactions: [],
   },
 
@@ -107,7 +129,40 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("ช่างสมชาย"),
     member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-0.02), customer_id: null, suggested_customer_id: "CUS-00912" }),
-    expiry: null,
+    transactions: [],
+  },
+
+  // 2.1) สมัครแล้ว 6 วัน ไม่มีแม้แต่รหัสที่ระบบเดาไว้ (เบอร์ไม่ตรงลูกค้า Hero คนไหน) — ซื้อของไปแล้วก็ยังไม่ได้แต้ม
+  //      นี่คือเคสที่เงียบที่สุดและเป็นต้นเรื่องของงานนี้ · overdue = true (ค้างเกิน LINK_OVERDUE_DAYS)
+  unlinked: {
+    key: "unlinked",
+    label: "สมัคร 6 วันแล้ว ยังไม่ผูกรหัส แต้มไม่เข้า",
+    registered: true,
+    profile: profileOf("ช่างสมชาย"),
+    member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-6), customer_id: null, suggested_customer_id: null }),
+    transactions: [],
+  },
+
+  // 2.2) รอพนักงานกดยืนยันรหัสที่ระบบเดาไว้ และ "มีบิลค้าง" ที่ระบบเห็นแล้วแต่ให้แต้มไม่ได้
+  //      ตัวเลขบิลค้างมาจากตาราง hero_pending_bills ของจริง (ที่นี่จำลองไว้ให้หน้าเว็บทำจอได้)
+  //      ย้ำ: เป็นตัวเลขไว้บอกเท่านั้น ไม่ใช่คิวจ่ายแต้มย้อนหลัง
+  waitingBills: {
+    key: "waitingBills",
+    label: "รอผูกรหัส มีบิลค้าง 3 ใบ ยังไม่ได้แต้ม",
+    registered: true,
+    profile: profileOf("ช่างสมชาย"),
+    member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-5), customer_id: null, suggested_customer_id: "CUS-00912" }),
+    transactions: [],
+    pendingBills: { count: 3, amount: 12450, estimated_points: 124, first_bill_date: dateOnly(-5), last_bill_date: dateOnly(-1) },
+  },
+
+  // 2.3) พนักงานเพิ่งกดผูกรหัสให้ ยังไม่มีบิลใหม่เข้ามา — ต้องไม่ขึ้นคำเตือนใด ๆ อีก
+  linkedNew: {
+    key: "linkedNew",
+    label: "ผูกรหัสแล้ว รอบิลแรก",
+    registered: true,
+    profile: profileOf("ช่างสมชาย"),
+    member: member({ points: 0, total_earned: 0, last_purchase_at: null, created_at: iso(-2), customer_id: "CUS-00912", suggested_customer_id: null }),
     transactions: [],
   },
 
@@ -118,7 +173,6 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("ช่างสมชาย"),
     member: member({ points: 120, total_earned: 120, company: "หจก. สมชายก่อสร้าง" }),
-    expiry: { earliest_expiry: iso(363), expiring_points: 120 },
     transactions: [
       earn(5, 4200, 42, 2, "บิล IV-690231 · เหล็กกล่อง ท่อ PVC"),
       earn(4, 7800, 78, 9, "บิล IV-690118 · สีทาภายนอก 5 แกลลอน"),
@@ -132,7 +186,6 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("ช่างสมชาย"),
     member: member({ points: 2300, total_earned: 2760, company: "หจก. สมชายก่อสร้าง" }),
-    expiry: { earliest_expiry: iso(21), expiring_points: 400 },
     transactions: [
       earn(12, 18500, 185, 3, "บิล IV-690402 · เมทัลชีท 120 เมตร"),
       { id: 11, purchase_amount: 0, points_earned: 300, type: "redeem", note: "แลกส่วนลด 300 บาท", created_at: iso(-16), expires_at: null },
@@ -143,6 +196,31 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     ],
   },
 
+  // 4.5) แต้มเยอะ แต่ก้อนที่ใกล้หมดอายุมีนิดเดียว — เคสที่เคยโชว์ผิดว่า "2,000 แต้มจะหมดใน 21 วัน" (16 ก.ย. 69)
+  expiringSmall: {
+    key: "expiringSmall",
+    label: "Gold 2,000 แต้ม ใกล้หมดจริงแค่ 50",
+    registered: true,
+    profile: profileOf("ช่างสมชาย"),
+    member: member({ id: 9004, phone: "0845556666", first_name: "อนุชา", last_name: "แก้วมณี", points: 2000, total_earned: 2000, company: "อนุชาการช่าง" }),
+    transactions: [
+      earn(52, 195000, 1950, 10, "บิล IV-690470 · เหล็กเส้น + ปูน ล็อตใหญ่"),
+      earn(51, 5000, 50, 344, "บิล IV-689130 · ใบตัดเหล็ก + ลวดผูก"),
+    ],
+  },
+
+  // 4.6) มีคำขอแลกค้างอยู่ 1 ใบ — แต้ม 300 ถูกจองไว้แล้ว เหลือใช้ได้จริง 300
+  //      เคสนี้คือบั๊ก "แลกซ้อนจนแต้มไม่พอตอนมารับของ" (16 ก.ย. 69) ที่เพิ่งปิดไป
+  reserved: {
+    key: "reserved",
+    label: "มีคำขอแลกค้าง แต้มถูกจองไว้ 300",
+    registered: true,
+    profile: profileOf("ช่างสุชาติ"),
+    member: member({ id: 9005, phone: "0861112222", first_name: "สุชาติ", last_name: "พูนทรัพย์", points: 600, total_earned: 600 }),
+    transactions: [earn(61, 62000, 620, 12, "บิล IV-690410 · เหล็กกล่อง + ตะแกรง")],
+    pendingRedemptions: [{ reward_id: 103, points_required: 300 }],
+  },
+
   // 5) ระดับสูงสุด — ต้องเห็นว่าจอไม่พังเมื่อไม่มีขั้นถัดไป
   diamond: {
     key: "diamond",
@@ -150,7 +228,6 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("คุณประเสริฐ"),
     member: member({ id: 9002, phone: "0899887766", first_name: "ประเสริฐ", last_name: "รุ่งเรือง", company: "บจก. รุ่งเรืองการช่าง", points: 12400, total_earned: 14800, created_at: iso(-800) }),
-    expiry: { earliest_expiry: iso(95), expiring_points: 1200 },
     transactions: [
       earn(30, 156000, 1560, 5, "บิล IV-690455 · เหล็กรูปพรรณ ล็อตใหญ่"),
       earn(29, 88000, 880, 21, "บิล IV-690333 · เมทัลชีท + อุปกรณ์"),
@@ -165,7 +242,6 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("ช่างมานพ"),
     member: member({ id: 9003, phone: "0867778888", first_name: "มานพ", last_name: "ทองดี", points: 260, total_earned: 2600, last_purchase_at: iso(-425), created_at: iso(-900) }),
-    expiry: null,
     transactions: [earn(20, 26000, 260, 425, "บิล IV-688010 · วัสดุก่อสร้าง")],
   },
 
@@ -176,13 +252,45 @@ export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = {
     registered: true,
     profile: profileOf("ช่างสมชาย"),
     member: member({ points: 820, total_earned: 820, birthday: dateOnly(-365 * 45) }),
-    expiry: { earliest_expiry: iso(200), expiring_points: 500 },
     transactions: [
       { id: 40, purchase_amount: 0, points_earned: 200, type: "earn", note: "ของขวัญวันเกิด 2569", created_at: iso(-0.1), expires_at: iso(365) },
       earn(39, 62000, 620, 30, "บิล IV-690090 · เหล็ก + ปูน"),
     ],
   },
+
+  // ── สถานการณ์ "ระบบมีปัญหา" ────────────────────────────────────────────────
+  // มีไว้ให้ทีมหน้าเว็บสร้างจอแจ้งเตือนได้จริงโดยไม่ต้องรอระบบล่มจริง
+  // ทุกตัวนี้ "เป็นสมาชิกอยู่แล้ว" ทั้งนั้น — ถ้าจอไหนขึ้นคำว่า "สมัครสมาชิกฟรี" แปลว่ายังพังอยู่
+  fail_db: {
+    key: "fail_db", label: "ฐานข้อมูลล่ม (ทุกเส้นตอบ DB_UNAVAILABLE 503)",
+    registered: true, profile: profileOf("ช่างสมชาย"), member: null, transactions: [], fault: "db",
+  },
+  fail_auth: {
+    key: "fail_auth", label: "token หมดอายุ (ทุกเส้นตอบ AUTH_REQUIRED 401)",
+    registered: true, profile: profileOf("ช่างสมชาย"), member: null, transactions: [], fault: "auth",
+  },
+  fail_line: {
+    key: "fail_line", label: "ติดต่อ LINE ไม่ได้ (LINE_UNAVAILABLE 503)",
+    registered: true, profile: profileOf("ช่างสมชาย"), member: null, transactions: [], fault: "line",
+  },
+  fail_server: {
+    key: "fail_server", label: "พังไม่ทราบสาเหตุ (SERVER_ERROR 500)",
+    registered: true, profile: profileOf("ช่างสมชาย"), member: null, transactions: [], fault: "server",
+  },
+  fail_expiry: {
+    key: "fail_expiry", label: "บัตรขึ้นปกติ แต่ดูวันหมดอายุแต้มไม่ได้ (expiryUnavailable)",
+    registered: true, profile: profileOf("ช่างสมชาย"),
+    member: member({ points: 2300, total_earned: 2760, company: "หจก. สมชายก่อสร้าง" }),
+    transactions: [earn(12, 40000, 400, 344, "บิล IV-689120 · เหล็กโครงหลังคา")],
+    fault: "expiry",
+  },
 };
+
+// แต้มใกล้หมดอายุของโหมดรีวิว ต้องคิดด้วยกติกาเดียวกับลูกค้าจริง (lib/points.ts) ไม่ใช่พิมพ์ตัวเลขไว้เอง
+// ไม่งั้นผู้ตรวจเห็นกล่องเตือนที่ลูกค้าจริงไม่มีวันเห็น (และนั่นคือหน้าตาของบั๊กที่เพิ่งแก้ไป)
+export const REVIEW_SCENARIOS: Record<string, ReviewScenario> = Object.fromEntries(
+  Object.entries(SCENARIO_DATA).map(([key, s]) => [key, { ...s, expiry: summarizeExpiring(s.transactions, s.member?.points ?? 0) }]),
+) as Record<string, ReviewScenario>;
 
 export const REVIEW_SCENARIO_KEYS = Object.keys(REVIEW_SCENARIOS);
 
@@ -194,6 +302,13 @@ export const REVIEW_REWARDS = [
   { id: 104, name: "ตลับเมตร 5 เมตร", description: "แบรนด์ร้าน ล็อกแน่น", points_required: 250, image_url: null, stock: 0 },
   { id: 105, name: "บัตรเติมน้ำมัน 1,000 บาท", description: "รับที่ร้าน แสดงบัตรสมาชิก", points_required: 1000, image_url: null, stock: 8 },
 ];
+
+/**
+ * จำนวนที่ "สมาชิกท่านอื่น" จองของรางวัลชิ้นนั้นค้างไว้ (ข้อมูลจำลอง)
+ * มีไว้ให้ผู้ตรวจเห็นเคส "ของยังไม่หมด แต่ถูกจองครบแล้ว" ซึ่งฝั่งจริงนับจากคำขอสถานะ pending
+ * บัตรเติมน้ำมัน (105) เหลือ 8 ชิ้น ถูกจองไว้ครบ 8 → แลกเพิ่มไม่ได้จนกว่าจะมีคนมารับหรือถูกยกเลิก
+ */
+export const REVIEW_REWARD_RESERVED: Record<number, number> = { 105: 8 };
 
 /** อ่านสถานการณ์จาก query string — คืน null ถ้าโหมดปิดอยู่ หรือรหัสไม่ตรง หรือไม่รู้จักสถานการณ์นั้น */
 export function reviewScenarioFrom(url: URL | { searchParams: URLSearchParams }): ReviewScenario | null {

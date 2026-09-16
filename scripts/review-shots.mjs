@@ -16,7 +16,7 @@ const SECRET = (fs.readFileSync(".env.local", "utf8").match(/^REVIEW_SECRET=(.+)
 if (!SECRET) { console.error("❌ ไม่มี REVIEW_SECRET ใน .env.local"); process.exit(1); }
 
 // สถานการณ์ต้องตรงกับ lib/review-mode.ts
-const SCENARIOS = ["new", "pending", "bronze120", "gold2300", "diamond", "inactive", "birthday"];
+const SCENARIOS = ["new", "pending", "unlinked", "waitingBills", "linkedNew", "bronze120", "gold2300", "expiringSmall", "diamond", "inactive", "birthday"];
 const PAGES = [
   { key: "liff", path: "/liff", label: "บัตรสมาชิก / สมัครสมาชิก" },
   { key: "rewards", path: "/liff/rewards", label: "ของรางวัล" },

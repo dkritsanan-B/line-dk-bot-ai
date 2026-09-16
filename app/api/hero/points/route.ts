@@ -59,6 +59,8 @@ const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
 // GET → รายชื่อสมาชิกที่ผูกรหัส Hero แล้ว (codes เดิม + members พร้อมระดับ) และสมาชิกที่ยังไม่ผูก (unlinked มีเบอร์) ให้ watcher บนเครื่องร้าน
 //   members[].level = ระดับราคา Hero (CSCUSTOMER.PRICELEVEL) 0=Welcome 1=Bronze … 5=Diamond — ชิ้น B: watcher เขียนลง Hero ให้ (ลูกค้าเครดิตได้ 0)
 //   unlinked = ให้ watcher ลองจับคู่เบอร์กับ CSCUSTOMER.TELEPHONE แล้ว PUT กลับมาผูกอัตโนมัติ
+//   pending/pending_codes = สมาชิกที่ระบบเดารหัสไว้แล้วแต่พนักงานยังไม่กดยืนยัน — watcher ส่งบิลของรหัสพวกนี้มาได้
+//     POST จะ "จดไว้เฉย ๆ" ในตาราง hero_pending_bills (ไม่ให้แต้ม) เพื่อบอกลูกค้า/พนักงานว่าค้างอยู่กี่ใบ (16 ก.ย. 69)
 export async function GET(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   await migrateDB();
@@ -70,7 +72,13 @@ export async function GET(req: NextRequest) {
   const codes = [...new Set(members.map((m) => m.code))];
   const unlinked = rows.filter((r) => !normCode(r.customer_id) && !normCode(r.suggested_customer_id) && String(r.phone ?? "").replace(/\D/g, "").length >= 9)
     .map((r) => ({ id: r.id as number, phone: String(r.phone).replace(/\D/g, "") }));
-  return NextResponse.json({ codes, members, unlinked }, { headers: { "Cache-Control": "no-store" } });
+  // pending = สมาชิกที่ยังไม่ถูกผูก แต่ระบบเดารหัสไว้แล้ว (รอพนักงานกดยืนยัน)
+  // watcher ส่งบิลของรหัสพวกนี้มาได้เลย → POST จะ "จดไว้เฉย ๆ" (hero_pending_bills) ไม่ให้แต้ม ไม่แตะยอดใคร
+  // มีไว้เพื่อบอกลูกค้า/พนักงานว่าค้างอยู่กี่ใบ ไม่ใช่คิวจ่ายแต้มย้อนหลัง
+  const pending = rows.filter((r) => !normCode(r.customer_id) && normCode(r.suggested_customer_id))
+    .map((r) => ({ id: r.id as number, code: normCode(r.suggested_customer_id) as string }));
+  const pending_codes = [...new Set(pending.map((p) => p.code))];
+  return NextResponse.json({ codes, members, unlinked, pending, pending_codes }, { headers: { "Cache-Control": "no-store" } });
 }
 
 // PUT { links: [{ id, customer_id }] } → "แนะนำ" รหัส Hero ให้สมาชิก (watcher จับคู่เบอร์โทรได้ตัวเดียว) — เก็บใน suggested_customer_id ให้พนักงานกดยืนยันในหน้า /admin
@@ -134,6 +142,35 @@ function parseLines(v: unknown): HeroLine[] {
   }).filter((l) => l.code);
 }
 
+/**
+ * จดบิลที่ "ให้แต้มไม่ได้เพราะยังไม่ผูกรหัส" ไว้ให้เห็น — คืน id สมาชิกที่บิลนี้น่าจะเป็นของเขา (null = ไม่มีใครเกี่ยว)
+ *
+ * จดเฉพาะบิลที่รหัสลูกค้าตรงกับ suggested_customer_id ของสมาชิกที่ยังไม่ถูกผูกเท่านั้น
+ * (ไม่จดบิลของลูกค้าทั่วไปที่ไม่ได้เป็นสมาชิก — ไม่มีประโยชน์ และเป็นข้อมูลการซื้อของคนอื่น)
+ * ไม่ให้แต้ม ไม่แตะ users/transactions เด็ดขาด · ล้มเหลวก็แค่ไม่มีตัวเลขให้ดู ห้ามทำให้บิลอื่นพัง
+ */
+async function notePendingBill(code: string, billNo: string, amount: number, date: string | null): Promise<number | null> {
+  try {
+    const rows = await sql`
+      SELECT id FROM users
+      WHERE UPPER(TRIM(suggested_customer_id)) = ${code}
+        AND COALESCE(TRIM(customer_id), '') = ''
+      LIMIT 1
+    `;
+    const id = rows[0]?.id as number | undefined;
+    if (!id) return null;
+    await sql`
+      INSERT INTO hero_pending_bills (bill_no, user_id, customer_code, amount, bill_date)
+      VALUES (${billNo}, ${id}, ${code}, ${amount}, ${date})
+      ON CONFLICT (bill_no) DO NOTHING
+    `;
+    return id;
+  } catch (e) {
+    console.error("[hero-points] จดบิลค้างไม่สำเร็จ", billNo, e);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   let body: { bills?: BillIn[] };
@@ -144,7 +181,7 @@ export async function POST(req: NextRequest) {
   await migrateDB();
   await ensureTable();
 
-  const results: { bill_no: string; status: string; points?: number; bonus?: number; tier?: string; name?: string; message?: string; warnings?: string[] }[] = [];
+  const results: { bill_no: string; status: string; points?: number; bonus?: number; tier?: string; name?: string; message?: string; warnings?: string[]; pending_for?: number }[] = [];
   for (const b of bills) {
     const billNo = String(b.bill_no ?? "").trim();
     const code = normCode(b.customer_code);
@@ -159,7 +196,17 @@ export async function POST(req: NextRequest) {
 
       const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned, points, last_purchase_at FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
       const u = users[0];
-      if (!u) { results.push({ bill_no: billNo, status: "skip", message: "ไม่มีสมาชิกผูกรหัสนี้" }); continue; }
+      if (!u) {
+        // เดิม: ข้ามเงียบ ๆ ไม่เหลือร่องรอยว่าลูกค้าที่รอผูกรหัสซื้อของไปแล้วกี่ใบ
+        // ตอนนี้: ถ้ารหัสนี้ตรงกับ "รหัสที่ระบบเดาไว้" ของสมาชิกคนไหน ให้จดไว้ในตารางบิลค้าง (ไม่ให้แต้ม ไม่แตะ users)
+        const noted = await notePendingBill(code, billNo, amount, date);
+        results.push({
+          bill_no: billNo, status: "skip",
+          message: noted ? "ยังไม่ผูกรหัส — จดบิลค้างไว้ให้สมาชิก id " + noted + " (ไม่ให้แต้ม)" : "ไม่มีสมาชิกผูกรหัสนี้",
+          ...(noted ? { pending_for: noted } : {}),
+        });
+        continue;
+      }
 
       const before = getTierFromPoints(Number(u.total_earned ?? 0));
       // ระดับที่ใช้คิดโบนัส = ระดับ ณ ตอนซื้อ (ก่อนแต้มบิลนี้เข้า, คิด hard-drop ถ้าหายไป 12 เดือน)

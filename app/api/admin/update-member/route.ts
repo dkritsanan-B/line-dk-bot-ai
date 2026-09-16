@@ -31,6 +31,14 @@ export async function PATCH(req: NextRequest) {
     }
     await sql`UPDATE users SET customer_id = ${code}, suggested_customer_id = NULL WHERE id = ${id}`;
     done.push(`รหัส Hero ${cur.customer_id ?? "-"} → ${code ?? "-"}`);
+    // บิลที่ค้างไว้ตอนยังไม่ผูก = ปิดทิ้ง ไม่ให้แต้มย้อนหลัง (เจ้าของร้านตัดสินแล้วว่าไม่นับข้อมูลเก่า)
+    // ปิดไว้เพื่อให้บัตรสมาชิก/หน้าแอดมินเลิกขึ้นคำเตือน และเหลือหลักฐานว่าตอนผูกมีบิลค้างกี่ใบ
+    if (code) {
+      try {
+        const closed = await sql`UPDATE hero_pending_bills SET resolved_at = NOW() WHERE user_id = ${id} AND resolved_at IS NULL RETURNING bill_no`;
+        if (closed.length) done.push(`ปิดบิลค้าง ${closed.length} ใบ (ไม่ให้แต้มย้อนหลัง)`);
+      } catch (e) { console.error("[admin] ปิดบิลค้างไม่สำเร็จ", id, e); }
+    }
   }
 
   if (phone !== undefined) {

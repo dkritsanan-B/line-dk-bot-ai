@@ -6,3 +6,4 @@ hero-price-levels/
 tsconfig.tsbuildinfo
 scripts/richmenu/out/
 review/
+*.tsbuildinfo
