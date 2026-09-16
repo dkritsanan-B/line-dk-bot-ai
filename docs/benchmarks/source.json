@@ -1,0 +1,430 @@
+{
+  "captured_at": "2026-09-16",
+  "captured_by": "scripts/capture-benchmarks.mjs (Playwright + Chromium)",
+  "device": {
+    "viewport": "390x844",
+    "deviceScaleFactor": 2,
+    "isMobile": true,
+    "locale": "th-TH",
+    "timezone": "Asia/Bangkok",
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; SM-A536B) Chrome/124 Mobile Safari/537.36"
+  },
+  "limitations": [
+    "ทุกภาพในโฟลเดอร์นี้เป็น *หน้าเว็บสาธารณะ* ของแต่ละแบรนด์ ไม่ใช่หน้าหลังล็อกอินในแอปหรือ LINE ของเขา",
+    "ใช้เทียบได้เฉพาะเรื่อง การเล่าสิทธิ์ / ชวนสมัคร / ตารางระดับ / วิธีแลกคะแนน เท่านั้น",
+    "หน้าบัตรสมาชิก-แดชบอร์ด-ประวัติแต้ม (P3, P5) ของคู่เทียบอยู่หลังล็อกอินทั้งหมด แคปไม่ได้ ผู้ตรวจต้องระบุว่าเป็นการเทียบทางอ้อมจากงานวิจัยข้อความ (docs/benchmarks/RESEARCH.md)",
+    "ไม่มีการเลี่ยงระบบกันบอท เว็บไหนตอบ 403 ถือว่าแคปไม่ได้และบันทึกไว้ในช่อง failed",
+    "ภาพ -full.png ของบางหน้าไม่ได้กว้าง 780px เพราะเนื้อหาในหน้าล้นกรอบมือถือเอง (ระบุไว้ราย URL ในช่อง caveat) ถ้าจะ blind test ให้ใช้ -viewport.png",
+    "ลิขสิทธิ์ภาพเป็นของแต่ละแบรนด์ ใช้ภายในเพื่อเปรียบเทียบงานออกแบบเท่านั้น ห้ามเผยแพร่ซ้ำ"
+  ],
+  "file_naming": "docs/benchmarks/<brand_key>/<page_kind>[-n]-viewport.png (ครึ่งบนที่เห็นทันที) และ -full.png (ทั้งหน้า) · ต่อท้าย -2 -3 เมื่อแบรนด์เดียวกันมีหลาย URL ที่เป็นหน้าชนิดเดียวกัน",
+  "pages": [
+    {
+      "brand": "ไทวัสดุ / The 1",
+      "brand_key": "thaiwatsadu",
+      "page_kind": "pitch",
+      "url": "https://www.the1.co.th/the1-membership",
+      "viewport": "docs/benchmarks/thaiwatsadu/pitch-4-viewport.png",
+      "full": "docs/benchmarks/thaiwatsadu/pitch-4-full.png",
+      "usable": true,
+      "what_it_shows": "หน้าชวนสมัคร The 1 (โปรแกรมแต้มที่ไทวัสดุใช้) ไอคอน 4 ข้อ สะสม/โอน/แลกคูปอง/ส่วนลด + FAQ accordion + ปุ่มโหลดแอป",
+      "caveat": "ธีมดำล้วน ตัวอักษรอธิบายเล็กมากบนมือถือ"
+    },
+    {
+      "brand": "ไทวัสดุ / The 1",
+      "brand_key": "thaiwatsadu",
+      "page_kind": "tiers",
+      "url": "https://www.the1.co.th/the1Exclusive/privileges",
+      "viewport": "docs/benchmarks/thaiwatsadu/tiers-viewport.png",
+      "full": "docs/benchmarks/thaiwatsadu/tiers-full.png",
+      "usable": true,
+      "what_it_shows": "ระดับบนสุด The 1 Exclusive: เกณฑ์ยอดใช้จ่าย 250,000 บาท/ปี + สิทธิ์ที่ได้ + FAQ",
+      "caveat": "เป็นระดับเดียว ไม่ใช่ตารางเทียบทุกระดับ"
+    },
+    {
+      "brand": "ไทวัสดุ / The 1",
+      "brand_key": "thaiwatsadu",
+      "page_kind": "rewards",
+      "url": "https://www.the1.co.th/the1app",
+      "viewport": "docs/benchmarks/thaiwatsadu/rewards-3-viewport.png",
+      "full": "docs/benchmarks/thaiwatsadu/rewards-3-full.png",
+      "usable": true,
+      "what_it_shows": "ขายแอป The 1: เช็ก-แลก-โอนคะแนนด้วยตัวเอง มีภาพจอในแอป (ใกล้เคียงหน้าบัตรสมาชิกของเราที่สุดในบรรดาภาพสาธารณะ)",
+      "caveat": "เป็นภาพโฆษณาแอป ไม่ใช่จอจริงที่กดใช้ได้"
+    },
+    {
+      "brand": "HomePro",
+      "brand_key": "homepro",
+      "page_kind": "pitch",
+      "url": "https://www.homepro.co.th/homecard/",
+      "viewport": "docs/benchmarks/homepro/pitch-viewport.png",
+      "full": "docs/benchmarks/homepro/pitch-full.png",
+      "usable": true,
+      "what_it_shows": "หน้าชวนสมัคร Home Card ภาษาไทย: สมัครที่สาขา แจ้งเบอร์โทรก็สะสมได้ · 30 บาท = 1 คะแนน · 800/1,000 คะแนน = คูปอง 100 บาท · ตารางสิทธิ์ 3 ระดับ",
+      "caveat": "แบนเนอร์คุกกี้ปิดไม่ได้ บังขอบล่างราว 15% ของจอ · ภาพ -full กว้าง 1912px เพราะหน้าหลุดกรอบมือถือ ใช้ -viewport แทน"
+    },
+    {
+      "brand": "HomePro / MegaHome",
+      "brand_key": "homepro",
+      "page_kind": "faq",
+      "url": "https://www.megahome.co.th/m/homecard/",
+      "viewport": "docs/benchmarks/homepro/faq-viewport.png",
+      "full": "docs/benchmarks/homepro/faq-full.png",
+      "usable": true,
+      "what_it_shows": "หน้า Home Card ฝั่งเมกาโฮม เนื้อหาเดียวกับ homepro/pitch แต่สะอาด ไม่มีแบนเนอร์บัง + ท้ายหน้ามี FAQ แบบ accordion (แต้มหมดอายุ 2 ปี, แลกยังไง, บัตรหาย)",
+      "caveat": "สะอาดที่สุดในกลุ่ม HomePro — ใช้ตัวนี้ทำ blind test"
+    },
+    {
+      "brand": "HomePro / MegaHome",
+      "brand_key": "homepro",
+      "page_kind": "signup",
+      "url": "https://www.megahome.co.th/benefit/member.jsp",
+      "viewport": "docs/benchmarks/homepro/signup-viewport.png",
+      "full": "docs/benchmarks/homepro/signup-full.png",
+      "usable": true,
+      "what_it_shows": "สมัคร \"สมาชิกช่าง\": ตารางสิทธิ์ Prestige/Regular เต็มหน้า + ขั้นตอนสมัคร + เอกสารที่ต้องใช้ + QR ทักไลน์เพื่อสมัคร",
+      "caveat": "ตารางเป็นรูปภาพ ตัวอักษรเล็กมาก ต้องซูมถึงอ่านออก (จุดอ่อนที่เราควรชนะ)"
+    },
+    {
+      "brand": "HomePro / MegaHome",
+      "brand_key": "homepro",
+      "page_kind": "rewards",
+      "url": "https://www.megahome.co.th/benefit/member-discount.jsp",
+      "viewport": "docs/benchmarks/homepro/rewards-viewport.png",
+      "full": "docs/benchmarks/homepro/rewards-full.png",
+      "usable": true,
+      "what_it_shows": "ส่วนลดสมาชิกช่าง: ลด 3% ตั้งแต่บาทแรก พร้อมรายชื่อหมวดที่ลดได้/ไม่ได้ (เหล็ก ปูน อิฐ ทราย ไม่เข้าร่วม — ตรงกับสินค้าเรา)",
+      "caveat": "ข้อความล้วน ไม่มีภาพประกอบ"
+    },
+    {
+      "brand": "HomePro",
+      "brand_key": "homepro",
+      "page_kind": "signup",
+      "url": "https://www.homepro.co.th/benefit/member.jsp",
+      "viewport": "docs/benchmarks/homepro/signup-2-viewport.png",
+      "full": "docs/benchmarks/homepro/signup-2-full.png",
+      "usable": true,
+      "what_it_shows": "เหมือน megahome/signup แต่ตารางเป็นเวอร์ชัน 3 ระดับ (Prestige/Prime/Regular) ครบกว่า",
+      "caveat": "หัวหน้าเพจแสดงคำว่า \"{}\" (บั๊กของเขาเอง) + แบนเนอร์คุกกี้บังขอบล่าง"
+    },
+    {
+      "brand": "HomePro",
+      "brand_key": "homepro",
+      "page_kind": "tiers",
+      "url": "https://www.homepro.co.th/m/homecard/index.jsp?lang=en",
+      "viewport": "docs/benchmarks/homepro/tiers-viewport.png",
+      "full": "docs/benchmarks/homepro/tiers-full.png",
+      "usable": true,
+      "what_it_shows": "Home Card ฉบับอังกฤษ ตารางสิทธิ์ 3 ระดับ + เงื่อนไขสมาชิกฉบับเต็ม",
+      "caveat": "ภาษาอังกฤษ ใช้เทียบเลย์เอาต์ได้ แต่เทียบน้ำเสียงภาษาไทยไม่ได้ · -full กว้าง 1912px"
+    },
+    {
+      "brand": "HomePro / MegaHome",
+      "brand_key": "homepro",
+      "page_kind": "pitch",
+      "url": "https://static-hp.gumlet.io/campaign/_default/ช่างใหม่ 1-30 กย.png",
+      "viewport": "docs/benchmarks/homepro/pitch-2-viewport.png",
+      "full": "docs/benchmarks/homepro/pitch-2-full.png",
+      "usable": true,
+      "what_it_shows": "ป้ายโปรชวนช่างสมัครใหม่ ก.ย. 69: รับคูปองส่วนลด 100 บาท (ตัวเลขใหญ่เต็มป้าย รูปช่างใส่หมวกนิรภัย)",
+      "caveat": "เป็นไฟล์รูปโปรโมชัน ไม่ใช่หน้าเว็บ — ใช้เทียบ \"วิธีพาดหัวข้อเสนอ\" ไม่ใช่เทียบเลย์เอาต์หน้า"
+    },
+    {
+      "brand": "HomePro",
+      "brand_key": "homepro",
+      "page_kind": "pitch",
+      "url": "https://apps.apple.com/th/app/homecard/id1537956163",
+      "viewport": "docs/benchmarks/homepro/pitch-3-viewport.png",
+      "full": "docs/benchmarks/homepro/pitch-3-full.png",
+      "usable": true,
+      "what_it_shows": "หน้า App Store ของแอป HomeCard มีภาพ screenshot จอในแอป (บัตรเสมือน QR/บาร์โค้ด, เมนู Redeem)",
+      "caveat": "เทียบทางอ้อม — เห็นจอในแอปแค่เป็นภาพย่อ"
+    },
+    {
+      "brand": "Global House",
+      "brand_key": "globalhouse",
+      "page_kind": "tiers",
+      "url": "https://ecomm.globalhouse.co.th/service/globalclub",
+      "viewport": "docs/benchmarks/globalhouse/tiers-viewport.png",
+      "full": "docs/benchmarks/globalhouse/tiers-full.png",
+      "usable": true,
+      "what_it_shows": "กติกาโกลบอลคลับทั้งหมด: 50 บาท = 1 คะแนน, เงื่อนไขแลก, สิทธิ์ใช้คะแนนแทนเงินสด, แต้มอายุ 2 ปี + ปุ่มสมัคร/ตรวจสอบคะแนน",
+      "caveat": "เป็นข้อความเรียงยาวไม่มีภาพ (จุดอ่อนที่เราควรชนะ) · -full กว้าง 1300px ใช้ -viewport"
+    },
+    {
+      "brand": "Global House",
+      "brand_key": "globalhouse",
+      "page_kind": "signup",
+      "url": "https://campaign.globalhouse.co.th/globalclub/register",
+      "viewport": "docs/benchmarks/globalhouse/signup-viewport.png",
+      "full": "docs/benchmarks/globalhouse/signup-full.png",
+      "usable": true,
+      "what_it_shows": "ฟอร์มสมัครสมาชิกจริง สั้นที่สุดในกลุ่ม: พาดหัว \"ลงทะเบียน สมัครสมาชิกโกลบอลคลับ ฟรี!\" + ช่องเดียว เบอร์โทร/เลขบัตรประชาชน",
+      "caveat": "ปุ่มส่งเป็นกล่องเทาว่าง (รูปปุ่มโหลดไม่ขึ้น) — เทียบ \"ความสั้นของฟอร์ม\" ได้ แต่อย่าตัดสินที่ปุ่ม"
+    },
+    {
+      "brand": "Global House",
+      "brand_key": "globalhouse",
+      "page_kind": "rewards",
+      "url": "https://globalhouse.co.th/articles/globalhouse-pointpay",
+      "viewport": "docs/benchmarks/globalhouse/rewards-viewport.png",
+      "full": "docs/benchmarks/globalhouse/rewards-full.png",
+      "usable": true,
+      "what_it_shows": "PointPay: ใช้คะแนนโกลบอลคลับจ่ายแทนเงินสดที่ร้านถุงเงิน 1,000 คะแนน = 100 บาท + ภาพสเต็ปในแอป",
+      "caveat": "เป็นบทความ ไม่ใช่หน้าแลกรางวัลที่กดได้ · -full ยาว 13,320px"
+    },
+    {
+      "brand": "Do Home",
+      "brand_key": "dohome",
+      "page_kind": "tiers",
+      "url": "https://www.dohome.co.th/p/membership-family-services-technician",
+      "viewport": "docs/benchmarks/dohome/tiers-viewport.png",
+      "full": "docs/benchmarks/dohome/tiers-full.png",
+      "usable": true,
+      "what_it_shows": "สมาชิก \"ครอบครัวช่าง\": แต้ม X3 ในหมวดงานช่าง + ตารางยอดซื้อ/ไตรมาส → คูปองแทนเงินสด (50,000→500 ... 300,000→4,000) + วิธีสมัครผ่าน LINE @dohome",
+      "caveat": "คู่เทียบที่ใกล้ธุรกิจเราที่สุด (ช่าง/วัสดุก่อสร้าง) · ตารางเป็นรูป อ่านบนมือถือต้องซูม"
+    },
+    {
+      "brand": "Do Home",
+      "brand_key": "dohome",
+      "page_kind": "rewards",
+      "url": "https://www.dohome.co.th/p/membership-points-condition",
+      "viewport": "docs/benchmarks/dohome/rewards-viewport.png",
+      "full": "docs/benchmarks/dohome/rewards-full.png",
+      "usable": true,
+      "what_it_shows": "กติกาแต้มฉบับเต็ม: สาขาใหญ่ 50 บาท/คะแนน, ดูโฮมทูโก+เว็บ 25 บาท/คะแนน, เหล็ก/ปูน/ทราย ได้ 7 วันหลังรับของ, แต้มอายุ 2 ปี, แลก 1,000 คะแนน = คูปอง 100 บาท",
+      "caveat": "ข้อความล้วนยาวมาก ไม่มีภาพช่วยเลย"
+    },
+    {
+      "brand": "Do Home",
+      "brand_key": "dohome",
+      "page_kind": "pitch",
+      "url": "https://www.dohome.co.th/p/privilege",
+      "viewport": "docs/benchmarks/dohome/pitch-viewport.png",
+      "full": "docs/benchmarks/dohome/pitch-full.png",
+      "usable": true,
+      "what_it_shows": "แบนเนอร์ชวนสมัคร 3 ใบ: \"สมัครง่าย แค่ใช้เบอร์โทรและยืนยัน OTP\" · \"ช้อปที่ไหนก็ได้พอยท์ 25/50 บาท = 1 คะแนน\" · \"สมัครเป็นครอบครัวช่าง อนุมัติรับคูปอง 250 แต้ม X3\"",
+      "caveat": "ทั้งหน้ามีแค่ 3 แบนเนอร์แล้วว่างยาว ไม่มีข้อความ HTML ให้อ่าน"
+    },
+    {
+      "brand": "Do Home",
+      "brand_key": "dohome",
+      "page_kind": "signup",
+      "url": "https://page.line.me/mfq4602m",
+      "viewport": "docs/benchmarks/dohome/signup-2-viewport.png",
+      "full": "docs/benchmarks/dohome/signup-2-full.png",
+      "usable": true,
+      "what_it_shows": "หน้า LINE OA ของดูโฮม (673,512 เพื่อน) โพสต์บนสุดคือ QR แจก 5,000,000 พอยท์ + แคตตาล็อก — ตรงกับช่องทางของเราที่สุด (ลูกค้าเจอเราใน LINE เหมือนกัน)",
+      "caveat": "เป็นหน้าโปรไฟล์ LINE ไม่ใช่หน้าสมาชิก ใช้เทียบ \"หน้าแรกที่ลูกค้าเจอใน LINE\" เท่านั้น"
+    },
+    {
+      "brand": "Do Home",
+      "brand_key": "dohome",
+      "page_kind": "pitch",
+      "url": "https://investor.dohome.co.th/en/updates/activity/270/",
+      "viewport": "docs/benchmarks/dohome/pitch-2-viewport.png",
+      "full": "docs/benchmarks/dohome/pitch-2-full.png",
+      "usable": true,
+      "what_it_shows": "ข่าวเปิดตัวบัตร \"ครอบครัวช่าง\" ปี 2566 อธิบายเหตุผลและตัวเลขสิทธิ์ (X3, คูปองสูงสุด 16,000 บาท/ไตรมาส)",
+      "caveat": "ข่าวนักลงทุน ใช้อ้างอิงตัวเลข/เหตุผลเชิงกลยุทธ์ ไม่ใช่ภาพเทียบดีไซน์"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "tiers",
+      "url": "https://scgfamily.com/tiering",
+      "viewport": "docs/benchmarks/scghome/tiers-viewport.png",
+      "full": "docs/benchmarks/scghome/tiers-full.png",
+      "usable": true,
+      "what_it_shows": "ระดับ VIP: เกณฑ์ 10,000 คะแนน/ปี + สิทธิ์ 5 ข้อเป็นการ์ดไอคอน (Product Sample, Workshop, Special 1 Point, Special Privilege, Special Promotion)",
+      "caveat": "สวยและอ่านง่ายที่สุดในกลุ่ม — คู่เทียบหลักของ P4 · มีแค่ระดับเดียว ไม่มีตารางเทียบ"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "pitch",
+      "url": "https://scgfamily.com/about-collect-point",
+      "viewport": "docs/benchmarks/scghome/pitch-viewport.png",
+      "full": "docs/benchmarks/scghome/pitch-full.png",
+      "usable": true,
+      "what_it_shows": "วิธีสะสมและใช้คะแนน: 25 บาท = 1 คะแนน, คอนกรีต 1 คิว = 60 คะแนน, ใช้ 20 คะแนน = 1 บาท — เล่าเป็นการ์ด 2 ใบ พร้อมโลโก้ร้านที่ร่วม",
+      "caveat": "คู่เทียบหลักของ P1 (เล่าสิทธิ์ให้เข้าใจใน 1 จอ)"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "signup",
+      "url": "https://scgfamily.com/handbook/1",
+      "viewport": "docs/benchmarks/scghome/signup-viewport.png",
+      "full": "docs/benchmarks/scghome/signup-full.png",
+      "usable": true,
+      "what_it_shows": "วิธีสมัคร 6 ขั้นเป็นภาพจอจริง (สแกน QR เพิ่มเพื่อน → กดเมนูสมัคร → กรอกเบอร์+OTP → กรอกข้อมูล → ยอมรับเงื่อนไข → อนุญาต) แยกบุคคลธรรมดา/นิติบุคคล",
+      "caveat": "อินโฟกราฟิกล้นกรอบมือถือ ภาพ -full กว้าง 2860px (ต้องเลื่อนซ้ายขวาบนมือถือจริง) ใช้ -viewport ทำ blind test"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "rewards",
+      "url": "https://scgfamily.com/handbook/4",
+      "viewport": "docs/benchmarks/scghome/rewards-viewport.png",
+      "full": "docs/benchmarks/scghome/rewards-full.png",
+      "usable": true,
+      "what_it_shows": "การแลกคะแนน 2 แบบ (จ่ายแทนเงินสด 20 คะแนน = 1 บาท / แลกของรางวัลผ่าน LINE @scgfamily) + อินโฟกราฟิกสเต็ปแลกคูปองออนไลน์และของจัดส่ง",
+      "caveat": "คู่เทียบหลักของ P6 · อินโฟกราฟิกตัวอักษรเล็ก"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "rewards",
+      "url": "https://scgfamily.com/handbook/3",
+      "viewport": "docs/benchmarks/scghome/rewards-2-viewport.png",
+      "full": "docs/benchmarks/scghome/rewards-2-full.png",
+      "usable": true,
+      "what_it_shows": "สินค้า/แบรนด์ที่สะสมคะแนนได้ เป็นอินโฟกราฟิกโลโก้แบรนด์ (SCG, เสือ, COTTO, Q-CON, CPAC)",
+      "caveat": "-full กว้าง 2860px เพราะรูปล้นกรอบ ใช้ -viewport"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "faq",
+      "url": "https://scgfamily.com/faqs",
+      "viewport": "docs/benchmarks/scghome/faq-viewport.png",
+      "full": "docs/benchmarks/scghome/faq-full.png",
+      "usable": true,
+      "what_it_shows": "ถาม-ตอบ 10 ข้อ เป็นการ์ด accordion (สมัครที่ไหน / มีค่าธรรมเนียมไหม / ใช้สิทธิ์ได้ทันทีไหม / บัตรสมาชิกได้เมื่อไร / แต้มอายุเท่าไร)",
+      "caveat": "คู่เทียบที่ดีของหน้าคำถามพบบ่อย — อ่านง่าย ตัวอักษรใหญ่"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "rewards",
+      "url": "https://scgfamily.com/promotion",
+      "viewport": "docs/benchmarks/scghome/rewards-3-viewport.png",
+      "full": "docs/benchmarks/scghome/rewards-3-full.png",
+      "usable": true,
+      "what_it_shows": "หน้ารวมโปรโมชันเป็นการ์ดรูปใหญ่ + ช่วงวันที่ + ช่องค้นหา/เรียงลำดับ",
+      "caveat": "ใช้เทียบ \"แคตตาล็อกแบบการ์ด\" กับหน้าของรางวัลเรา (P6)"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "faq",
+      "url": "https://scgfamily.com/term",
+      "viewport": "docs/benchmarks/scghome/faq-2-viewport.png",
+      "full": "docs/benchmarks/scghome/faq-2-full.png",
+      "usable": true,
+      "what_it_shows": "เงื่อนไขการสมัครสมาชิกฉบับเต็ม (ข้อ 1-n) ตัวอักษรใหญ่ ระยะบรรทัดโปร่ง",
+      "caveat": "ข้อความกฎหมายล้วน ใช้เทียบได้แค่การจัดตัวอักษร/ความอ่านง่าย"
+    },
+    {
+      "brand": "SCG Home",
+      "brand_key": "scghome",
+      "page_kind": "pitch",
+      "url": "https://www.scgnewschannel.com/th/scg-news/scg-launches-scg-family-plus-a-major-revamp-of-its-loyalty-program/",
+      "viewport": "docs/benchmarks/scghome/pitch-3-viewport.png",
+      "full": "docs/benchmarks/scghome/pitch-3-full.png",
+      "usable": true,
+      "what_it_shows": "ข่าวเปิดตัว SCG Family Plus+ อธิบายเหตุผลการยกเครื่องโปรแกรมแต้มและตัวเลขสิทธิ์",
+      "caveat": "ข่าวประชาสัมพันธ์ ใช้อ้างอิงเนื้อหา ไม่ใช่ภาพเทียบดีไซน์"
+    }
+  ],
+  "failed": [
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/new-member-get-free-coupon",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "reason": "Cloudflare ตอบ 403 \"Sorry, you have been blocked\" — เว็บบล็อกบอท ไม่พยายามเลี่ยง"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/new-register-application-conditions",
+      "brand": "ไทวัสดุ",
+      "page_kind": "signup",
+      "reason": "Cloudflare 403 เหมือนกันทั้งโดเมน thaiwatsadu.com"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/members-the1-points-redeem",
+      "brand": "ไทวัสดุ",
+      "page_kind": "rewards",
+      "reason": "Cloudflare 403"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/next-purchase-promotion",
+      "brand": "ไทวัสดุ",
+      "page_kind": "rewards",
+      "reason": "Cloudflare 403"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/condition_coupon_offline",
+      "brand": "ไทวัสดุ",
+      "page_kind": "faq",
+      "reason": "Cloudflare 403"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/page/affiliate",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "reason": "Cloudflare 403"
+    },
+    {
+      "url": "https://www.thaiwatsadu.com/th/brochures/CON6-2023",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "reason": "Cloudflare 403"
+    },
+    {
+      "url": "https://affiliate.thaiwatsadu.com",
+      "brand": "ไทวัสดุ",
+      "page_kind": "signup",
+      "reason": "โหลดขึ้นแต่เป็นหน้า login โปรแกรม affiliate (ผู้ช่วยขาย) ด้วยอีเมล/รหัสผ่าน ไม่เกี่ยวกับสมาชิกลูกค้า — ไฟล์ยังอยู่ที่ thaiwatsadu/signup-2-*.png แต่ไม่ควรใช้ blind test"
+    },
+    {
+      "url": "https://www.dohome.co.th/p/download-dohome-app",
+      "brand": "Do Home",
+      "page_kind": "signup",
+      "reason": "หน้าเกือบว่าง มีแค่โลโก้กับป้าย App Store/Google Play ไม่มีเนื้อหาสมาชิก"
+    },
+    {
+      "url": "https://www.dohome.co.th/p/membership-policy",
+      "brand": "Do Home",
+      "page_kind": "faq",
+      "reason": "เป็นนโยบาย PDPA ข้อความกฎหมายล้วน ไม่มีองค์ประกอบออกแบบให้เทียบ"
+    },
+    {
+      "url": "https://globalhouse.co.th/globalidea/detail/451",
+      "brand": "Global House",
+      "page_kind": "pitch",
+      "reason": "เป็นหน้าโปรโมทบริการ \"ช่างดี\" (จ้างช่างติดตั้ง) ไม่เกี่ยวกับระบบสมาชิก"
+    },
+    {
+      "url": "https://ecomm.globalhouse.co.th/service/faq",
+      "brand": "Global House",
+      "page_kind": "faq",
+      "reason": "FAQ เรื่อง Click & Collect / การส่งของ ไม่ใช่คำถามเรื่องสมาชิกหรือแต้ม"
+    },
+    {
+      "url": "https://globalhouse.co.th/globalidea/detail/982",
+      "brand": "Global House",
+      "page_kind": "pitch",
+      "reason": "หน้าโปรครบรอบ 28 ปี (ลุ้นทอง) ไม่ใช่หน้าสมาชิก และภาพเต็มหน้าสูง 33,366px เทียบเป็นภาพเดียวไม่ได้"
+    },
+    {
+      "url": "https://campaign.globalhouse.co.th/reward",
+      "brand": "Global House",
+      "page_kind": "faq",
+      "reason": "เป็นเงื่อนไขชิงโชคของแคมเปญ ไม่ใช่ FAQ สมาชิก และภาพเต็มหน้าสูง 30,814px"
+    },
+    {
+      "url": "https://scgfamily.com/store",
+      "brand": "SCG Home",
+      "page_kind": "pitch",
+      "reason": "ค้างที่จอขออนุญาตเข้าถึงตำแหน่ง เนื้อหาร้านค้าไม่โหลด"
+    },
+    {
+      "url": "https://scgfamily.com/term_cashcard",
+      "brand": "SCG Home",
+      "page_kind": "faq",
+      "reason": "ข้อกำหนด SCG HOME Cash Card ยาว 44,560px เป็นกำแพงตัวอักษร ใช้เป็นภาพคู่เทียบไม่ได้"
+    }
+  ],
+  "blocked_evidence": "ภาพหน้า Cloudflare ที่บล็อกเราไว้ ย้ายไปไว้ที่ docs/benchmarks/_blocked/ เพื่อไม่ให้หยิบไปใช้ผิด (เก็บไว้เป็นหลักฐานว่าลองแล้วจริง)"
+}

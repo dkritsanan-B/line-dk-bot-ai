@@ -1,159 +1,383 @@
-/* หน้าสมาชิก LINE (LIFF) — ดีไซน์ชุดเดียวกันทั้ง /liff และ /liff/rewards · mobile-first (เปิดใน LINE บนมือถือเป็นหลัก) */
+/* หน้าสมาชิก LINE (LIFF) — ระบบดีไซน์ชุดเดียวของ /liff และ /liff/rewards
+ *
+ * กติกาของไฟล์นี้ (16 ก.ย. 69 — ชิ้น P0):
+ *   1. ห้ามเขียนค่าสีลอย ๆ นอก :root  ทุกสีต้องมาจากตัวแปรด้านล่าง (ยกเว้นไล่สีบัตรที่มาจาก app/liff/lib/tiers.ts)
+ *   2. ตัวอักษรที่ต้องอ่าน ≥ 16px (--fs-body) · ป้ายกำกับสั้น ๆ ต่ำสุด 13px (--fs-label) และต้องตัวหนา+คอนทราสต์สูง
+ *   3. ปุ่ม/พื้นที่กด สูงอย่างน้อย 48px (--h-tap)
+ *   4. มุมโค้ง 3 ระดับ (sm/md/lg + pill) · เงา 3 ระดับ (1/2/3) เท่านั้น
+ *   5. คอนทราสต์ทุกคู่ต้องผ่าน AA — ตรวจด้วย `node scripts/check-contrast.mjs` (คิดกรณีแย่สุดของไล่สีบัตร)
+ */
 :root {
+  /* ── สีแบรนด์ ── */
   --dk-navy: #0B2A5B;
-  --dk-blue: #1B5FC1;
-  --dk-sky: #E8F0FC;
-  --dk-orange: #F26A1B;
-  --ink: #16213A;
-  --muted: #6B7A90;
-  --line: #E6EAF1;
-  --bg: #F3F6FB;
-  --ok: #1E8E3E;
-  --warn: #B26A00;
-  --danger: #C62828;
-  --radius: 18px;
+  --dk-blue: #12509F;          /* สีหลัก ใช้เป็นตัวอักษรบนพื้นขาวได้ (7.3:1) */
+  --dk-blue-strong: #0C3B78;
+  --dk-sky: #E4EDFB;           /* พื้นอ่อนของแบรนด์ */
+  --dk-sky-line: #C4D8F4;
+  --accent: #F26A1B;           /* ส้ม DK — ใช้เป็น "พื้น" คู่กับตัวอักษรเข้ม ไม่ใช้เป็นตัวอักษรบนขาว */
+  --accent-strong: #D8560C;
+  --accent-ink: #2B1004;       /* ตัวอักษรบนพื้นส้ม */
+  --accent-tint: #FFEFE2;
+
+  /* ── พื้นและตัวอักษร ── */
+  --bg: #EEF2F9;
+  --surface: #FFFFFF;
+  --surface-2: #F5F8FD;
+  --line: #D8E1EE;
+  --line-strong: #B9C7DB;
+  --ink: #12203A;              /* ข้อความหลัก */
+  --ink-2: #33415C;            /* ข้อความรอง */
+  --ink-3: #55637C;            /* ข้อความกำกับ (ยังผ่าน AA บนพื้นขาว/เทาอ่อน) */
+  --on-brand: #FFFFFF;
+
+  /* ── สถานะ ── */
+  --ok: #146B31;
+  --ok-tint: #E2F2E7;
+  --ok-line: #A9D6B7;
+  --warn: #85510B;
+  --warn-tint: #FFF2DC;
+  --warn-line: #EFCE96;
+  --danger: #AE2018;
+  --danger-tint: #FDE8E6;
+  --danger-line: #F2B7B2;
+
+  /* ── ตัวอักษร ── */
+  --font: "Noto Sans Thai", "Leelawadee UI", "Segoe UI", Tahoma, sans-serif;
+  --fs-label: 13px;            /* เล็กสุดที่อนุญาต — ป้ายกำกับสั้น ตัวหนาเท่านั้น */
+  --fs-meta: 15px;
+  --fs-body: 16px;             /* ข้อความที่ต้องอ่านทุกชนิด */
+  --fs-lead: 17px;
+  --fs-h2: 20px;
+  --fs-h1: 24px;
+  --fs-num: 30px;
+  --fs-points: 52px;
+  --lh-tight: 1.25;
+  --lh: 1.55;
+  --fw-med: 600;
+  --fw-bold: 700;
+  --fw-black: 800;
+
+  /* ── ระยะ ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* ── มุมโค้ง (3 ระดับ + pill) ── */
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-pill: 999px;
+
+  /* ── เงา (3 ระดับ) ── */
+  --sh-1: 0 1px 2px rgba(11,42,91,.10), 0 2px 8px rgba(11,42,91,.06);
+  --sh-2: 0 4px 12px rgba(11,42,91,.10), 0 14px 28px rgba(11,42,91,.10);
+  --sh-3: 0 10px 20px rgba(9,25,50,.20), 0 26px 50px rgba(9,25,50,.24);
+
+  /* ── ขนาดพื้นที่กด ── */
+  --h-tap: 48px;               /* เล็กสุดของทุกอย่างที่กดได้ */
+  --h-input: 52px;
+  --h-btn: 52px;
+  --h-btn-sm: 48px;
+
+  /* ── ความกว้างหน้า ── */
+  --w-page: 460px;             /* มือถือ/แท็บเล็ต */
+  --w-page-lg: 1040px;         /* เดสก์ท็อป (สองคอลัมน์) */
+  --focus: 0 0 0 4px rgba(18,80,159,.30);
 }
 
-.lf-page { min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif; -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
-.lf-hero { background: radial-gradient(120% 90% at 100% 0%, #2C6FD1 0%, var(--dk-blue) 35%, var(--dk-navy) 100%); color: #fff; padding: 20px 16px 84px; }
-.lf-hero--short { padding-bottom: 28px; }
-.lf-brand { display: flex; align-items: center; gap: 12px; max-width: 460px; margin: 0 auto; }
-.lf-brand img { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
-.lf-brand-name { font-weight: 800; font-size: 17px; letter-spacing: .3px; line-height: 1.1; }
-.lf-brand-sub { font-size: 12px; opacity: .8; margin-top: 2px; }
-.lf-hero-back { margin-left: auto; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* ══ โครงหน้า ══════════════════════════════════════════════════════ */
+.lf-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: var(--sp-8);
+}
+.lf-hero {
+  background:
+    radial-gradient(120% 90% at 100% 0%, #1F63BE 0%, var(--dk-blue) 38%, var(--dk-navy) 100%);
+  color: var(--on-brand);
+  padding: var(--sp-5) var(--sp-4) calc(var(--sp-8) + 44px);
+}
+.lf-hero--short { padding-bottom: var(--sp-6); }
+.lf-brand { display: flex; align-items: center; gap: var(--sp-3); max-width: var(--w-page); margin: 0 auto; }
+.lf-brand img { width: 46px; height: 46px; border-radius: var(--r-sm); object-fit: cover; background: var(--surface); box-shadow: var(--sh-1); }
+.lf-brand-name { font-weight: var(--fw-black); font-size: var(--fs-lead); letter-spacing: .3px; line-height: var(--lh-tight); }
+.lf-brand-sub { font-size: var(--fs-meta); color: var(--dk-sky); margin-top: 2px; line-height: var(--lh-tight); }
+.lf-hero-back {
+  margin-left: auto; background: var(--surface); border: none; color: var(--dk-blue-strong);
+  border-radius: var(--r-pill); min-height: var(--h-tap); padding: 0 var(--sp-4);
+  font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--sp-1); box-shadow: var(--sh-1);
+}
 
-.lf-wrap { max-width: 460px; margin: 0 auto; padding: 0 16px; }
-.lf-wrap--lift { margin-top: -64px; position: relative; z-index: 1; }
-.lf-card { background: #fff; border-radius: var(--radius); box-shadow: 0 10px 30px rgba(11,42,91,.10); padding: 20px 18px; }
-.lf-card + .lf-card, .lf-card + .lf-actions, .lf-actions + .lf-card, .lf-note + .lf-card { margin-top: 12px; }
-.lf-title { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
-.lf-sub { font-size: 13px; color: var(--muted); margin: 0; }
+.lf-wrap { max-width: var(--w-page); margin: 0 auto; padding: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.lf-wrap--lift { margin-top: -44px; position: relative; z-index: 1; }
+.lf-col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
 
-/* โปรไฟล์บนหน้าสมัคร */
-.lf-who { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-.lf-who img, .lf-who .ph { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid var(--dk-sky); }
-.lf-who .ph { display: flex; align-items: center; justify-content: center; background: var(--dk-sky); font-size: 24px; }
-.lf-who b { display: block; font-size: 16px; }
-.lf-who span { font-size: 12px; color: var(--muted); }
+.lf-card { background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-2); padding: var(--sp-5) var(--sp-4); }
+.lf-title { font-size: var(--fs-h2); font-weight: var(--fw-black); margin: 0 0 var(--sp-1); line-height: var(--lh-tight); }
+.lf-sub { font-size: var(--fs-body); color: var(--ink-3); margin: 0; }
 
-/* ฟอร์ม */
-.lf-form { display: grid; gap: 14px; }
-.lf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.lf-field label { display: block; font-size: 13px; font-weight: 600; color: #34415A; margin-bottom: 6px; }
-.lf-field label small { font-weight: 500; color: var(--muted); }
-.lf-input { width: 100%; box-sizing: border-box; height: 48px; padding: 0 14px; font: inherit; font-size: 16px; color: var(--ink); background: #FBFCFE; border: 1.5px solid #D9E0EA; border-radius: 12px; outline: none; transition: border-color .15s, box-shadow .15s, background .15s; -webkit-appearance: none; appearance: none; }
-.lf-input:focus { border-color: var(--dk-blue); background: #fff; box-shadow: 0 0 0 4px rgba(27,95,193,.12); }
-.lf-input[readonly] { background: #F1F4F9; color: var(--muted); }
+/* ปุ่ม/ลิงก์ทุกตัวต้องเห็นโฟกัสชัด (กดผ่านคีย์บอร์ด/ตัวช่วยอ่านจอ) */
+.lf-page :is(button, a, input):focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
+.lf-hero :is(button, a):focus-visible { outline-color: var(--surface); }
+
+/* ══ โปรไฟล์บนหน้าสมัคร ═══════════════════════════════════════════ */
+.lf-who { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-5); }
+.lf-who img, .lf-who .ph { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid var(--dk-sky); flex-shrink: 0; }
+.lf-who .ph { display: flex; align-items: center; justify-content: center; background: var(--dk-sky); font-size: var(--fs-h1); }
+.lf-who b { display: block; font-size: var(--fs-lead); line-height: var(--lh-tight); }
+.lf-who span { font-size: var(--fs-body); color: var(--ink-3); }
+
+/* ══ ฟอร์ม ════════════════════════════════════════════════════════ */
+.lf-form { display: grid; gap: var(--sp-4); }
+.lf-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.lf-field label { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); margin-bottom: var(--sp-2); }
+.lf-field label small { font-size: var(--fs-meta); font-weight: var(--fw-med); color: var(--ink-3); }
+.lf-input {
+  width: 100%; box-sizing: border-box; height: var(--h-input); padding: 0 var(--sp-4);
+  font: inherit; font-size: var(--fs-lead); color: var(--ink); background: var(--surface-2);
+  border: 2px solid var(--line-strong); border-radius: var(--r-sm); outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s; -webkit-appearance: none; appearance: none;
+}
+.lf-input:focus { border-color: var(--dk-blue); background: var(--surface); box-shadow: var(--focus); }
+.lf-input[readonly] { background: var(--surface-2); color: var(--ink-3); border-style: dashed; }
 .lf-input--num { letter-spacing: 1.5px; font-variant-numeric: tabular-nums; }
-.lf-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-.lf-alert { border-radius: 12px; padding: 10px 12px; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
-.lf-alert--err { background: #FDECEC; color: var(--danger); }
-.lf-alert--warn { background: #FFF6E5; color: var(--warn); }
-.lf-alert--info { background: var(--dk-sky); color: var(--dk-navy); }
+.lf-hint { font-size: var(--fs-meta); color: var(--ink-3); margin-top: var(--sp-2); line-height: 1.45; }
 
-.lf-btn { width: 100%; height: 50px; border: none; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .06s, filter .15s; }
+.lf-alert { border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-3); font-size: var(--fs-body); display: flex; gap: var(--sp-2); align-items: flex-start; line-height: 1.45; }
+.lf-alert--err { background: var(--danger-tint); border: 1px solid var(--danger-line); color: var(--danger); }
+.lf-alert--warn { background: var(--warn-tint); border: 1px solid var(--warn-line); color: var(--warn); }
+.lf-alert--info { background: var(--dk-sky); border: 1px solid var(--dk-sky-line); color: var(--dk-blue-strong); }
+
+/* ══ ปุ่ม ══════════════════════════════════════════════════════════ */
+.lf-btn {
+  width: 100%; min-height: var(--h-btn); border: none; border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-lead); font-weight: var(--fw-black); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4); transition: transform .06s, filter .15s;
+}
 .lf-btn:active { transform: scale(.985); }
-.lf-btn:disabled { opacity: .55; cursor: default; }
-.lf-btn--primary { background: linear-gradient(135deg, #1F6BD6, #0E3F8E); color: #fff; box-shadow: 0 8px 20px rgba(27,95,193,.30); }
-.lf-btn--accent { background: linear-gradient(135deg, #FF8A3D, #E85A0C); color: #fff; box-shadow: 0 8px 20px rgba(242,106,27,.30); }
-.lf-btn--ghost { background: #fff; color: #34415A; border: 1.5px solid var(--line); }
-.lf-btn--sm { height: 40px; font-size: 14px; border-radius: 12px; }
+.lf-btn:disabled { opacity: .6; cursor: default; }
+.lf-btn--primary { background: linear-gradient(135deg, var(--dk-blue) 0%, var(--dk-blue-strong) 100%); color: var(--on-brand); box-shadow: var(--sh-2); }
+.lf-btn--accent { background: linear-gradient(135deg, #FFA24A 0%, var(--accent) 100%); color: var(--accent-ink); box-shadow: var(--sh-2); }
+.lf-btn--ghost { background: var(--surface); color: var(--ink-2); border: 2px solid var(--line-strong); }
+.lf-btn--sm { min-height: var(--h-btn-sm); font-size: var(--fs-body); }
 
-/* สิทธิประโยชน์ (หน้าสมัคร) */
-.lf-perks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
-.lf-perk { background: var(--dk-sky); border-radius: 12px; padding: 10px 8px; text-align: center; }
-.lf-perk i { font-style: normal; font-size: 20px; display: block; margin-bottom: 4px; }
-.lf-perk b { font-size: 12.5px; display: block; color: var(--dk-navy); }
-.lf-perk span { font-size: 11px; color: var(--muted); }
-.lf-ladder { display: flex; justify-content: space-between; gap: 4px; margin-top: 14px; }
-.lf-ladder div { flex: 1; text-align: center; font-size: 11px; color: var(--muted); }
-.lf-ladder i { font-style: normal; font-size: 18px; display: block; }
-.lf-ladder b { display: block; font-size: 11px; color: var(--ink); }
+/* ══ สิทธิประโยชน์ + บันไดระดับ (หน้าสมัคร) ══════════════════════ */
+.lf-perks { display: grid; gap: var(--sp-2); margin-top: var(--sp-5); }
+.lf-perk { display: flex; align-items: center; gap: var(--sp-3); background: var(--dk-sky); border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-4); }
+.lf-perk i { font-style: normal; flex-shrink: 0; display: flex; color: var(--dk-blue-strong); }
+.lf-perk b { font-size: var(--fs-body); display: block; color: var(--dk-navy); line-height: var(--lh-tight); }
+.lf-perk span { font-size: var(--fs-meta); color: var(--ink-2); }
 
-/* บัตรสมาชิก */
-.lf-mcard { position: relative; overflow: hidden; border-radius: 22px; padding: 20px 20px 18px; color: #fff; box-shadow: 0 18px 40px rgba(0,0,0,.28); min-height: 220px; }
-.lf-mcard::after { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 45%, rgba(255,255,255,.08) 100%); pointer-events: none; }
-.lf-mcard-top { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; }
-.lf-mcard-label { font-size: 11px; letter-spacing: 2.5px; font-weight: 700; opacity: .85; }
-.lf-tier { background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; backdrop-filter: blur(6px); }
-.lf-mcard-who { display: flex; align-items: center; gap: 12px; margin-top: 18px; position: relative; z-index: 1; }
-.lf-mcard-who img, .lf-mcard-who .ph { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 2.5px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(0,0,0,.3); flex-shrink: 0; }
-.lf-mcard-who .ph { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.25); font-size: 24px; }
-.lf-mcard-name { font-weight: 800; font-size: 18px; line-height: 1.2; text-shadow: 0 1px 6px rgba(0,0,0,.25); word-break: break-word; }
-.lf-mcard-meta { font-size: 12.5px; opacity: .9; margin-top: 3px; }
-.lf-mcard-points { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px; position: relative; z-index: 1; }
-.lf-points-num { font-size: 46px; font-weight: 900; line-height: 1; letter-spacing: -1px; text-shadow: 0 3px 10px rgba(0,0,0,.2); font-variant-numeric: tabular-nums; }
-.lf-points-lbl { font-size: 11px; letter-spacing: 2px; opacity: .75; }
-.lf-chip { background: rgba(255,255,255,.2); border-radius: 12px; padding: 7px 11px; font-size: 13px; font-weight: 700; display: inline-flex; gap: 6px; align-items: center; }
-.lf-prog { margin-top: 14px; position: relative; z-index: 1; }
-.lf-prog-txt { display: flex; justify-content: space-between; font-size: 11.5px; opacity: .9; margin-bottom: 6px; }
-.lf-prog-bar { height: 8px; background: rgba(255,255,255,.25); border-radius: 999px; overflow: hidden; }
-.lf-prog-bar i { display: block; height: 100%; background: #fff; border-radius: 999px; transition: width .8s ease; }
-.lf-mcard-foot { margin-top: 12px; font-size: 11px; opacity: .6; text-align: right; position: relative; z-index: 1; }
+.lf-ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin-top: var(--sp-4); }
+.lf-ladder div { text-align: center; font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-2) var(--sp-1); }
+.lf-ladder i { font-style: normal; font-size: var(--fs-h2); display: block; line-height: 1.3; }
+.lf-ladder b { display: block; font-size: var(--fs-meta); color: var(--ink); }
 
-/* ปุ่มลัด */
-.lf-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.lf-action { background: #fff; border: none; border-radius: 16px; padding: 14px 6px 12px; cursor: pointer; font: inherit; box-shadow: 0 4px 14px rgba(11,42,91,.08); text-align: center; color: var(--ink); }
+/* ══ บัตรสมาชิก ═══════════════════════════════════════════════════ */
+/* ตัวอักษรบนบัตรมี 2 ชุด เลือกจาก data-ink ที่ tiers.ts กำหนดให้แต่ละระดับ
+ * light = บัตรพื้นเข้ม ใช้ตัวอักษรขาว · dark = บัตรพื้นสว่าง (เงิน/ทอง) ใช้ตัวอักษรเข้ม
+ * ทุกคู่ถูกคำนวณกรณีแย่สุด (ทุกจุดของไล่สี + ชั้นเงาไล่แสง) ใน scripts/check-contrast.mjs */
+.lf-mcard {
+  position: relative; overflow: hidden; border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4); box-shadow: var(--sh-3);
+  color: var(--card-ink); isolation: isolate;
+}
+.lf-mcard[data-ink="light"] {
+  --card-ink: #FFFFFF;
+  --card-ink-2: #E8F0FB;
+  --card-badge-bg: #FFFFFF;
+  --card-badge-ink: #12203A;
+  --card-well: rgba(8,18,36,.34);
+  --card-well-line: rgba(255,255,255,.22);
+  --card-track: #0E1B2E;
+  --card-fill: #FFFFFF;
+  --card-sheen: rgba(255,255,255,.10);
+}
+.lf-mcard[data-ink="dark"] {
+  --card-ink: #14181F;
+  --card-ink-2: #3B434F;
+  --card-badge-bg: #14181F;
+  --card-badge-ink: #FFFFFF;
+  --card-well: rgba(255,255,255,.55);
+  --card-well-line: rgba(20,24,31,.16);
+  --card-track: #FFFFFF;
+  --card-fill: #14181F;
+  --card-sheen: rgba(255,255,255,.10);
+}
+/* ชั้นเงาไล่แสง — อยู่ใต้ตัวอักษรเสมอ และคุมความสว่างไว้ที่ 10% เพื่อไม่ให้กินคอนทราสต์ */
+.lf-mcard::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(120deg, var(--card-sheen) 0%, rgba(255,255,255,0) 46%, var(--card-sheen) 100%);
+}
+.lf-mcard-top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
+.lf-mcard-label { font-size: var(--fs-label); letter-spacing: 2px; font-weight: var(--fw-black); color: var(--card-ink); }
+.lf-tier {
+  background: var(--card-badge-bg); color: var(--card-badge-ink); border-radius: var(--r-pill);
+  padding: var(--sp-1) var(--sp-3); min-height: 34px; display: inline-flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-body); font-weight: var(--fw-black); white-space: nowrap;
+}
+.lf-mcard-who { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); }
+.lf-mcard-who img, .lf-mcard-who .ph { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 3px solid var(--card-ink); flex-shrink: 0; }
+.lf-mcard-who .ph { display: flex; align-items: center; justify-content: center; background: var(--card-badge-bg); color: var(--card-badge-ink); font-size: var(--fs-h1); }
+.lf-mcard-name { font-weight: var(--fw-black); font-size: var(--fs-h2); line-height: var(--lh-tight); word-break: break-word; }
+.lf-mcard-meta { font-size: var(--fs-body); color: var(--card-ink-2); margin-top: 2px; display: flex; align-items: center; gap: var(--sp-1); }
+.lf-mcard-meta b { font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+
+/* กล่องข้อมูลสำคัญ — พื้นทึบคุมคอนทราสต์ของแต้ม/แถบคืบหน้าให้คงที่ทุกจุดของไล่สี */
+.lf-mcard-well {
+  margin-top: var(--sp-4); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: var(--card-well); border: 1px solid var(--card-well-line);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.lf-mcard-points { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-3); }
+.lf-points-lbl { font-size: var(--fs-label); letter-spacing: 1.5px; font-weight: var(--fw-bold); color: var(--card-ink); }
+.lf-points-num { font-size: var(--fs-points); font-weight: 900; line-height: 1.05; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.lf-chip { background: var(--card-badge-bg); color: var(--card-badge-ink); border-radius: var(--r-pill); padding: var(--sp-1) var(--sp-3); min-height: 34px; font-size: var(--fs-meta); font-weight: var(--fw-bold); display: inline-flex; gap: var(--sp-1); align-items: center; white-space: nowrap; }
+.lf-prog { margin-top: var(--sp-3); }
+.lf-prog-txt { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-meta); font-weight: var(--fw-bold); margin-bottom: var(--sp-2); color: var(--card-ink); }
+.lf-prog-bar { height: 12px; background: var(--card-track); border-radius: var(--r-pill); overflow: hidden; }
+.lf-prog-bar i { display: block; height: 100%; background: var(--card-fill); border-radius: var(--r-pill); transition: width .8s ease; }
+.lf-prog--max { text-align: center; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--card-ink); }
+.lf-mcard-foot { margin-top: var(--sp-3); font-size: var(--fs-meta); color: var(--card-ink-2); text-align: right; }
+
+/* ══ ปุ่มลัด ══════════════════════════════════════════════════════ */
+.lf-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.lf-action {
+  background: var(--surface); border: none; border-radius: var(--r-md); padding: var(--sp-3) var(--sp-2);
+  min-height: 92px; cursor: pointer; font: inherit; box-shadow: var(--sh-1); text-align: center; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
+}
 .lf-action:active { transform: scale(.98); }
-.lf-action i { font-style: normal; font-size: 24px; display: block; margin-bottom: 6px; }
-.lf-action b { font-size: 13px; display: block; }
-.lf-action span { font-size: 11px; color: var(--muted); }
-.lf-action--accent { background: linear-gradient(135deg, #FF8A3D, #E85A0C); color: #fff; box-shadow: 0 8px 20px rgba(242,106,27,.30); }
-.lf-action--accent span { color: rgba(255,255,255,.85); }
+.lf-action i { font-style: normal; display: flex; color: var(--dk-blue); }
+.lf-action b { font-size: var(--fs-body); display: block; line-height: var(--lh-tight); }
+.lf-action span { font-size: var(--fs-label); font-weight: var(--fw-med); color: var(--ink-3); }
+.lf-action--accent { background: linear-gradient(135deg, #FFA24A 0%, var(--accent) 100%); color: var(--accent-ink); box-shadow: var(--sh-2); }
+.lf-action--accent i { color: var(--accent-ink); }
+.lf-action--accent span { color: var(--accent-ink); font-weight: var(--fw-bold); }
 
-/* กล่องเตือน */
-.lf-note { margin-top: 12px; border-radius: 14px; padding: 13px 15px; font-size: 13px; line-height: 1.55; }
-.lf-note b { display: block; font-size: 14px; margin-bottom: 3px; }
-.lf-note--warn { background: #FFF6E5; border: 1px solid #FFE0A6; color: #7A4B00; }
-.lf-note--danger { background: #FDECEC; border: 1px solid #F5C2C2; color: #8E1B1B; }
-.lf-note-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.lf-link { background: none; border: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--dk-blue); cursor: pointer; padding: 0; }
+/* ══ กล่องเตือน ═══════════════════════════════════════════════════ */
+.lf-note { border-radius: var(--r-md); padding: var(--sp-4); font-size: var(--fs-body); line-height: var(--lh); border: 1px solid; }
+.lf-note b { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lead); margin-bottom: var(--sp-1); }
+.lf-note--warn { background: var(--warn-tint); border-color: var(--warn-line); color: var(--warn); }
+.lf-note--danger { background: var(--danger-tint); border-color: var(--danger-line); color: var(--danger); }
+.lf-note-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-3); }
+/* ลิงก์ในกล่องเตือน — ต้องเห็นว่าเป็นปุ่ม (ขอบ + พื้นที่กด 48px) ไม่ใช่ข้อความสีน้ำเงินเฉย ๆ */
+.lf-link {
+  background: var(--surface); border: 2px solid currentColor; color: inherit; font: inherit;
+  font-size: var(--fs-body); font-weight: var(--fw-bold); cursor: pointer;
+  border-radius: var(--r-pill); min-height: var(--h-tap); padding: 0 var(--sp-4);
+  display: inline-flex; align-items: center; gap: var(--sp-1); white-space: nowrap;
+}
 
-/* ประวัติ */
-.lf-tabs { display: flex; border-bottom: 1px solid var(--line); margin: -20px -18px 0; padding: 0 6px; }
-.lf-tab { flex: 1; background: none; border: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); padding: 13px 4px; cursor: pointer; border-bottom: 2.5px solid transparent; }
-.lf-tab.on { color: var(--dk-blue); border-bottom-color: var(--dk-blue); font-weight: 800; }
-.lf-tx { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--line); }
-.lf-tx:last-child { border-bottom: none; }
-.lf-tx-ic { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: var(--dk-sky); }
+/* ══ ประวัติแต้ม ══════════════════════════════════════════════════ */
+.lf-tabs { display: flex; border-bottom: 2px solid var(--line); margin: calc(var(--sp-5) * -1) calc(var(--sp-4) * -1) 0; padding: 0 var(--sp-2); }
+.lf-tab { flex: 1; background: none; border: none; font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink-3); min-height: var(--h-tap); padding: var(--sp-2) var(--sp-1); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.lf-tab.on { color: var(--dk-blue); border-bottom-color: var(--dk-blue); font-weight: var(--fw-black); }
+.lf-tx { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.lf-tx:last-child { border-bottom: none; padding-bottom: 0; }
+.lf-tx-ic { width: 44px; height: 44px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--dk-sky); color: var(--dk-blue-strong); }
+.lf-tx-ic--earn { background: var(--ok-tint); color: var(--ok); }
+.lf-tx-ic--redeem { background: var(--accent-tint); color: var(--accent-strong); }
+.lf-tx-ic--expire { background: var(--surface-2); color: var(--ink-3); }
 .lf-tx-main { flex: 1; min-width: 0; }
-.lf-tx-main b { font-size: 13.5px; display: block; }
-.lf-tx-main span { font-size: 12px; color: var(--muted); display: block; margin-top: 1px; }
-.lf-tx-amt { font-size: 18px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.lf-tx-amt small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); text-align: right; }
-.lf-empty { text-align: center; color: var(--muted); padding: 28px 12px; font-size: 14px; }
+.lf-tx-main b { font-size: var(--fs-body); display: block; line-height: var(--lh-tight); }
+.lf-tx-main span { font-size: var(--fs-meta); color: var(--ink-3); display: block; margin-top: 2px; line-height: 1.4; }
+.lf-tx-amt { font-size: var(--fs-h2); font-weight: var(--fw-black); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.lf-tx-amt--earn { color: var(--ok); }
+.lf-tx-amt--redeem { color: var(--danger); }
+.lf-tx-amt--expire { color: var(--ink-3); }
+.lf-tx-amt small { display: block; font-size: var(--fs-label); font-weight: var(--fw-med); color: var(--ink-3); }
+.lf-empty { text-align: center; color: var(--ink-3); padding: var(--sp-7) var(--sp-3); font-size: var(--fs-body); }
 
-/* ของรางวัล */
-.lf-balance { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 16px; padding: 12px 16px; margin: 16px auto 0; max-width: 460px; }
-.lf-balance b { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.lf-balance span { font-size: 12px; opacity: .85; }
-.lf-reward { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(11,42,91,.08); margin-top: 14px; border: 2px solid transparent; }
-.lf-reward.can { border-color: #34A853; }
-.lf-reward.out { opacity: .6; }
-.lf-reward-img { position: relative; background: linear-gradient(180deg, #F7F9FC, #EEF2F8); height: 200px; display: flex; align-items: center; justify-content: center; }
-.lf-reward-img img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 14px; }
-.lf-badge { position: absolute; top: 12px; right: 12px; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
-.lf-badge--ok { background: #34A853; }
-.lf-badge--out { background: #E53935; }
-.lf-reward-body { padding: 16px 18px 18px; }
-.lf-reward-name { font-size: 18px; font-weight: 800; }
-.lf-reward-desc { font-size: 13px; color: var(--muted); margin-top: 3px; }
-.lf-reward-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px; }
-.lf-cost { border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 16px; background: #FFF6E5; color: #B26A00; white-space: nowrap; }
-.lf-cost.ok { background: #E8F5E9; color: #1E8E3E; }
-.lf-need { font-size: 12.5px; color: var(--muted); text-align: right; }
-.lf-need.ok { color: var(--ok); font-weight: 700; }
-.lf-msg { margin-top: 10px; border-radius: 12px; padding: 10px 12px; font-size: 13px; }
-.lf-msg.ok { background: #E8F5E9; color: #1E8E3E; }
-.lf-msg.err { background: #FDECEC; color: var(--danger); }
-.lf-rules { margin-top: 16px; }
-.lf-rules h4 { margin: 0 0 12px; font-size: 15px; }
-.lf-rule { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #34415A; line-height: 1.6; margin-bottom: 8px; }
-.lf-rule i { font-style: normal; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--dk-blue); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+/* ══ ของรางวัล ════════════════════════════════════════════════════ */
+.lf-balance { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--surface); border-radius: var(--r-md); padding: var(--sp-4); box-shadow: var(--sh-2); }
+.lf-balance span { font-size: var(--fs-body); color: var(--ink-3); font-weight: var(--fw-bold); }
+.lf-balance b { font-size: var(--fs-num); font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink); display: block; line-height: var(--lh-tight); }
+.lf-balance i { font-style: normal; display: flex; color: var(--accent-strong); }
+.lf-reward { background: var(--surface); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--sh-1); border: 2px solid transparent; display: flex; flex-direction: column; }
+.lf-reward.can { border-color: var(--ok); }
+.lf-reward.out { opacity: .75; }
+.lf-reward-img { position: relative; background: linear-gradient(180deg, var(--surface-2), var(--dk-sky)); height: 180px; display: flex; align-items: center; justify-content: center; }
+.lf-reward-img img { max-width: 100%; max-height: 100%; object-fit: contain; padding: var(--sp-3); }
+.lf-badge { position: absolute; top: var(--sp-3); right: var(--sp-3); border-radius: var(--r-pill); padding: var(--sp-1) var(--sp-3); font-size: var(--fs-meta); font-weight: var(--fw-black); box-shadow: var(--sh-1); }
+.lf-badge--ok { background: var(--ok); color: var(--on-brand); }
+.lf-badge--out { background: var(--ink-2); color: var(--on-brand); }
+.lf-reward-body { padding: var(--sp-4); display: flex; flex-direction: column; flex: 1; }
+.lf-reward-name { font-size: var(--fs-lead); font-weight: var(--fw-black); line-height: var(--lh-tight); }
+.lf-reward-desc { font-size: var(--fs-meta); color: var(--ink-3); margin-top: var(--sp-1); }
+.lf-reward-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: var(--sp-3); gap: var(--sp-2); }
+.lf-cost { border-radius: var(--r-pill); padding: var(--sp-2) var(--sp-4); font-weight: var(--fw-black); font-size: var(--fs-body); background: var(--warn-tint); border: 1px solid var(--warn-line); color: var(--warn); white-space: nowrap; }
+.lf-cost.ok { background: var(--ok-tint); border-color: var(--ok-line); color: var(--ok); }
+.lf-need { font-size: var(--fs-meta); font-weight: var(--fw-bold); color: var(--ink-2); text-align: right; }
+.lf-need.ok { color: var(--ok); }
+.lf-msg { margin-top: var(--sp-3); border-radius: var(--r-sm); padding: var(--sp-3); font-size: var(--fs-body); border: 1px solid; }
+.lf-msg.ok { background: var(--ok-tint); border-color: var(--ok-line); color: var(--ok); }
+.lf-msg.err { background: var(--danger-tint); border-color: var(--danger-line); color: var(--danger); }
+.lf-rules h4 { margin: 0 0 var(--sp-3); font-size: var(--fs-h2); }
+.lf-rule { display: flex; gap: var(--sp-3); align-items: flex-start; font-size: var(--fs-body); color: var(--ink-2); line-height: var(--lh); margin-bottom: var(--sp-3); }
+.lf-rule i { font-style: normal; flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--dk-blue); color: var(--on-brand); font-size: var(--fs-label); font-weight: var(--fw-bold); display: flex; align-items: center; justify-content: center; margin-top: 3px; }
 
-.lf-foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 22px; }
-.lf-center { text-align: center; padding: 48px 16px; color: var(--muted); }
-.lf-center i { font-style: normal; font-size: 40px; display: block; margin-bottom: 10px; }
-.lf-spin { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--dk-blue); border-radius: 50%; margin: 0 auto 12px; animation: lfspin .8s linear infinite; }
+/* ══ เบ็ดเตล็ด ════════════════════════════════════════════════════ */
+.lf-foot { text-align: center; font-size: var(--fs-meta); color: var(--ink-3); margin-top: var(--sp-3); line-height: var(--lh); }
+.lf-center { text-align: center; padding: var(--sp-8) var(--sp-4); color: var(--ink-2); font-size: var(--fs-body); }
+.lf-center i { font-style: normal; font-size: 40px; display: block; margin-bottom: var(--sp-3); }
+.lf-spin { width: 36px; height: 36px; border: 4px solid var(--line); border-top-color: var(--dk-blue); border-radius: 50%; margin: 0 auto var(--sp-3); animation: lfspin .8s linear infinite; }
 @keyframes lfspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .lf-spin { animation-duration: 2.4s; }
+  .lf-prog-bar i { transition: none; }
+}
+
+/* ══ เดสก์ท็อป — ไม่ใช่หน้ามือถือลอยกลางจอ ═══════════════════════
+ * ≥ 900px: พื้นหลังเป็นแบบแปลน (เส้นตาราง) ของร้านวัสดุ · หัวเรื่องกว้างเต็มคอนเทนเนอร์
+ * หน้าบัตรสมาชิกแบ่ง 2 คอลัมน์ (บัตร+คำเตือน | ปุ่มลัด+ประวัติ) · หน้าของรางวัลเป็นตาราง 2 ใบต่อแถว */
+@media (min-width: 900px) {
+  .lf-page {
+    background:
+      linear-gradient(rgba(18,80,159,.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgba(18,80,159,.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      radial-gradient(90% 60% at 50% 0%, #FFFFFF 0%, var(--bg) 60%, #E3EAF5 100%);
+    padding-bottom: var(--sp-8);
+  }
+  .lf-hero { padding: var(--sp-6) var(--sp-6) calc(var(--sp-8) + 56px); }
+  .lf-brand { max-width: var(--w-page-lg); gap: var(--sp-4); }
+  .lf-brand img { width: 56px; height: 56px; }
+  .lf-brand-name { font-size: var(--fs-h1); }
+  .lf-wrap { max-width: var(--w-page-lg); padding: 0 var(--sp-6); gap: var(--sp-4); }
+  .lf-wrap--lift { margin-top: -56px; }
+
+  /* บัตรสมาชิก: สองคอลัมน์ บัตรใหญ่ขึ้นจริง ไม่ใช่การ์ดมือถือยืด */
+  .lf-wrap--split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: start; gap: var(--sp-4); }
+  .lf-wrap--split > .lf-foot { grid-column: 1 / -1; }
+  .lf-wrap--split .lf-mcard { padding: var(--sp-6) var(--sp-6) var(--sp-5); }
+  .lf-wrap--split .lf-points-num { font-size: 64px; }
+  .lf-wrap--split .lf-mcard-who img, .lf-wrap--split .lf-mcard-who .ph { width: 66px; height: 66px; }
+  .lf-wrap--split .lf-action { min-height: 108px; }
+
+  /* หน้าสมัคร: การ์ดฟอร์มกว้างขึ้น ฟอร์มสองคอลัมน์ */
+  .lf-wrap--form { max-width: 760px; }
+  .lf-wrap--form .lf-card { padding: var(--sp-6); }
+
+  /* ของรางวัล: ตารางสองใบต่อแถว */
+  .lf-wrap--catalog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--sp-4); }
+  .lf-wrap--catalog > .lf-balance,
+  .lf-wrap--catalog > .lf-rules,
+  .lf-wrap--catalog > .lf-center,
+  .lf-wrap--catalog > .lf-foot { grid-column: 1 / -1; }
+  .lf-reward-img { height: 210px; }
+}
+@media (min-width: 1200px) {
+  .lf-wrap--catalog { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

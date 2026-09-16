@@ -1,0 +1,824 @@
+{
+  "captured_at": "2026-09-16",
+  "viewport": "390x844 @2x Android th-TH",
+  "results": [
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "slug": "pitch",
+      "url": "https://www.thaiwatsadu.com/th/page/new-member-get-free-coupon",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/pitch-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/pitch-full.png"
+      },
+      "status": "http_error",
+      "note": "networkidle ไม่นิ่งใน 45 วิ ใช้ domcontentloaded แทน · HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "signup",
+      "slug": "signup",
+      "url": "https://www.thaiwatsadu.com/th/page/new-register-application-conditions",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/signup-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/signup-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "rewards",
+      "slug": "rewards",
+      "url": "https://www.thaiwatsadu.com/th/page/members-the1-points-redeem",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/rewards-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/rewards-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "rewards",
+      "slug": "rewards-2",
+      "url": "https://www.thaiwatsadu.com/th/page/next-purchase-promotion",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/rewards-2-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/rewards-2-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "faq",
+      "slug": "faq",
+      "url": "https://www.thaiwatsadu.com/th/page/condition_coupon_offline",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/faq-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/faq-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "slug": "pitch-2",
+      "url": "https://www.thaiwatsadu.com/th/page/affiliate",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/pitch-2-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/pitch-2-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "signup",
+      "slug": "signup-2",
+      "url": "https://affiliate.thaiwatsadu.com",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/signup-2-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/signup-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "CRC Thai Watsadu Affiliate",
+      "text_head": "Welcome to ช่วยไทวัสดุขาย สร้างรายได้ไปด้วยกัน คลิกเพื่ออ่านรายละเอียดเพิ่มเติม Login Continue with YouTube Sign in with Google OR ลืมรหัสผ่าน ? เข้าสู่ระบบ ฉันยังไม่มีบัญชีผู้ใช้ สมัครสมาชิก",
+      "text_length": 173
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ",
+      "page_kind": "pitch",
+      "slug": "pitch-3",
+      "url": "https://www.thaiwatsadu.com/th/brochures/CON6-2023",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/pitch-3-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/pitch-3-full.png"
+      },
+      "status": "http_error",
+      "note": "HTTP 403",
+      "http_status": 403,
+      "dismissed": [],
+      "title": "Attention Required! | Cloudflare",
+      "text_head": "Sorry, you have been blocked You are unable to access thaiwatsadu.com Why have I been blocked? This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data. What can I do to resolve t",
+      "text_length": 568
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ / The 1",
+      "page_kind": "pitch",
+      "slug": "pitch-4",
+      "url": "https://www.the1.co.th/the1-membership",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/pitch-4-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/pitch-4-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "ยอมรับ",
+        "button[class*=\"close\" i]"
+      ],
+      "title": "The 1 | สิทธิประโยชน์สมาชิก The 1",
+      "text_head": "สิทธิประโยชน์สมาชิก The 1 ร่วมเป็นครอบครัว The 1 เพื่อรับสิทธิประโยชน์สำหรับสมาชิกมากมาย และสะสมคะแนนจากทุกการใช้จ่ายในกลุ่มเซ็นทรัลและพันธมิตรที่ร่วมรายการ คุณสามารถนำคะแนนสะสมไปแลกเป็นรีวอร์ด, ส่วนลด, คูปองเงินสด หรือโอนให้ผู้อื่นก็ได้ ง่ายนิดเดียว! สะสมคะแนน The 1 ทุกคะแนนมีอายุ 2 ปีนับจากปีที่ซื้อสินค้า โอนคะแนน The 1 โอนคะแนนหากันระหว่างสมาชิก หรือโอนไปเป็นคะแนนของพันธมิตรได้ แลกคูปองแทนเงินส",
+      "text_length": 1099
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ / The 1",
+      "page_kind": "tiers",
+      "slug": "tiers",
+      "url": "https://www.the1.co.th/the1Exclusive/privileges",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/tiers-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/tiers-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "button[class*=\"close\" i]"
+      ],
+      "title": "The 1 Exclusive",
+      "text_head": "ค้นพบความพิเศษทุกวัน ไม่รู้จบ จากทั่วทุกมุมโลก พบประสบการณ์พิเศษสำหรับคุณได้ในทุกวัน กับสิทธิประโยชน์ บริการ และของรางวัลพิเศษ ที่เลือกสรรเฉพาะเพื่อสมาชิก The 1 Exclusive ทั้งภายในศูนย์การค้าและห้างสรรพสินค้าในกลุ่มเซ็นทรัลและพันธมิตร ครอบคลุมทุกมุมไลฟ์สไตล์ ทั้งในประเทศไทย และต่างประเทศ สะสมยอดใช้จ่ายในกลุ่มเซ็นทรัล รีเทล ครบ 250,000 บาท หรือในกลุ่มเซ็นทรัล รีเทล และร้านค้าที่ร่วมรายการ ภายใน 1 ป",
+      "text_length": 1614
+    },
+    {
+      "brand_key": "thaiwatsadu",
+      "brand": "ไทวัสดุ / The 1",
+      "page_kind": "rewards",
+      "slug": "rewards-3",
+      "url": "https://www.the1.co.th/the1app",
+      "files": {
+        "viewport": "docs/benchmarks/thaiwatsadu/rewards-3-viewport.png",
+        "full": "docs/benchmarks/thaiwatsadu/rewards-3-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "button[class*=\"close\" i]"
+      ],
+      "title": "The 1 App | Explore to Surpise Anytime, Everywhere",
+      "text_head": "The 1 App: Explore to Surprise Anytime, Everywhere เพลินกับสิทธิพิเศษดีๆ ฟีเจอร์เด็ดๆ ได้ทุกที่ทุกเวลา เช็ก-แลก-โอนคะแนน The 1 ได้ง่ายๆ ด้วยตัวคุณเอง ดูคลิปแอป The 1 The 1 ในมือคุณ เต็มอิ่มกว่า กับประสบการณ์สมาชิก The 1 พร้อมความเซอร์ไพร้ส์ ทุกที่ทุกเวลา Discover exciting on The 1 App The 1 มิชชั่น เพลินกับการช้อปปิ้ง แล้วยังได้พิชิตมิชชั่น รับรางวัลง่ายๆ มาย The 1 คัดรีวอร์ดที่ตรงใจมาให้ตามสไตล์ค",
+      "text_length": 1762
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "tiers",
+      "slug": "tiers",
+      "url": "https://ecomm.globalhouse.co.th/service/globalclub",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/tiers-viewport.png",
+        "full": "docs/benchmarks/globalhouse/tiers-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "โกลบอลเฮ้าส์ ศูนย์รวมวัสดุก่อสร้างและของตกแต่ง",
+      "text_head": "Home Global Club สมาชิกโกลบอลคลับ การสมัครสมาชิกโกลบอลคลับ ท่านสามารถสมัครสมาชิกได้ผ่านทางแอพพิเคชัน Click&Collect การสะสมคะแนนโกลบอลคลับ 1. กรุณาแจ้งหมายเลขโทรศัพท์หรือเลขบัตรประจำตัวประชาชนก่อนการชำระเงินทุกครั้งเพื่อทำการสะสมคะแนนโกลบอลคลับ 2. เมื่อซื้อสินค้าที่ร่วมรายการที่โกลบอลเฮ้าส์ทุกสาขา ครบทุกๆ 50 บาท ท่านจะได้รับ 1 คะแนนสะสม โดยยกเว้นสินค้า Clearance, สินค้าแลกซื้อ, ร้านค้าเช่าและรายการ",
+      "text_length": 2734
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "signup",
+      "slug": "signup",
+      "url": "https://campaign.globalhouse.co.th/globalclub/register",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/signup-viewport.png",
+        "full": "docs/benchmarks/globalhouse/signup-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "Globalhouse Reward | ลงทะเบียน สมัครสมาชิกโกลบอลคลับ ฟรี!",
+      "text_head": "ลงทะเบียน สมัครสมาชิกโกลบอลคลับ ฟรี!",
+      "text_length": 34
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "rewards",
+      "slug": "rewards",
+      "url": "https://globalhouse.co.th/articles/globalhouse-pointpay",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/rewards-viewport.png",
+        "full": "docs/benchmarks/globalhouse/rewards-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "ยอมรับทั้งหมด",
+        "[aria-label*=\"close\" i]"
+      ],
+      "title": "คะแนนโกลบอลคลับ จ่ายแทนเงินสด ที่ร้านค้าถุงเงิน | โกลบอลเฮ้าส์",
+      "text_head": "สาขา สาขาปทุมธานี TH / EN ค้นหาสินค้า หมวดหมู่ หรือ SKU คะแนนโกลบอลคลับ จ่ายแทนเงินสด ที่ร้านค้าถุงเงิน บริษัท สยามโกลบอลเฮ้าส์ จำกัด (มหาชน) ร่วมมือกับพันธมิตรอย่างธนาคารกรุงไทย พร้อมให้บริการ \"พอยท์เพย์\" ซึ่งเป็นช่องทางให้ร้านค้าต่างๆ ที่ร่วมโครงการถุงเงิน ได้เพิ่มโอกาสทางการขาย เพิ่มยอดขาย และช่วยให้ผู้บริโภคประหยัดค่าใช้จ่าย ด้วยการใช้คะแนนโกลบอลคลับ ในการแลกชำระค่าสินค้าและบริการ โดยไม่ใช้เงิ",
+      "text_length": 3207
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "pitch",
+      "slug": "pitch",
+      "url": "https://globalhouse.co.th/globalidea/detail/982",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/pitch-viewport.png",
+        "full": "docs/benchmarks/globalhouse/pitch-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "28 ปี โกลบอลเฮ้าส์ ช้อปทุกวัน ลุ้นทอง ทุกสัปดาห์ | โกลบอลเฮ้าส์",
+      "text_head": "สาขา สาขาปทุมธานี TH / EN ค้นหาสินค้า หมวดหมู่ หรือ SKU 28 ปี โกลบอลเฮ้าส์ ช้อปทุกวัน ลุ้นทอง ทุกสัปดาห์ โกลบอลเฮ้าส์มอบความสุขและความคุ้มค่าสุดยิ่งใหญ่ ในโอกาสครบรอบ 28 ปี โกลบอลเฮ้าส์ จัดเต็มโปรโมชั่นความคุ้มถึง 4 ต่อ! เพียงช้อปสินค้าอะไรก็ได้ภายในร้าน ครบทุกๆ 300 บาท ก็มีสิทธิ์ลุ้นทองคำได้ทุกสัปดาห์ทันที พร้อมรับส่วนลดจุใจทั่วทั้งร้าน และดีลเด็ดที่คัดสรรมาโดยเฉพาะ นอกจากนี้ยังสามารถผ่อน 0% นานส",
+      "text_length": 9581
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "faq",
+      "slug": "faq",
+      "url": "https://campaign.globalhouse.co.th/reward",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/faq-viewport.png",
+        "full": "docs/benchmarks/globalhouse/faq-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "",
+      "text_head": "เงื่อนไขและข้อตกลงในการรับสิทธิ์ลุ้นรางวัล 1. ชื่อรายการ 28 ปี โกลบอลเฮ้าส์ ช้อปทุกวัน ลุ้นทอง ทุกสัปดาห์ 2. สิทธิพิเศษนี้ สำหรับลูกค้าที่เป็นสมาชิกโกลบอลคลับ ของบริษัท สยามโกลบอลเฮ้าส์ จำกัด (มหาชน) ทุกสาขา ทั่วประเทศ โดยลูกค้าจะได้รับสิทธิ์ลุ้นรางวัล เป็นคูปองชิงโชคดิจิทัล (Digital Coupon) ซึ่งจะถูกเก็บรวบรวม และนำไปใช้ในกิจกรรมจับรางวัลชิงโชค ผ่านระบบ Lucky Draw หรือระบบสุ่มจับรางวัล 2.1 เมื่อล",
+      "text_length": 11993
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "pitch",
+      "slug": "pitch-2",
+      "url": "https://globalhouse.co.th/globalidea/detail/451",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/pitch-2-viewport.png",
+        "full": "docs/benchmarks/globalhouse/pitch-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "หาช่างเรื่องงาน ด้วยบริการช่างดี บริการงานช่าง และงานติดตั้งครบวงจร | โกลบอลเฮ้าส์",
+      "text_head": "สาขา สาขาปทุมธานี TH / EN ค้นหาสินค้า หมวดหมู่ หรือ SKU ช่างดี บริการเรื่องบ้านครบวงจร ที่โกลบอลเฮ้าส์ แอปพลิเคชันช่างดี ศูนย์รวมบริการ งานช่าง งานติดตั้ง แหล่งรวมช่างออนไลน์ รวมไปถึงแหล่งรวมสินค้าโปรดีราคาถูก สินค้าราคาลดกระหน่ำ สินค้าลดราคาให้เลือกสรร โดยบริการงานช่าง มีให้เลือกใช้บริการได้ง่ายและครบครัน โกลบอลเฮ้าส์มีช่างที่ผ่านการตรวจสอบแล้ว ช่างทั่วไป และเพื่อให้ลูกค้ามั่นใจว่าจะได้รับบริการท",
+      "text_length": 4080
+    },
+    {
+      "brand_key": "globalhouse",
+      "brand": "Global House",
+      "page_kind": "faq",
+      "slug": "faq-2",
+      "url": "https://ecomm.globalhouse.co.th/service/faq",
+      "files": {
+        "viewport": "docs/benchmarks/globalhouse/faq-2-viewport.png",
+        "full": "docs/benchmarks/globalhouse/faq-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "โกลบอลเฮ้าส์ ศูนย์รวมวัสดุก่อสร้างและของตกแต่ง",
+      "text_head": "Home FAQ คำถามที่พบบ่อย คำถามที่พบบ่อย • รับสินค้าที่สาขาด้วยตัวเองมีค่าใช้จ่ายหรือไม่ ไม่คิดค่าบริการ เพียงเลือกซื้อสินค้าจากโกลบอล เฮ้าส์ ช้อป ออนไลน์ globalhouse.co.th และเลือกรูปแบบการรับสินค้าเป็น “Click & Collect” แล้วทำการชำระค่าสินค้าผ่านหน้าเวบไซต์ ก็สามารถนำหลักฐานใบเสร็จรับเงินและบัตรประจำตัวประชาชน ที่ตรงกับชื่อผู้รับ มารับสินค้าตามวัน เวลา และสาขาที่ระบุได้เลย • โกลบอล เฮ้าส์ ช้อป ออน",
+      "text_length": 2709
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "tiers",
+      "slug": "tiers",
+      "url": "https://scgfamily.com/tiering",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/tiers-viewport.png",
+        "full": "docs/benchmarks/scghome/tiers-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "[aria-label*=\"ปิด\"]"
+      ],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ รับสิทธิพิเศษที่มากขึ้นและเหนือกว่า ด้วยการเป็นสมาชิกระดับ เมื่อมีคะแนนระดับสมาชิกครบ 10,000 คะแนน ขึ้นไป ต่อรอบการสะสม (1 ปี) ในร้านค้าที่ร่วมรายการ โดยสถานะสมาชิก VIP จะมีอายุ 1 ปี รายละเอียดคะแนนเพื่อปรับระดับ คะแนนที่ใช้คิดระดับสมาชิก คือ คะแนนที่ได้รับต่อรอบการสะสม จากการสะสมคะแนนตามเงื่อนไข (สินค้าที่เข้าร่วมดูได้จาก ว",
+      "text_length": 1164
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "pitch",
+      "slug": "pitch",
+      "url": "https://scgfamily.com/about-collect-point",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/pitch-viewport.png",
+        "full": "docs/benchmarks/scghome/pitch-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ วิธีสะสมและใช้คะแนน สะสมคะแนน เอสซีจี โฮม, เอสซีจี โฮม เอ็กซพีเรียนซ์, SCG HOME.COM, SCG HOME Application ร้านผู้แทนจำหน่าย เอสซีจี, ร้านค้าวัสดุก่อสร้าง ที่ร่วม เอสซีจี แฟมิลี่ พลัส+, คิวช่าง, คอตโต้ไลฟ์ และพาร์ทเนอร์​ ซื้อสินค้าหรือบริการทุกๆ 25 บาท รับ 1 คะแนน สงวนสิทธิ์ไม่ร่วมการสะสมคะแนน สำหรับสินค้าบางรายการ และค่าขนส่",
+      "text_length": 1238
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "signup",
+      "slug": "signup",
+      "url": "https://scgfamily.com/handbook/1",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/signup-viewport.png",
+        "full": "docs/benchmarks/scghome/signup-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "วิธีสมัครสมาชิก SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ ย้อนกลับ วิธีสมัครสมาชิก SCG Family Plus+ รายละเอียด หน้าหลัก โปรโมชัน คะแนน แลกคะแนน วอลเล็ท สินค้า/บริการ เกี่ยวกับ SCG Family Plus+ วิธีสะสมและใช้คะแนน ร้านค้าที่เข้าร่วม ถาม-ตอบ SCG Family Plus+ ระดับสมาชิก เงื่อนไขการใช้บริการ นโยบายความเป็นส่วนตัว การตั้งค่าและสิทธิความเป็นส่วนตัว นโยบายการใช้งานคุกกี้ ติดต่อเรา SCG HO",
+      "text_length": 437
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "rewards",
+      "slug": "rewards",
+      "url": "https://scgfamily.com/handbook/4",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/rewards-viewport.png",
+        "full": "docs/benchmarks/scghome/rewards-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "การแลกคะแนน SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ ย้อนกลับ การแลกคะแนน SCG Family Plus+ รายละเอียด การแลกคะแนน สามารถแลกได้ 2 รูปแบบ คือ 1. เพื่อใช้จ่ายแทนเงินสด ณ ร้านที่ร่วมรายการ ทุกๆ 20 คะแนน = 1 บาท 2. แลกเป็นของรางวัล : ได้ที่ ไลน์ @scgfamily >> เมนู แลกคะแนน หน้าหลัก โปรโมชัน คะแนน แลกคะแนน วอลเล็ท สินค้า/บริการ เกี่ยวกับ SCG Family Plus+ วิธีสะสมและใช้คะแนน ร้านค้าท",
+      "text_length": 576
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "rewards",
+      "slug": "rewards-2",
+      "url": "https://scgfamily.com/handbook/3",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/rewards-2-viewport.png",
+        "full": "docs/benchmarks/scghome/rewards-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "การสะสมคะแนน และสินค้าที่เข้าร่วม SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ ย้อนกลับ การสะสมคะแนน และสินค้าที่เข้าร่วม SCG Family Plus+ รายละเอียด หน้าหลัก โปรโมชัน คะแนน แลกคะแนน วอลเล็ท สินค้า/บริการ เกี่ยวกับ SCG Family Plus+ วิธีสะสมและใช้คะแนน ร้านค้าที่เข้าร่วม ถาม-ตอบ SCG Family Plus+ ระดับสมาชิก เงื่อนไขการใช้บริการ นโยบายความเป็นส่วนตัว การตั้งค่าและสิทธิความเป็นส่วนตัว นโยบายการใช้งานคุกกี",
+      "text_length": 454
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "faq",
+      "slug": "faq",
+      "url": "https://scgfamily.com/faqs",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/faq-viewport.png",
+        "full": "docs/benchmarks/scghome/faq-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ ถาม-ตอบ SCG Family Plus+ สามารถสมัครสมาชิก SCG Family ได้ที่ไหนบ้าง? มีค่าธรรมเนียมในการสมัครหรือไม่? เมื่อสมัครสมาชิก SCG Family แล้วสามารถใช้สิทธิ์ได้ทันทีหรือไม่? มีบัตรสมาชิกมั้ย และจะได้รับบัตรสมาชิกเมื่อไร? ทำการสะสมคะแนนอย่างไร? มีสิทธิประโยชน์ หรือโปรโมชันพิเศษอะไรบ้าง? ผู้ที่ไม่ได้ใช้สัญชาติไทยสามารถสมัครได้หรือไม่?",
+      "text_length": 800
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "faq",
+      "slug": "faq-2",
+      "url": "https://scgfamily.com/term",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/faq-2-viewport.png",
+        "full": "docs/benchmarks/scghome/faq-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ เงื่อนไขการสมัครสมาชิก SCG Family Plus+ 1.ผู้สมัครตกลงสมัครสมาชิก SCG Family Plus+ ของบริษัทเอสซีจี ดิสทริบิวชั่น จำกัด (เรียกว่า “บริษัท”) และตกลงให้บริษัทดำเนินการออกหมายเลขสมาชิกให้แก่สมาชิกเพื่อใช้ในการติดต่อและเชื่อมโยงระหว่างผู้สมัครกับบริษัท ทั้งนี้จนกว่าจะมีการยกเลิกสมาชิกดังกล่าว และตลอดระยะเวลาการเป็นสมาชิก SCG Fam",
+      "text_length": 10587
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "rewards",
+      "slug": "rewards-3",
+      "url": "https://scgfamily.com/promotion",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/rewards-3-viewport.png",
+        "full": "docs/benchmarks/scghome/rewards-3-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ โปรโมชัน ค้นหา เรียงตาม : ล่าสุด เมื่อซื้อสินค้ากลุ่มสมาร์ทบอร์ด,กลุ่มไม้/วัสดุตกแต่ง SCG DECAAR , กลุ่มอุปกรณ์เอสซีจี ครบทุกๆ 15,000 บาท/บิล รับส่วนลด 1,000 บาท เมื่อซื้อสินค้ากลุ่มสมาร์ทบอร์ด,กลุ่มไม้/วัสดุตกแต่ง SCG DECAAR , กลุ่มอุปกรณ์เอสซีจี ที่ร่วมรายการ รับส่วนลด ตามเสต็ป สูงสุด 1,000 บาทStep ที่ 1.เมื่อซื้อสินค้ากลุ",
+      "text_length": 7717
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "pitch",
+      "slug": "pitch-2",
+      "url": "https://scgfamily.com/store",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/pitch-2-viewport.png",
+        "full": "docs/benchmarks/scghome/pitch-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "ร้านค้าใกล้ฉัน",
+      "text_head": "ร้านค้าใกล้ฉัน SCG Family Plus ค้นหาร้านใกล้ฉัน เพื่อแสดงร้านค้าที่ร่วมรายการ SCG Family Plus ใกล้คุณ อนุญาตให้เข้าถึงตำแหน่ง ข้ามขั้นตอนนี้ ข้อมูลตำแหน่งจะถูกใช้เพื่อค้นหาร้านค้าใกล้เคียงเท่านั้น",
+      "text_length": 184
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "faq",
+      "slug": "faq-3",
+      "url": "https://scgfamily.com/term_cashcard",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/faq-3-viewport.png",
+        "full": "docs/benchmarks/scghome/faq-3-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "SCG Family Plus+",
+      "text_head": "เข้าสู่ระบบ สมัครสมาชิก หน้าหลักโปรโมชันคะแนนแลกคะแนนวอลเล็ทสินค้า/บริการ ข้อกำหนดและเงื่อนไขการใช้งาน SCG HOME Cash Card ฉบับแก้ไขล่าสุด วันที่ 26 ตุลาคม 2565 เพิ่มเติมในส่วนของสินค้าที่ร่วมรายการ และพาร์ทเนอร์ที่ร่วมรายการ SCG Home Cash Card นับแต่วันที่ วันที่ 13 มกราคม 2564 SCG Family Cash Card จะเปลี่ยนชื่อเป็น SCG Home Cash Card โดยมีรายละเอียดและเงื่อนไขตามรายละเอียดในข้อกำหนดและเงื่อนไขนี้",
+      "text_length": 30239
+    },
+    {
+      "brand_key": "scghome",
+      "brand": "SCG Home",
+      "page_kind": "pitch",
+      "slug": "pitch-3",
+      "url": "https://www.scgnewschannel.com/th/scg-news/scg-launches-scg-family-plus-a-major-revamp-of-its-loyalty-program/",
+      "files": {
+        "viewport": "docs/benchmarks/scghome/pitch-3-viewport.png",
+        "full": "docs/benchmarks/scghome/pitch-3-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "ยอมรับทั้งหมด"
+      ],
+      "title": "SCG เปิดตัว “SCG Family Plus+” การเปลี่ยนแปลงครั้งสำคัญ ของโปรแกรมสะสมคะแนนโฉมใหม่ เพื่อคนสร้างบ้านทั่วประเทศ เชื่อมต่อทุกสิทธิ์ คุ้มค่าทุกคะแนน - SCG NEWS CHAN",
+      "text_head": "Skip to content Wednesday, September 16, 2026 ไทย English Responsive Menu SCG NEWS CHANNEL HomeSCG เปิดตัว “SCG Family Plus+” การเปลี่ยนแปลงครั้งสำคัญ ของโปรแกรมสะสมคะแนนโฉมใหม่ เพื่อคนสร้างบ้านทั่วประเทศ เชื่อมต่อทุกสิทธิ์ คุ้มค่าทุกคะแนน BUSINESS SCG เปิดตัว “SCG Family Plus+” การเปลี่ยนแปลงครั้งสำคัญ ของโปรแกรมสะสมคะแนนโฉมใหม่ เพื่อคนสร้างบ้านทั่วประเทศ เชื่อมต่อทุกสิทธิ์ คุ้มค่าทุกคะแนน กรุงเท",
+      "text_length": 6224
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "tiers",
+      "slug": "tiers",
+      "url": "https://www.dohome.co.th/p/membership-family-services-technician",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/tiers-viewport.png",
+        "full": "docs/benchmarks/dohome/tiers-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "ยอมรับคุกกี้"
+      ],
+      "title": "",
+      "text_head": "0 สิทธิประโยชน์ของสมาชิก “ครอบครัวช่าง” ลูกค้าที่ต้องการยกเลิกการซื้อหรือคืนสินค้าโดยไม่มีปัญหาด้านคุณภาพสินค้า กรุณาแจ้งเป็นลายลักษณ์อักษร ภายใน 30 วัน นับจากวันที่ได้รับสินค้า ได้รับคะแนนสมาชิกดูโฮม X3 เมื่อซื้อสินค้ากลุ่ม งานหลังคา, งานเพดาน, งานผนัง, บอร์ดสังเคราะห์, งานพื้น, งานล้อมรั้ว, เครื่องมือก่อสร้างใหญ่, ไม้, งานรากฐาน, วัสดุตอกยึด, สแตนเลส, อลูมิเนียม, ประตู, หน้าต่าง, วงกบ, อุปกรณ์ปร",
+      "text_length": 1533
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "rewards",
+      "slug": "rewards",
+      "url": "https://www.dohome.co.th/p/membership-points-condition",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/rewards-viewport.png",
+        "full": "docs/benchmarks/dohome/rewards-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "",
+      "text_head": "0 การได้รับคะแนนของสมาชิก (POINTS EARN) สมาชิกจะได้รับคะแนนสะสมจากการซื้อสินค้าที่ดูโฮม, ดูโฮม ทูโก และเว็บไซต์ www.dohome.co.th อัตราการสะสมคะแนน ของสมาชิก ดูโฮมสาขาใหญ่ สมาชิกทั่วไป : รับคะแนนสะสมอัตราปกติ ยอดซื้อทุกๆ 50 บาทรับ 1 คะแนน (เฉพาะสินค้าที่ร่วมรายการ : ทุกกลุ่ม ยกเว้นสินค้ากลุ่มเหล็ก, ปูน*, ก่อสร้างอื่นๆ*, ค่าบริการ)) ดูโฮม ทูโก สมาชิกทั่วไป : รับคะแนนสะสมอัตราปกติ ยอดซื้อทุกๆ 25 บาทร",
+      "text_length": 4154
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "pitch",
+      "slug": "pitch",
+      "url": "https://www.dohome.co.th/p/privilege",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/pitch-viewport.png",
+        "full": "docs/benchmarks/dohome/pitch-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "",
+      "text_head": "0 สิทธิประโยชน์สมาชิก",
+      "text_length": 20
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "signup",
+      "slug": "signup",
+      "url": "https://www.dohome.co.th/p/download-dohome-app",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/signup-viewport.png",
+        "full": "docs/benchmarks/dohome/signup-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "ดาวน์โหลดแอป Dohome | ดูโฮมออนไลน์",
+      "text_head": "0",
+      "text_length": 1
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "signup",
+      "slug": "signup-2",
+      "url": "https://page.line.me/mfq4602m",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/signup-2-viewport.png",
+        "full": "docs/benchmarks/dohome/signup-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "DoHome | บัญชีทางการ LINE",
+      "text_head": "DoHome เพื่อน 673,516 ครบ ถูก ดี ที่ดูโฮม Pathum Thani Mueang Pathum Thani 88/111 Bang Phun www.dohome.co.th อีก 1 รายการ แชท โทร ดูโฮมช้อปออนไลน์ ไลฟ์สไตล์ แคตตาล็อก ดูโฮม ช้อปเลย!! โซเชียลมีเดีย ข้อมูลพื้นฐาน ดูโฮมช้อปออนไลน์ www.dohome.co.th | ช้อปสะดวก ช้อปสนุก ช้อปได้ 24 ชม. จำหน่ายวัสดุก่อสร้าง เครื่องมือช่างและของตกแต่งบ้าน ศูนย์รวมจำหน่ายวัสดุก่อสร้าง เครื่องมือช่างฮาร์ดแวร์ ของตกแต่งบ้าน ",
+      "text_length": 3363
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "faq",
+      "slug": "faq",
+      "url": "https://www.dohome.co.th/p/membership-policy",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/faq-viewport.png",
+        "full": "docs/benchmarks/dohome/faq-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "",
+      "text_head": "0 นโยบายการประมวลผลข้อมูลส่วนบุคคลสมาชิก Dohome บริษัท ดูโฮม จำกัด (มหาชน) (“บริษัท”) มีจุดประสงค์แจ้งนโยบายข้อมูลส่วนบุคคลที่กำหนดเกี่ยวกับเงื่อนไขการประมวลผลข้อมูลส่วนบุคคลของสมาชิก Dohome ให้แก่ท่านสมาชิก (“สมาชิก”) ทราบ ทั้งนี้ เมื่อท่านตกลงลงทะเบียนเพื่อสมัครสมาชิก Dohome กับทางบริษัทผ่านช่องทางต่างๆ ทางบริษัทจะถือว่าสมาชิกตกลงและยอมรับที่จะปฏิบัติตามนโยบายข้อมูลส่วนบุคคลฉบับนี้แล้ว หากสมาชิก",
+      "text_length": 5274
+    },
+    {
+      "brand_key": "dohome",
+      "brand": "Do Home",
+      "page_kind": "pitch",
+      "slug": "pitch-2",
+      "url": "https://investor.dohome.co.th/en/updates/activity/270/",
+      "files": {
+        "viewport": "docs/benchmarks/dohome/pitch-2-viewport.png",
+        "full": "docs/benchmarks/dohome/pitch-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "Accept All"
+      ],
+      "title": "ดูโฮม ฉลองครบรอบ 40 ปี จัดมหกรรมสินค้าเพื่อบ้านลดใหญ่ ณ สาขาชลบุรี พร้อมเปิดตัวบัตรสมาชิกรูปแบบใหม่ 'ครอบครัวช่าง' | Dohome Public Company Limited",
+      "text_head": "TH EN Activity ดูโฮม ฉลองครบรอบ 40 ปี จัดมหกรรมสินค้าเพื่อบ้านลดใหญ่ ณ สาขาชลบุรี พร้อมเปิดตัวบัตรสมาชิกรูปแบบใหม่ 'ครอบครัวช่าง' 20 November 2023 บริษัท ดูโฮม จำกัด (มหาชน) หรือ DOHOME ศูนย์ค้าปลีก-ค้าส่ง วัสดุก่อสร้าง ซ่อมแซม และตกแต่งบ้านแบบครบวงจร (One-stop Home Products Destination) ที่รู้จักกันในนาม 'มหาอาณาจักรบ้าน' จัด มหกรรมฉลองครบรอบ 40 ปี ดูโฮม ภายใต้คอนเซ็ปต์ Better Together ครบ ถูก ดี",
+      "text_length": 4793
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro",
+      "page_kind": "pitch",
+      "slug": "pitch",
+      "url": "https://www.homepro.co.th/homecard/",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/pitch-viewport.png",
+        "full": "docs/benchmarks/homepro/pitch-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "[aria-label*=\"close\" i]"
+      ],
+      "title": "โฮมโปร | รวมเครื่องใช้ไฟฟ้า เฟอร์นิเจอร์และของตกแต่งบ้านแบบครบวงจร ช้อปออนไลน์ รับประกันคุณภาพ",
+      "text_head": "สมาชิก Home Card บัตรสมาชิกสำหรับลูกค้าอันทรงเกียรติจากโฮมโปร ท่านสามารถสมัครได้ง่ายๆ ที่โฮมโปรและเมกาโฮมทุกสาขา หรือ www.homepro.co.th เพียงเท่านี้ ท่านก็สามารถสะสมคะแนนได้ง่ายๆ โดยแจ้งหมายเลขโทรศัพท์หรือแสดงบัตรประชาชน สะสม/แลกคะแนน และรับสิทธิประโยชน์ ได้ง่ายๆ ด้วยตัวคุณเอง รับคะแนนทุกการใช้จ่าย รับคะแนน HomeCard เมื่อซื้อสินค้าครบทุกๆ 30 บาท ลูกค้า Prestige ใช้คะแนนแลกรับส่วนลดพิเศษ ใช้ 800 คะ",
+      "text_length": 2721
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro / MegaHome",
+      "page_kind": "faq",
+      "slug": "faq",
+      "url": "https://www.megahome.co.th/m/homecard/",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/faq-viewport.png",
+        "full": "docs/benchmarks/homepro/faq-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "ยอมรับทั้งหมด"
+      ],
+      "title": "เมกาโฮม | ศูนย์รวมวัสดุก่อสร้าง และงานช่าง",
+      "text_head": "สมาชิก Home Card บัตรสมาชิกสำหรับลูกค้าอันทรงเกียรติจากโฮมโปร ท่านสามารถสมัครได้ง่ายๆ ที่โฮมโปรและเมกาโฮมทุกสาขา หรือ www.homepro.co.th เพียงเท่านี้ ท่านก็สามารถสะสมคะแนนได้ง่ายๆ โดยแจ้งหมายเลขโทรศัพท์หรือแสดงบัตรประชาชน สะสม/แลกคะแนน และรับสิทธิประโยชน์ ได้ง่ายๆ ด้วยตัวคุณเอง รับคะแนนทุกการใช้จ่าย รับคะแนน HomeCard เมื่อซื้อสินค้าครบทุกๆ 30 บาท ใช้คะแนนแลกรับส่วนลดพิเศษ ใช้ 1,000 คะแนน แลกคูปองส่",
+      "text_length": 1891
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro / MegaHome",
+      "page_kind": "signup",
+      "slug": "signup",
+      "url": "https://www.megahome.co.th/benefit/member.jsp",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/signup-viewport.png",
+        "full": "docs/benchmarks/homepro/signup-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "เมกาโฮม | ศูนย์รวมวัสดุก่อสร้าง และงานช่าง",
+      "text_head": "สมัครสมาชิกช่าง สมัครสมาชิกช่าง ในเว็บไซด์ ได้หรือไม่? เป็นการ กดทักแชท เพื่อสอบถามข้อมูลการสมัครสมาชิกช่าง ผ่านไลน์ ทุกวันและเวลาทำการ 9.00-18.00 น. หากสมัครสมาชิกโฮมการ์ดแล้ว สามารถดำเนินการประสานงานกับเจ้าหน้าที่เพื่อสมัครสมาชิกช่างได้ทันที แต่ถ้าหากยังไม่ได้สมัครสมาชิกโฮมการ์ดจะต้องสมัครสมาชิกโฮมการ์ดก่อนถึงจะดำเนินการสมัครสมาชิกช่างได้ กรณีสมัครสมาชิกโฮมการ์ดใหม่ สมัครสมาชิกโฮมการ์ดก่อน ท่านส",
+      "text_length": 1557
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro / MegaHome",
+      "page_kind": "rewards",
+      "slug": "rewards",
+      "url": "https://www.megahome.co.th/benefit/member-discount.jsp",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/rewards-viewport.png",
+        "full": "docs/benchmarks/homepro/rewards-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "เมกาโฮม | ศูนย์รวมวัสดุก่อสร้าง และงานช่าง",
+      "text_head": "ส่วนลดสมาชิกช่าง ส่วนลดสมาชิกช่าง ลดสินค้าอะไรได้บ้าง? รับส่วนลดทันที 3% ตั้งแต่บาทแรก สำหรับสินค้าบางรายการที่อยู่ในกลุ่มสินค้าช่างดังต่อไปนี้ ฉนวน / ไม้ฝา ไม้ตกแต่ง / หลังคา /แผ่นฝ้าบอร์ด / ประตูหน้าต่าง อุปกรณ์ประตู / สี /อุปกรณ์ฮาร์ดแวร์ / เครื่องมือช่าง / เครื่องมือช่างไฟฟ้า / กระเบื้อง / สุขภัณฑ์/อุปกรณ์เกษตรและสวน/ อุปกรณ์ระบบไฟฟ้า/ หลอดไฟ /ปั๊ม แท้งค์ ท่อ /เครื่องใช้ไฟฟ้าในครัว โปรดสังเกตโ",
+      "text_length": 693
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro",
+      "page_kind": "signup",
+      "slug": "signup-2",
+      "url": "https://www.homepro.co.th/benefit/member.jsp",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/signup-2-viewport.png",
+        "full": "docs/benchmarks/homepro/signup-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "[aria-label*=\"close\" i]"
+      ],
+      "title": "โฮมโปร | รวมเครื่องใช้ไฟฟ้า เฟอร์นิเจอร์และของตกแต่งบ้านแบบครบวงจร ช้อปออนไลน์ รับประกันคุณภาพ",
+      "text_head": "{} สมัครสมาชิกช่าง ในเว็บไซด์ ได้หรือไม่? เป็นการ กดทักแชท เพื่อสอบถามข้อมูลการสมัครสมาชิกช่าง ผ่านไลน์ ทุกวันและเวลาทำการ 9.00-18.00 น. หากสมัครสมาชิกโฮมการ์ดแล้ว สามารถดำเนินการประสานงานกับเจ้าหน้าที่เพื่อสมัครสมาชิกช่างได้ทันที แต่ถ้าหากยังไม่ได้สมัครสมาชิกโฮมการ์ดจะต้องสมัครสมาชิกโฮมการ์ดก่อนถึงจะดำเนินการสมัครสมาชิกช่างได้ กรณีสมัครสมาชิกโฮมการ์ดใหม่ สมัครสมาชิกโฮมการ์ดก่อน ท่านสมัครสมาชิกโฮม",
+      "text_length": 1939
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro",
+      "page_kind": "tiers",
+      "slug": "tiers",
+      "url": "https://www.homepro.co.th/m/homecard/index.jsp?lang=en",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/tiers-viewport.png",
+        "full": "docs/benchmarks/homepro/tiers-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [
+        "[aria-label*=\"close\" i]"
+      ],
+      "title": "HomePro | No.1 Home Improvement Center in Thailand",
+      "text_head": "Home Card Member card for prestigious HomePro customers You can easily apply at HomePro and MegaHome in every branches and online channel (www.homepro.co.th) Thatโ€s all, You can easily collect points by informing the phone number or show ID card Earn/Burn Points and get benefits easily by yourself Earn points with every purchase Earn HomeCard points for every 30 baht spending. Prestige tier burn",
+      "text_length": 2818
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro",
+      "page_kind": "pitch",
+      "slug": "pitch-2",
+      "url": "https://static-hp.gumlet.io/campaign/_default/%E0%B8%8A%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B9%83%E0%B8%AB%E0%B8%A1%E0%B9%88%201-30%20%E0%B8%81%E0%B8%A2.png",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/pitch-2-viewport.png",
+        "full": "docs/benchmarks/homepro/pitch-2-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "ช่างใหม่ 1-30 กย.png (800×600)",
+      "text_head": "",
+      "text_length": 0
+    },
+    {
+      "brand_key": "homepro",
+      "brand": "HomePro",
+      "page_kind": "pitch",
+      "slug": "pitch-3",
+      "url": "https://apps.apple.com/th/app/homecard/id1537956163",
+      "files": {
+        "viewport": "docs/benchmarks/homepro/pitch-3-viewport.png",
+        "full": "docs/benchmarks/homepro/pitch-3-full.png"
+      },
+      "status": "ok",
+      "note": "",
+      "http_status": 200,
+      "dismissed": [],
+      "title": "‎HomeCard. App - App Store",
+      "text_head": "Today Games Apps Arcade Search Categories Categories Photo & Video Health & Fitness Productivity Entertainment Action Adventure Puzzle Indie Platform iPhone iPad Mac Watch TV HomeCard. HomeCard by HomePro Only for iPhone Free · Designed for iPhone. Not verified for macOS. 133 RATINGS 3.3 AGE RATING 4+ Years CHART No. 24 Shopping DEVELOPER Home Product Center Public Company Limited LANGUAGE EN Engl",
+      "text_length": 3378
+    }
+  ]
+}
