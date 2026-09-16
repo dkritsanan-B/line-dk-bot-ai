@@ -1,10 +1,10 @@
-// เทสต์กติกา "แต้มใกล้หมดอายุ" — ไม่ต่อฐานข้อมูลจริงแม้แต่แถวเดียว (ปลอม sql tag ด้วย tests/helpers.ts)
+// เทสต์กติกา "แต้มใกล้หมดอายุ" — ไม่ต่อฐานข้อมูลร้านแม้แต่แถวเดียว
 //
 // รัน:  npx tsx tests/expiry.test.ts        (หรือ node --import tsx tests/expiry.test.ts)
 //
 // ครอบคลุม 3 ชั้น
 //   1) ตรรกะบริสุทธิ์ summarizeExpiring() — กรณีปกติ + กรณีขอบทุกแบบ
-//   2) คิวรีจริงที่ยิงลงฐานข้อมูล — ตรวจข้อความ SQL + พารามิเตอร์ + การกดเพดานด้วยแต้มคงเหลือ
+//   2) คิวรีจริงกับ Postgres ในเครื่อง (PGlite) — พิสูจน์ผลลัพธ์ ไม่ใช่แค่หน้าตาของ SQL
 //   3) กันถอยหลัง — ห้ามมีที่ไหนคำนวณแต้มใกล้หมดอายุเองอีก และโหมดรีวิวต้องใช้กติกาเดียวกัน
 
 import { test } from "node:test";
@@ -21,7 +21,8 @@ import {
   type ExpiryLot,
 } from "../lib/points";
 import { REVIEW_SCENARIOS } from "../lib/review-mode";
-import { makeSql, type Rows } from "./helpers";
+import { freshDb } from "./pg.mjs";
+import type { Db } from "../lib/db";
 
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 8, 16, 3, 0, 0); // เวลาคงที่ ไม่ให้เทสต์แกว่งตามนาฬิกาเครื่อง
@@ -30,8 +31,6 @@ const lot = (points: number, days: number, over: Partial<ExpiryLot> = {}): Expir
   points_earned: points, expires_at: at(days), type: "earn", expired: false, cleared: false, ...over,
 });
 
-/** sql tag ปลอม — ใช้ตัวเดียวกับเทสต์ไฟล์อื่น (tests/helpers.ts) ไม่ต่อฐานข้อมูลจริง · ค่าที่ผูกเข้ามาแทนด้วย ? */
-const fakeSql = (rows: Rows = []) => makeSql(() => rows);
 
 // ── 1) ตรรกะบริสุทธิ์ ────────────────────────────────────────────────────────
 
@@ -107,72 +106,76 @@ test("capExpiring: ค่าติดลบ/NaN ไม่หลุดออก�
   assert.equal(capExpiring(40, new Date(NOW + 3 * DAY), 100).earliest_expiry, at(3));
 });
 
-// ── 2) คิวรีจริง ─────────────────────────────────────────────────────────────
+// ── 2) กับ Postgres จริง (PGlite ในเครื่อง ไม่ใช่ฐานข้อมูลร้าน) ─────────────────
+// เดิมส่วนนี้ตรวจแค่ "ข้อความ SQL หน้าตาถูก" ด้วย sql ปลอม ซึ่งจับบั๊กหักซ้ำไม่ได้ · ตอนนี้รันคิวรีจริงแล้วดูผล
 
-test("getExpiringSummary: คิวรีต้องกรองช่วงเตือน + สถานะครบทุกเงื่อนไข", async () => {
-  const tag = fakeSql([{ earliest_expiry: at(21), raw_points: 50 }]);
-  const r = await getExpiringSummary(42, 2000, tag);
+async function seedUser(db: Db, points: number, rows: { type: string; pts: number; exp?: number; notified?: boolean; cleared?: boolean }[], line: string | null = "U1") {
+  const [u] = await db.query(`INSERT INTO users (line_user_id, first_name, points) VALUES ($1, 'สมชาย', $2) RETURNING id`, [line, points]);
+  for (const r of rows) {
+    await db.query(
+      `INSERT INTO transactions (user_id, points_earned, type, expires_at, notified_1m, cleared) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [u.id, r.pts, r.type, r.exp === undefined ? null : at(r.exp), r.notified ?? false, r.cleared ?? false],
+    );
+  }
+  return Number(u.id);
+}
 
-  assert.deepEqual(r, { earliest_expiry: at(21), expiring_points: 50 });
-  assert.equal(tag.calls.length, 1);
-  const q = tag.calls[0].query;
-  assert.match(q, /expires_at > NOW\(\)/);                                      // ยังไม่ถึงวันหมด
-  assert.match(q, /expires_at <= NOW\(\) \+ \( \? ::int \* INTERVAL '1 day'\)/);  // อยู่ในช่วงเตือน
-  assert.match(q, /type = 'earn'/);
-  assert.match(q, /expired = FALSE/);
-  assert.match(q, /cleared = FALSE/);
-  assert.match(q, /MIN\(expires_at\) AS earliest_expiry/);
-  assert.deepEqual(tag.calls[0].values, [42, EXPIRY_NOTICE_DAYS]);
+test("[pg] getExpiringSummary: นับเฉพาะก้อนในช่วงเตือน", async () => {
+  const { pg, db } = await freshDb();
+  const id = await seedUser(db, 2000, [{ type: "earn", pts: 50, exp: 21 }, { type: "earn", pts: 1950, exp: 300 }]);
+  assert.deepEqual(await getExpiringSummary(id, 2000, db, NOW), { earliest_expiry: at(21), expiring_points: 50 });
+  await pg.close();
 });
 
-test("getExpiringSummary: กดเพดานด้วยแต้มคงเหลือเสมอ (ก้อนเก่าไม่ถูกตัดตอนแลกของ)", async () => {
-  const tag = fakeSql([{ earliest_expiry: at(9), raw_points: 800 }]);
-  assert.equal((await getExpiringSummary(1, 250, tag)).expiring_points, 250);
+test("[pg] getExpiringSummary: แลกของไปแล้ว ก้อนเก่าที่ถูกใช้ต้องไม่ขึ้นเตือน (FIFO)", async () => {
+  const { pg, db } = await freshDb();
+  const id = await seedUser(db, 1950, [{ type: "earn", pts: 50, exp: 21 }, { type: "earn", pts: 1950, exp: 300 }, { type: "redeem", pts: 50 }]);
+  assert.deepEqual(await getExpiringSummary(id, 1950, db, NOW), { earliest_expiry: null, expiring_points: 0 });
+  await pg.close();
 });
 
-test("getExpiringSummary: ไม่มีก้อนในช่วง (SUM=0) → ไม่ขึ้นกล่องเตือน", async () => {
-  const tag = fakeSql([{ earliest_expiry: null, raw_points: 0 }]);
-  assert.deepEqual(await getExpiringSummary(1, 2000, tag), { earliest_expiry: null, expiring_points: 0 });
+test("[pg] getExpiringSummary: กดเพดานด้วยแต้มคงเหลือ", async () => {
+  const { pg, db } = await freshDb();
+  const id = await seedUser(db, 250, [{ type: "earn", pts: 800, exp: 9 }]);
+  assert.equal((await getExpiringSummary(id, 250, db, NOW)).expiring_points, 250);
+  await pg.close();
 });
 
-test("getExpiringSummary: ฐานข้อมูลคืนแถวว่าง → ไม่ล้ม", async () => {
-  const tag = fakeSql([]);
-  assert.deepEqual(await getExpiringSummary(1, 2000, tag), { earliest_expiry: null, expiring_points: 0 });
+test("[pg] getExpiringSummary: ไม่มีธุรกรรม → ไม่ขึ้นกล่องเตือน", async () => {
+  const { pg, db } = await freshDb();
+  const id = await seedUser(db, 0, []);
+  assert.deepEqual(await getExpiringSummary(id, 0, db, NOW), { earliest_expiry: null, expiring_points: 0 });
+  await pg.close();
 });
 
-test("getExpiringSummary: raw_points มาเป็นสตริง (driver บางตัวคืน numeric เป็น string) ก็ยังถูก", async () => {
-  const tag = fakeSql([{ earliest_expiry: at(4), raw_points: "75" }]);
-  assert.equal((await getExpiringSummary(1, 2000, tag)).expiring_points, 75);
+test("[pg] listExpiryNotices: ทักเฉพาะคนที่มีแต้มจะหมดจริง ข้ามคนที่ใช้ไปแล้ว/แต้ม 0/เตือนแล้ว/ไม่มี LINE", async () => {
+  const { pg, db } = await freshDb();
+  const real = await seedUser(db, 2000, [{ type: "earn", pts: 50, exp: 21 }, { type: "earn", pts: 1950, exp: 300 }], "U_real");
+  await seedUser(db, 1950, [{ type: "earn", pts: 50, exp: 21 }, { type: "earn", pts: 1950, exp: 300 }, { type: "redeem", pts: 50 }], "U_used");
+  await seedUser(db, 0, [{ type: "earn", pts: 400, exp: 10 }], "U_zero");
+  await seedUser(db, 500, [{ type: "earn", pts: 100, exp: 5, notified: true }], "U_done");
+  await seedUser(db, 500, [{ type: "earn", pts: 100, exp: 5 }], null);
+  const capped = await seedUser(db, 120, [{ type: "earn", pts: 900, exp: 2 }], "U_cap");
+
+  const rows = await listExpiryNotices(db, NOW);
+  assert.deepEqual(rows.map(r => r.line_user_id), ["U_real", "U_cap"]);
+  assert.deepEqual(rows[0], { user_id: real, line_user_id: "U_real", first_name: "สมชาย", earliest_expiry: at(21), expiring_points: 50 });
+  assert.equal(rows.find(r => r.user_id === capped)!.expiring_points, 120, "กดเพดานด้วยแต้มคงเหลือ");
+  await pg.close();
 });
 
-test("listExpiryNotices: ใช้ช่วงเดียวกับบัตรสมาชิก + ข้ามคนที่แต้มเหลือ 0", async () => {
-  const tag = fakeSql([
-    { user_id: 1, line_user_id: "U1", first_name: "สมชาย", points: 2000, earliest_expiry: at(21), raw_points: 50 },
-    { user_id: 2, line_user_id: "U2", first_name: "มานพ", points: 0, earliest_expiry: at(10), raw_points: 400 },
-    { user_id: 3, line_user_id: "U3", first_name: "ประเสริฐ", points: 120, earliest_expiry: at(2), raw_points: 900 },
+test("[pg] markExpiryNotified: มาร์กเฉพาะก้อนในช่วงเดียวกับตอนเลือก (ทั้งขอบล่างและขอบบน)", async () => {
+  const { pg, db } = await freshDb();
+  const id = await seedUser(db, 999, [
+    { type: "earn", pts: 1, exp: -2 },          // เลยวันหมดอายุแล้ว (ยังไม่ถูกตัด) — ไม่ใช่ก้อนที่เตือน
+    { type: "earn", pts: 2, exp: 10 },          // ในช่วง
+    { type: "earn", pts: 3, exp: 40 },          // นอกช่วง
+    { type: "earn", pts: 4, exp: 10, cleared: true },
   ]);
-  const rows = await listExpiryNotices(tag);
-
-  const q = tag.calls[0].query;
-  assert.match(q, /t\.expires_at > NOW\(\)/);
-  assert.match(q, /t\.expires_at <= NOW\(\) \+ \( \? ::int \* INTERVAL '1 day'\)/);
-  assert.match(q, /t\.cleared = FALSE/);
-  assert.match(q, /t\.notified_1m = FALSE/);
-  assert.deepEqual(tag.calls[0].values, [EXPIRY_NOTICE_DAYS]);
-
-  assert.equal(rows.length, 2);                        // คนที่แต้มเหลือ 0 ไม่ถูกทัก
-  assert.deepEqual(rows[0], { user_id: 1, line_user_id: "U1", first_name: "สมชาย", earliest_expiry: at(21), expiring_points: 50 });
-  assert.equal(rows[1].expiring_points, 120);          // กดเพดานด้วยแต้มคงเหลือ
-});
-
-test("markExpiryNotified: มาร์กด้วยช่วงเดียวกับตอนเลือก และไม่แตะก้อนที่ถูกเคลียร์", async () => {
-  const tag = fakeSql([]);
-  await markExpiryNotified(7, tag);
-  const q = tag.calls[0].query;
-  assert.match(q, /SET notified_1m = TRUE/);
-  assert.match(q, /cleared = FALSE/);
-  assert.match(q, /expires_at <= NOW\(\) \+ \( \? ::int \* INTERVAL '1 day'\)/);
-  assert.deepEqual(tag.calls[0].values, [7, EXPIRY_NOTICE_DAYS]);
+  await markExpiryNotified(id, db, NOW);
+  const got = await db.query(`SELECT points_earned, notified_1m FROM transactions WHERE user_id = $1 ORDER BY points_earned`, [id]);
+  assert.deepEqual(got.map(r => [r.points_earned, r.notified_1m]), [[1, false], [2, true], [3, false], [4, false]]);
+  await pg.close();
 });
 
 // ── 3) กันถอยหลัง ───────────────────────────────────────────────────────────
@@ -180,10 +183,10 @@ test("markExpiryNotified: มาร์กด้วยช่วงเดียว
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), "utf8");
 
 test("ห้ามมีที่ไหนเขียนคิวรีนับแต้มใกล้หมดอายุเองอีก (ต้นเหตุเดิมคือสองที่นับคนละแบบ)", () => {
-  for (const f of ["app/api/member/route.ts", "app/api/cron/notify-expiry/route.ts"]) {
+  for (const f of ["app/api/member/route.ts", "app/api/cron/notify-expiry/route.ts", "app/api/cron/expire-points/route.ts"]) {
     const src = read(f);
     assert.ok(!/SUM\(\s*t?\.?points_earned/.test(src), f + " ยังมีคิวรีรวมแต้มของตัวเองอยู่");
-    assert.match(src, /from "@\/lib\/points"/);
+    assert.match(src, /from "@\/lib\/points(-ledger)?"/);
   }
 });
 

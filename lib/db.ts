@@ -13,6 +13,32 @@ function getClient(): NeonQueryFunction<false, false> {
   return client;
 }
 
-// ใช้เหมือนเดิมทุกที่: sql`SELECT ...`
-export const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
-  (getClient() as unknown as (s: TemplateStringsArray, ...v: unknown[]) => Promise<Record<string, unknown>[]>)(strings, ...values)) as unknown as NeonQueryFunction<false, false>;
+type Row = Record<string, unknown>;
+type Tag = (s: TemplateStringsArray, ...v: unknown[]) => Promise<Row[]>;
+
+const tag = ((strings: TemplateStringsArray, ...values: unknown[]) =>
+  (getClient() as unknown as Tag)(strings, ...values)) as unknown as NeonQueryFunction<false, false>;
+
+// ใช้เหมือนเดิมทุกที่: sql`SELECT ...` · และมี sql.query(text, params) / sql.transaction([...]) ตามของ neon
+Object.defineProperties(tag, {
+  query: { value: (text: string, params?: unknown[]) => getClient().query(text, params as unknown[]) },
+  transaction: { value: (...args: Parameters<NeonQueryFunction<false, false>["transaction"]>) => getClient().transaction(...args) },
+  unsafe: { value: (raw: string) => getClient().unsafe(raw) },
+});
+
+export const sql = tag;
+
+/** อินเทอร์เฟซเล็ก ๆ ที่โค้ดเรื่องเงิน/แต้มใช้ — สลับเป็น Postgres ในเครื่องตอนเทสต์ได้ (tests/pg.mjs) */
+export interface Db {
+  query(text: string, params?: unknown[]): Promise<Row[]>;
+  /** หลายคำสั่งใน transaction เดียว (ไม่โต้ตอบ) — คืนผลของแต่ละคำสั่งตามลำดับ */
+  tx(stmts: { text: string; params?: unknown[] }[]): Promise<Row[][]>;
+}
+
+export const db: Db = {
+  query: async (text, params = []) => (await getClient().query(text, params)) as Row[],
+  tx: async (stmts) => {
+    const c = getClient();
+    return (await c.transaction(stmts.map(s => c.query(s.text, s.params ?? [])))) as Row[][];
+  },
+};

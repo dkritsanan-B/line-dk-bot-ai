@@ -120,7 +120,7 @@ test("GET /api/member · สมาชิกปกติ → 200 registered:true 
 test("GET /api/member · อ่านตัวสมาชิกได้ แต่คิวรีแต้มใกล้หมดอายุล้ม → ยังเป็นสมาชิก + ธง expiryUnavailable", async () => {
   fresh();
   onQuery("FROM users WHERE line_user_id", [MEMBER]);
-  onQuery("earliest_expiry", DB_DOWN);
+  onQuery("FROM transactions WHERE user_id = $1 AND cleared = FALSE", DB_DOWN);   // คิวรีอ่านบัญชีแต้ม (lib/points-ledger.ts readLedger)
   const res = await memberRoute.GET(getReq("http://t/api/member"));
   eq(res.status, 200);
   const b = await body(res);

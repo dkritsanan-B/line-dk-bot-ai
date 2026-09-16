@@ -1,4 +1,5 @@
-import { sql } from "./db";
+import { sql, db as defaultDb, type Db } from "./db";
+import { viewLedger, ledgerViewFor, type LedgerRow, type LedgerView } from "./points-ledger";
 
 const POINTS_PER_BAHT = 100;
 
@@ -264,9 +265,8 @@ export function capExpiring(rawPoints: number, earliest: string | Date | null, c
 }
 
 /**
- * นับเฉพาะก้อนที่จะหมดอายุ "ในช่วงที่เตือน" เท่านั้น (ใช้กับข้อมูลที่อยู่ในมือแล้ว เช่น ข้อมูลจำลองโหมดรีวิว)
- * ตรรกะตรงกับคิวรี SQL ข้างล่างทุกเงื่อนไข: earn เท่านั้น · ยังไม่ถูกตัด (expired) · ไม่ถูกเคลียร์ (cleared)
- * · มีวันหมดอายุ · วันหมดอายุยังไม่ถึง (> ตอนนี้) และอยู่ภายใน windowDays
+ * แต้มใกล้หมดอายุจากข้อมูลที่อยู่ในมือแล้ว (โหมดรีวิว / เทสต์) — ใช้สูตร FIFO ตัวเดียวกับของจริง (lib/points-ledger.ts)
+ * รับได้ทั้งแถว earn อย่างเดียว หรือบัญชีเต็ม (earn + redeem/expire/adjust) · แถวไม่ระบุ type ถือเป็น earn
  */
 export function summarizeExpiring(
   lots: ExpiryLot[],
@@ -274,52 +274,28 @@ export function summarizeExpiring(
   now: number = Date.now(),
   windowDays: number = EXPIRY_NOTICE_DAYS,
 ): ExpirySummary {
-  const until = now + windowDays * DAY_MS;
-  let sum = 0;
-  let earliestMs: number | null = null;
-  let earliestRaw: string | Date | null = null;
-
-  for (const lot of lots ?? []) {
-    if ((lot.type ?? "earn") !== "earn") continue;
-    if (lot.expired === true || lot.cleared === true) continue;
-    if (!lot.expires_at) continue;
-    const ms = new Date(lot.expires_at).getTime();
-    if (!Number.isFinite(ms)) continue;
-    if (ms <= now || ms > until) continue;
-    sum += Math.trunc(Number(lot.points_earned) || 0);
-    if (earliestMs === null || ms < earliestMs) { earliestMs = ms; earliestRaw = lot.expires_at; }
-  }
-  return capExpiring(sum, earliestRaw, currentPoints);
+  const rows: LedgerRow[] = (lots ?? []).map(l => ({
+    type: l.type ?? "earn",
+    points_earned: l.points_earned,
+    expires_at: l.expires_at,
+    cleared: l.cleared ?? false,
+    expired: l.expired ?? false,
+  }));
+  return fromView(viewLedger(rows, currentPoints, now, windowDays));
 }
 
-type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>;
-const defaultSql = sql as unknown as SqlTag;
+function fromView(v: LedgerView): ExpirySummary {
+  return capExpiring(v.soon, v.soonEarliest, v.soon);
+}
 
 /** แต้มใกล้หมดอายุของสมาชิกคนเดียว — ใช้บนบัตรสมาชิก (/api/member) */
 export async function getExpiringSummary(
   userId: number,
   currentPoints: number,
-  db: SqlTag = defaultSql,
+  database: Db = defaultDb,
+  now: number = Date.now(),
 ): Promise<ExpirySummary> {
-  const rows = await db`
-    SELECT MIN(expires_at) AS earliest_expiry,
-           COALESCE(SUM(points_earned), 0)::int AS raw_points
-    FROM transactions
-    WHERE user_id = ${userId}
-      AND type = 'earn'
-      AND expired = FALSE
-      AND cleared = FALSE
-      AND expires_at IS NOT NULL
-      AND expires_at > NOW()
-      AND expires_at <= NOW() + (${EXPIRY_NOTICE_DAYS}::int * INTERVAL '1 day')
-  `;
-  const row = rows?.[0];
-  if (!row) return { ...NO_EXPIRY };
-  return capExpiring(
-    Number(row.raw_points ?? 0),
-    (row.earliest_expiry as string | Date | null) ?? null,
-    currentPoints,
-  );
+  return fromView(await ledgerViewFor(database, userId, currentPoints, EXPIRY_NOTICE_DAYS, now));
 }
 
 export interface ExpiryNotice extends ExpirySummary {
@@ -329,35 +305,36 @@ export interface ExpiryNotice extends ExpirySummary {
   earliest_expiry: string;
 }
 
-/** รายชื่อคนที่ต้องส่ง LINE เตือนแต้มใกล้หมด — ใช้ที่ /api/cron/notify-expiry (ช่วงเดียวกับบัตรสมาชิก) */
-export async function listExpiryNotices(db: SqlTag = defaultSql): Promise<ExpiryNotice[]> {
-  const rows = await db`
-    SELECT u.id AS user_id,
-           u.line_user_id,
-           u.first_name,
-           u.points,
-           MIN(t.expires_at)                AS earliest_expiry,
-           COALESCE(SUM(t.points_earned), 0)::int AS raw_points
-    FROM transactions t
-    JOIN users u ON t.user_id = u.id
-    WHERE t.type        = 'earn'
-      AND t.expired     = FALSE
-      AND t.cleared     = FALSE
-      AND t.notified_1m = FALSE
-      AND t.expires_at IS NOT NULL
-      AND t.expires_at  > NOW()
-      AND t.expires_at <= NOW() + (${EXPIRY_NOTICE_DAYS}::int * INTERVAL '1 day')
-    GROUP BY u.id, u.line_user_id, u.first_name, u.points
-    HAVING u.line_user_id IS NOT NULL
-  `;
+/** cron แจ้งเตือนหนึ่งรอบทักได้ไม่เกินนี้ (โควตา LINE push 300/เดือน) — ที่เหลือรอรอบถัดไป */
+export const NOTICE_USERS_PER_RUN = 200;
+
+/**
+ * รายชื่อคนที่ต้องส่ง LINE เตือนแต้มใกล้หมด — ใช้ที่ /api/cron/notify-expiry (สูตรเดียวกับบัตรสมาชิก)
+ * SQL หาเฉพาะ "ผู้มีสิทธิ์" (มีก้อนในช่วงเตือนที่ยังไม่เคยเตือน) แล้วคิดยอดจริงด้วย FIFO ทีละคน
+ * คนที่แลกของ/ใช้แต้มก้อนนั้นไปแล้วจะไม่ถูกทัก
+ */
+export async function listExpiryNotices(database: Db = defaultDb, now: number = Date.now()): Promise<ExpiryNotice[]> {
+  const nowIso = new Date(now).toISOString();
+  const candidates = await database.query(
+    `SELECT u.id AS user_id, u.line_user_id, u.first_name, u.points
+       FROM users u
+      WHERE u.line_user_id IS NOT NULL
+        AND u.points > 0
+        AND EXISTS (
+          SELECT 1 FROM transactions t
+           WHERE t.user_id = u.id AND t.type = 'earn'
+             AND t.expired = FALSE AND t.cleared = FALSE AND t.notified_1m = FALSE
+             AND t.expires_at IS NOT NULL
+             AND t.expires_at >  $1::timestamptz
+             AND t.expires_at <= $1::timestamptz + ($2::int * INTERVAL '1 day'))
+      ORDER BY u.id
+      LIMIT $3`,
+    [nowIso, EXPIRY_NOTICE_DAYS, NOTICE_USERS_PER_RUN],
+  );
   const out: ExpiryNotice[] = [];
-  for (const row of rows ?? []) {
-    const s = capExpiring(
-      Number(row.raw_points ?? 0),
-      (row.earliest_expiry as string | Date | null) ?? null,
-      Number(row.points ?? 0),
-    );
-    // แต้มคงเหลือ 0 (แลก/ถูกตัดไปหมดแล้ว) → ไม่ต้องทักว่าแต้มจะหมด เปลืองโควตา push และทำลูกค้างง
+  for (const row of candidates) {
+    const s = await getExpiringSummary(Number(row.user_id), Number(row.points ?? 0), database, now);
+    // ใช้ก้อนนั้นไปแล้ว / แต้มคงเหลือไม่พอ → ไม่ต้องทัก (เปลืองโควตาและทำลูกค้างง)
     if (s.expiring_points <= 0 || !s.earliest_expiry) continue;
     out.push({
       user_id: Number(row.user_id),
@@ -370,24 +347,20 @@ export async function listExpiryNotices(db: SqlTag = defaultSql): Promise<Expiry
   return out;
 }
 
-/** มาร์กว่าเตือนก้อนในช่วงนี้ไปแล้ว — ช่วงต้องเท่ากับตอน SELECT ไม่งั้นเตือนซ้ำ/เตือนข้าม */
-export async function markExpiryNotified(userId: number, db: SqlTag = defaultSql): Promise<void> {
-  await db`
-    UPDATE transactions
-    SET notified_1m = TRUE
-    WHERE user_id   = ${userId}
-      AND type      = 'earn'
-      AND expired   = FALSE
-      AND cleared   = FALSE
-      AND expires_at IS NOT NULL
-      AND expires_at <= NOW() + (${EXPIRY_NOTICE_DAYS}::int * INTERVAL '1 day')
-  `;
+/** มาร์กว่าเตือนก้อนในช่วงนี้ไปแล้ว — ช่วงต้องเท่ากับตอนเลือก (ทั้งขอบล่างและขอบบน) ไม่งั้นเตือนซ้ำ/เตือนข้าม */
+export async function markExpiryNotified(userId: number, database: Db = defaultDb, now: number = Date.now()): Promise<void> {
+  const nowIso = new Date(now).toISOString();
+  await database.query(
+    `UPDATE transactions
+        SET notified_1m = TRUE
+      WHERE user_id = $1 AND type = 'earn'
+        AND expired = FALSE AND cleared = FALSE
+        AND expires_at IS NOT NULL
+        AND expires_at >  $2::timestamptz
+        AND expires_at <= $2::timestamptz + ($3::int * INTERVAL '1 day')`,
+    [userId, nowIso, EXPIRY_NOTICE_DAYS],
+  );
 }
-
-// หมายเหตุที่ยังแก้ไม่ได้ในงานนี้ (ไม่ใช่กติกาแต้ม แต่เป็นข้อสมมติของโครงข้อมูล):
-// deductPoints() หักแต้มที่ users.points อย่างเดียว ไม่ได้ตัดก้อน (transactions แถว earn) แบบ FIFO
-// ก้อนเก่าจึงยังเต็มจำนวนอยู่ในตารางแม้ลูกค้าแลกของไปแล้ว → ตัวเลข "จะหมดอายุ" เป็นค่าสูงสุดที่เป็นไปได้
-// (over-estimate) ของก้อนในช่วงนั้น เราจึงกดเพดานด้วยแต้มคงเหลือจริงไว้ชั้นหนึ่ง
 
 // ===================================================================
 //  สถานะการผูกรหัสลูกค้า Hero (link state) — 16 ก.ย. 69

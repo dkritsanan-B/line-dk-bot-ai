@@ -32,3 +32,22 @@ export const sql = (strings, ...values) => {
   }
   return Promise.resolve([]);     // ค่าตั้งต้น: ไม่เจอแถวไหน
 };
+
+// อินเทอร์เฟซ Db (lib/db.ts) — ของปลอมใช้ตัวดักเดียวกับ sql`` ด้านบน
+// เทสต์ที่ต้องพิสูจน์ SQL จริง (เรื่องเงิน/แต้ม) ให้ใช้ Postgres ในเครื่องแทน: tests/pg.mjs
+const fromText = (text, params = []) => {
+  const t = norm(text);
+  calls.push({ text: t, values: params });
+  for (const h of handlers) {
+    const hit = typeof h.match === "function" ? h.match(t, params) : t.includes(h.match);
+    if (!hit) continue;
+    const rows = typeof h.rows === "function" ? h.rows(t, params) : h.rows;
+    if (rows instanceof Error) return Promise.reject(rows);
+    return Promise.resolve(rows);
+  }
+  return Promise.resolve([]);
+};
+export const db = {
+  query: (text, params) => fromText(text, params),
+  tx: async (stmts) => { const out = []; for (const s of stmts) out.push(await fromText(s.text, s.params)); return out; },
+};
