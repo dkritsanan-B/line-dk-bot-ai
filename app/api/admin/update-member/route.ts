@@ -4,12 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
+import { isAdminReviewRequest } from "@/lib/review-admin";
 
 // PATCH { id, customer_id? , phone?, reset_line? } — งานพนักงาน (staff ขึ้นไป) ที่ลูกค้าทำเองไม่ได้ (14 ก.ย. 69):
 //   customer_id : ผูก/แก้รหัสลูกค้า Hero (CUS-xxxxx) — กันผูกซ้ำคนอื่น · ล้าง suggested_customer_id ด้วย
 //   phone       : เปลี่ยนเบอร์ให้ลูกค้า (10 หลัก, ห้ามซ้ำคนอื่น) — ลูกค้าเปลี่ยนเองได้ผ่าน LIFF ถ้ายังใช้ LINE เดิม
 //   reset_line  : ปลดบัญชี LINE เดิม (line_user_id = NULL) → ลูกค้าเปิด LINE ใหม่ สมัครด้วยเบอร์เดิม แต้ม/ระดับตามไป — ใช้ตอนเปลี่ยนเครื่อง/LINE หาย
 export async function PATCH(req: NextRequest) {
+  if (isAdminReviewRequest(req.nextUrl)) return NextResponse.json({ success: true, done: ["จำลองการผูกรหัสแล้ว"], review: true });
   const role = await getAdminRole(req);
   if (!hasRole(role, "staff")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

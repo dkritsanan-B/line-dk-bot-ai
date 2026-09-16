@@ -11,6 +11,7 @@ interface User {
   customer_id: string | null;
   suggested_customer_id?: string | null;   // บอทเดาจากเบอร์โทร รอพนักงานกดยืนยัน
   line_user_id?: string | null;
+  display_name?: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string;
@@ -18,6 +19,10 @@ interface User {
   birthday: string | null;
   points: number;
   created_at: string;
+  link_status?: "linked" | "suggested" | "pending";
+  waiting_days?: number;
+  pending_bills?: { count: number; amount: number; estimated_points: number } | null;
+  suggested_customer_name?: string | null;
 }
 
 type Tab = "overview" | "members" | "redeem" | "points" | "history" | "settings";
@@ -86,6 +91,13 @@ export default function AdminPage() {
   const [tab, setTab]             = useState<Tab>("overview");
   const [memberFilter, setMemberFilter] = useState<"all" | "unlinked" | "suggested" | "noline">("all");
   const [restoring, setRestoring] = useState(true);
+  const [reviewSecret, setReviewSecret] = useState("");
+  const [reviewMode, setReviewMode] = useState(false);
+  const apiUrl = useCallback((path: string) => {
+    if (!reviewSecret) return path;
+    const join = path.includes("?") ? "&" : "?";
+    return `${path}${join}review=${encodeURIComponent(reviewSecret)}`;
+  }, [reviewSecret]);
 
   // เพิ่มแต้มรายเดียว
   const [apPhone, setApPhone]     = useState("");
@@ -143,7 +155,7 @@ export default function AdminPage() {
   async function fetchRedemptions(pw = savedPw) {
     setRedeemLoading(true); setRedeemError("");
     try {
-      const res  = await fetch("/api/admin/redemptions", { headers: { "x-admin-password": pw } });
+      const res  = await fetch(apiUrl("/api/admin/redemptions"), { headers: { "x-admin-password": pw } });
       const data = await res.json();
       if (!res.ok) { setRedeemError(data.error ?? "เกิดข้อผิดพลาด"); return; }
       setRedeemRows(data.requests ?? []);
@@ -155,22 +167,24 @@ export default function AdminPage() {
     if (!window.confirm(action === "confirm" ? `ยืนยันการแลก #REQ-${id} ?` : `ยกเลิกคำขอ #REQ-${id} ?`)) return;
     setRedeemAction(prev => ({ ...prev, [id]: true }));
     try {
-      const res  = await fetch("/api/admin/redemptions", {
+      const res  = await fetch(apiUrl("/api/admin/redemptions"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
         body: JSON.stringify({ id, action }),
       });
       const data = await res.json();
-      if (!res.ok) { alert(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      if (!res.ok) { setRedeemError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+      setRedeemError("");
+      setRedeemRows(prev => prev.map(r => r.id === id ? { ...r, status: action === "confirm" ? "confirmed" : "cancelled", confirmed_at: new Date().toISOString() } : r));
       fetchRedemptions();
       fetchUsers(savedPw, search);
     } finally { setRedeemAction(prev => ({ ...prev, [id]: false })); }
   }
 
   useEffect(() => {
-    if (authed && savedPw) fetchRedemptions(savedPw);
+    if (authed && (savedPw || reviewMode)) fetchRedemptions(savedPw);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authed]);
+  }, [authed, reviewMode, apiUrl]);
 
   async function fetchAuditLog(phone = auditPhone) {
     setAuditLoading(true);
@@ -310,24 +324,37 @@ export default function AdminPage() {
   const fetchUsers = useCallback(async (pw: string, q = "", uname = savedUsername) => {
     setLoading(true); setError("");
     try {
-      const res  = await fetch(`/api/admin/members?search=${encodeURIComponent(q)}`, {
+      const res  = await fetch(apiUrl(`/api/admin/members?search=${encodeURIComponent(q)}`), {
         headers: { "x-admin-password": pw, "x-admin-username": uname },
       });
       if (res.status === 401) { setError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"); setAuthed(false); setLoading(false); return; }
       if (!res.ok) { setError(`เกิดข้อผิดพลาด (${res.status}) — กรุณา Redeploy Vercel`); setLoading(false); return; }
       const data = await res.json();
       setUsers(data.users ?? []);
+      setReviewMode(data.review === true);
       setAuthed(true);
       setSavedPw(pw);
       setSavedUsername(uname);
-      sessionStorage.setItem("admin_pw", pw);
-      sessionStorage.setItem("admin_username", uname);
+      if (!data.review) {
+        sessionStorage.setItem("admin_pw", pw);
+        sessionStorage.setItem("admin_username", uname);
+      }
     } catch { setError("เชื่อมต่อ API ไม่ได้ — กรุณาตรวจสอบ Vercel deployment"); }
     finally { setLoading(false); }
-  }, [savedUsername]);
+  }, [savedUsername, apiUrl]);
 
   // จำการล็อกอินไว้ใน sessionStorage (เหมือนหน้า /admin/rewards) — รีเฟรชหน้าไม่ต้องล็อกอินใหม่
   useEffect(() => {
+    const secret = new URLSearchParams(window.location.search).get("review") ?? "";
+    if (secret) {
+      setReviewSecret(secret);
+      fetch(`/api/admin/members?review=${encodeURIComponent(secret)}`).then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.review) throw new Error("review disabled");
+        setUsers(data.users ?? []); setReviewMode(true); setRole("staff"); setSavedUsername("review"); setAuthed(true); setRestoring(false);
+      }).catch(() => setRestoring(false));
+      return;
+    }
     const pw = sessionStorage.getItem("admin_pw") ?? "";
     const uname = sessionStorage.getItem("admin_username") ?? "";
     const r = sessionStorage.getItem("admin_role") ?? "";
@@ -340,6 +367,12 @@ export default function AdminPage() {
     } else setRestoring(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!authed || !tab || tab !== "members") return;
+    const timer = window.setTimeout(() => fetchUsers(savedPw, search), 180);
+    return () => window.clearTimeout(timer);
+  }, [search, tab, authed, fetchUsers, savedPw]);
   function go(t: Tab) { setTab(t); sessionStorage.setItem("admin_tab", t); }
   function logout() {
     sessionStorage.removeItem("admin_pw"); sessionStorage.removeItem("admin_username"); sessionStorage.removeItem("admin_role");
@@ -348,7 +381,7 @@ export default function AdminPage() {
 
   // เปลี่ยนเบอร์ / ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่องหรือ LINE หาย → ปลดแล้วให้สมัครใหม่ด้วยเบอร์เดิม แต้มตามไป)
   async function patchMember(userId: number, body: Record<string, unknown>, apply: (u: User) => User) {
-    const res = await fetch("/api/admin/update-member", {
+    const res = await fetch(apiUrl("/api/admin/update-member"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
       body: JSON.stringify({ id: userId, ...body }),
@@ -373,7 +406,7 @@ export default function AdminPage() {
     setEditingId(null);
     // รหัสลูกค้า Hero (CUS-xxxxx) — ผูกแล้วบอทให้แต้มจากบิล Hero อัตโนมัติ; API ตัดช่องว่าง/พิมพ์ใหญ่ให้ และกันผูกซ้ำคนอื่น
     const code = value.trim().toUpperCase() || null;
-    const res = await fetch("/api/admin/update-member", {
+    const res = await fetch(apiUrl("/api/admin/update-member"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
       body: JSON.stringify({ id: userId, customer_id: code }),
@@ -384,6 +417,13 @@ export default function AdminPage() {
       return;
     }
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: code, suggested_customer_id: null } : u));
+  }
+
+  function confirmSuggestedCustomer(u: User) {
+    if (!u.suggested_customer_id) return;
+    const hero = u.suggested_customer_name ? `${u.suggested_customer_id} · ${u.suggested_customer_name}` : u.suggested_customer_id;
+    if (!window.confirm(`ยืนยันว่าตรวจชื่อและบัตร/เบอร์ของลูกค้าแล้ว\n\nสมาชิก: ${u.first_name ?? "-"} ${u.last_name ?? ""}\nHero: ${hero}\n\nต้องการผูกรหัสนี้ใช่หรือไม่?`)) return;
+    saveCustomerId(u.id, u.suggested_customer_id);
   }
 
   function exportTxExcel() {
@@ -542,6 +582,8 @@ export default function AdminPage() {
   const suggested = users.filter(u => !u.customer_id && u.suggested_customer_id);
   const noLine = users.filter(u => !u.line_user_id);
   const shown = users.filter(u => memberFilter === "all" ? true : memberFilter === "unlinked" ? !u.customer_id : memberFilter === "suggested" ? (!u.customer_id && !!u.suggested_customer_id) : !u.line_user_id);
+  const waitingShown = shown.filter(u => !u.customer_id).sort((a, b) => (b.waiting_days ?? 0) - (a.waiting_days ?? 0));
+  const linkedShown = shown.filter(u => !!u.customer_id);
   const tierCount = (name: string) => users.filter(u => tierOf(u.points).name === name).length;
 
   const TabBtn = ({ id, label, icon, badge }: { id: Tab; label: string; icon: string; badge?: number }) => (
@@ -577,6 +619,7 @@ export default function AdminPage() {
 
       <div className="ad-main">
         {error && <div className="ad-alert ad-alert--err" style={{ marginBottom: 12 }}>{error}</div>}
+        {reviewMode && <div className="ad-review-banner">โหมดรีวิว · ข้อมูลจำลอง · ทุกปุ่มตอบกลับโดยไม่บันทึกข้อมูลจริง</div>}
         {role === "viewer" && <div className="ad-alert ad-alert--warn" style={{ marginBottom: 12 }}>👁️ บัญชีนี้ดูข้อมูลได้อย่างเดียว ไม่สามารถเพิ่ม/หักแต้มหรือยืนยันการแลกของได้</div>}
 
         {/* ═══ ภาพรวม ═══ */}
@@ -622,8 +665,7 @@ export default function AdminPage() {
               <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchUsers(savedPw, search)} disabled={loading}>{loading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button></div>
             </div>
             <div className="ad-toolbar">
-              <input className="ad-input" type="text" placeholder="ค้นหา ชื่อ / เบอร์ / บริษัท / รหัส Hero…" value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchUsers(savedPw, search)} />
-              <button className="ad-btn ad-btn--primary" onClick={() => fetchUsers(savedPw, search)}>ค้นหา</button>
+              <input className="ad-input" type="search" inputMode="search" aria-label="ค้นหาสมาชิก" placeholder="พิมพ์ชื่อ หรือเบอร์ท้าย 3–4 ตัว…" value={search} onChange={e => setSearch(e.target.value)} />
               {search && <button className="ad-btn ad-btn--ghost" onClick={() => { setSearch(""); fetchUsers(savedPw, ""); }}>ล้าง</button>}
               <div className="ad-filters" style={{ marginLeft: "auto" }}>
                 {([["all", "ทั้งหมด"], ["suggested", `รอกดผูก ${suggested.length}`], ["unlinked", `ยังไม่ผูก ${unlinked.length}`], ["noline", `ไม่มี LINE ${noLine.length}`]] as const).map(([k, l]) => (
@@ -631,11 +673,28 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+            {waitingShown.length > 0 && <div className="ad-verify-list">
+              <div className="ad-safety">🪪 <b>ก่อนกดยืนยัน:</b> ถามชื่อลูกค้า แล้วดูบัตรหรือเช็กเบอร์จากเครื่องลูกค้า ป้องกันการสวมเบอร์</div>
+              {waitingShown.map(u => <article className="ad-verify-card" key={u.id}>
+                <div className="ad-verify-head"><div><span className="ad-chip ad-chip--warn">รอยืนยัน {u.waiting_days ?? 0} วัน</span><h4>{u.display_name || "ไม่ระบุชื่อ LINE"}</h4><span>ชื่อที่กรอก: <b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b> · {fmtPhone(u.phone)}</span></div><div className="ad-pending-bills"><b>{u.pending_bills?.count ?? 0}</b><span>บิลค้าง</span></div></div>
+                <div className="ad-match">
+                  <div><small>ข้อมูลจาก LINE / สมัคร</small><strong>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</strong><span>{fmtPhone(u.phone)}{u.company ? ` · ${u.company}` : ""}</span></div>
+                  <div className="ad-match-arrow">เทียบกับ →</div>
+                  <div><small>ลูกค้า Hero ที่ระบบเสนอ</small><strong>{u.suggested_customer_id ?? "ยังไม่พบรหัสที่ตรง"}</strong><span>{u.suggested_customer_name ?? "ไม่มีชื่อจาก Hero ให้เทียบ"}</span></div>
+                </div>
+                <div className="ad-verify-actions">
+                  {u.suggested_customer_id ? <button className="ad-btn ad-btn--ok" onClick={() => confirmSuggestedCustomer(u)}>ตรวจแล้ว · ยืนยันผูกรหัส</button> : <button className="ad-btn ad-btn--ghost" onClick={() => { setEditingId(u.id); setEditValue(""); }}>กรอกรหัส Hero เอง</button>}
+                  <span>{u.pending_bills ? `ยอดบิลค้าง ${u.pending_bills.amount.toLocaleString()} บาท` : "ยังไม่มีบิลค้าง"}</span>
+                </div>
+                {editingId === u.id && <input className="ad-code-in ad-code-in--wide" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }} placeholder="กรอกรหัสแล้วกด Enter" />}
+              </article>)}
+            </div>}
+            {linkedShown.length > 0 && <h4 className="ad-section-label">สมาชิกที่ผูกแล้ว</h4>}
             <div className="ad-twrap"><table className="ad-table">
               <thead><tr><th>#</th><th>สมาชิก</th><th>เบอร์ / LINE</th><th>รหัส Hero</th><th>ระดับ</th><th className="r">แต้ม</th><th>วันเกิด</th><th>สมัครเมื่อ</th></tr></thead>
               <tbody>
                 {shown.length === 0 && <tr><td colSpan={8}><div className="ad-empty"><i>🔍</i>{users.length === 0 ? "ยังไม่มีสมาชิก — รอลูกค้าสมัครผ่าน LINE" : "ไม่พบข้อมูลตามตัวกรอง"}</div></td></tr>}
-                {shown.map((u, i) => {
+                {linkedShown.map((u, i) => {
                   const t = tierOf(u.points);
                   const isEditing = editingId === u.id;
                   return (
@@ -660,7 +719,7 @@ export default function AdminPage() {
                         )}
                         {!u.customer_id && u.suggested_customer_id && !isEditing && canEdit && (
                           // บอทเจอลูกค้า Hero ที่เบอร์ตรงกัน — ให้พนักงานเช็คชื่อแล้วกดยืนยัน (ไม่ผูกอัตโนมัติ กันคนสมัครด้วยเบอร์คนอื่น)
-                          <button className="ad-suggest" onClick={() => saveCustomerId(u.id, u.suggested_customer_id!)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด">🔗 เบอร์ตรง {u.suggested_customer_id} · กดผูก</button>
+                          <button className="ad-suggest" onClick={() => confirmSuggestedCustomer(u)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด">🔗 เบอร์ตรง {u.suggested_customer_id} · กดผูก</button>
                         )}
                       </td>
                       <td><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.emoji} {t.name}</span></td>
@@ -684,10 +743,24 @@ export default function AdminPage() {
             </div>
             {redeemError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{redeemError}</div>}
             {redeemRows.length === 0 ? <div className="ad-empty"><i>🎁</i>ยังไม่มีคำขอ</div> : (
+              <><div className="ad-redeem-grid">
+                {redeemRows.filter(r => r.status === "pending").map(r => {
+                  const name = r.first_name ? `${r.first_name} ${r.last_name ?? ""}` : (r.display_name ?? "-");
+                  const busy = redeemAction[r.id];
+                  return <article className="ad-redeem-card" key={r.id}>
+                    <div className="ad-redeem-top"><span className="ad-chip ad-chip--warn">รอรับของ</span><b>#REQ-{r.id}</b><time>{formatDateTime(r.created_at)}</time></div>
+                    <div className="ad-reward-name">🎁 {r.reward_name}</div>
+                    <div className="ad-redeem-person"><div className="ad-av">{name.slice(0, 1)}</div><div><b>{name}</b><span>{fmtPhone(r.phone)} · ใช้ {r.points_required.toLocaleString()} แต้ม</span></div></div>
+                    <div className="ad-safety ad-safety--compact">ตรวจชื่อลูกค้าและของรางวัลให้ตรงก่อนส่งมอบ</div>
+                    <div className="ad-redeem-actions"><button className="ad-btn ad-btn--ok" onClick={() => handleRedeemAction(r.id, "confirm")} disabled={busy}>{busy ? "กำลังบันทึก…" : "✓ ยืนยันว่ารับของแล้ว"}</button><button className="ad-btn ad-btn--danger" onClick={() => handleRedeemAction(r.id, "cancel")} disabled={busy}>ยกเลิกคำขอ</button></div>
+                  </article>;
+                })}
+              </div>
+              <div className="ad-card-h ad-history-head"><div><h3>รายการที่ดำเนินการแล้ว</h3></div></div>
               <div className="ad-twrap"><table className="ad-table">
                 <thead><tr><th>#REQ</th><th>สถานะ</th><th>ขอเมื่อ</th><th>ลูกค้า</th><th>เบอร์</th><th>ของรางวัล</th><th className="r">แต้ม</th><th></th></tr></thead>
                 <tbody>
-                  {[...redeemRows].sort((a, b) => (a.status === "pending" ? -1 : 1) - (b.status === "pending" ? -1 : 1)).map(r => {
+                  {redeemRows.filter(r => r.status !== "pending").map(r => {
                     const name = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-");
                     const isPending = r.status === "pending", isConfirmed = r.status === "confirmed";
                     const busy = redeemAction[r.id];
@@ -712,7 +785,7 @@ export default function AdminPage() {
                     );
                   })}
                 </tbody>
-              </table></div>
+              </table></div></>
             )}
           </div>
         )}

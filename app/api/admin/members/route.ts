@@ -4,8 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB, buildLinkState, getPendingBillsByUser, LINK_OVERDUE_DAYS } from "@/lib/points";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
+import { ADMIN_REVIEW_NOTE, filterAdminReviewMembers, isAdminReviewRequest } from "@/lib/review-admin";
 
 export async function GET(req: NextRequest) {
+  if (isAdminReviewRequest(req.nextUrl)) {
+    const users = filterAdminReviewMembers(req.nextUrl.searchParams.get("search") ?? "");
+    return NextResponse.json({ users, review: true, review_note: ADMIN_REVIEW_NOTE });
+  }
   const role = await getAdminRole(req);
   if (!hasRole(role, "viewer")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -54,6 +59,7 @@ export async function GET(req: NextRequest) {
 // DELETE ?id=N → ลบสมาชิกทิ้งทั้งคน (super เท่านั้น) — ใช้ล้างข้อมูลทดสอบ/สมัครซ้ำ · ลบทุกอย่างที่อ้างถึงคนนี้ก่อน แล้วค่อยลบ users
 // ต่างจาก clear-member-points ที่แค่รีเซ็ตแต้ม: คนที่ถูกลบจะสมัครใหม่ผ่าน LIFF ได้เหมือนไม่เคยมี
 export async function DELETE(req: NextRequest) {
+  if (isAdminReviewRequest(req.nextUrl)) return NextResponse.json({ success: true, review: true });
   const role = await getAdminRole(req);
   if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

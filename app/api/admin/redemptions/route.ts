@@ -5,6 +5,7 @@ import { sql, db } from "@/lib/db";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
 import { confirmRedemption, cancelRedemption } from "./logic";
 import { redemptionCancelledFlex, redemptionConfirmedFlex } from "@/lib/line-ui";
+import { ADMIN_REVIEW_REDEMPTIONS, isAdminReviewRequest } from "@/lib/review-admin";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
@@ -24,6 +25,7 @@ async function auth(req: NextRequest) {
 
 // GET — ดึงรายการ pending
 export async function GET(req: NextRequest) {
+  if (isAdminReviewRequest(req.nextUrl)) return NextResponse.json({ requests: ADMIN_REVIEW_REDEMPTIONS, review: true });
   if (!await auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     await sql`
@@ -55,6 +57,11 @@ export async function GET(req: NextRequest) {
 
 // POST — confirm หรือ cancel
 export async function POST(req: NextRequest) {
+  if (isAdminReviewRequest(req.nextUrl)) {
+    const { id, action } = await req.json();
+    if (!id || !["confirm", "cancel"].includes(action)) return NextResponse.json({ error: "ข้อมูลไม่ครบ" }, { status: 400 });
+    return NextResponse.json({ success: true, action: action === "confirm" ? "confirmed" : "cancelled", review: true });
+  }
   if (!await auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id, action } = await req.json(); // action: 'confirm' | 'cancel'
