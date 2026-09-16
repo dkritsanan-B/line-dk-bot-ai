@@ -13,17 +13,19 @@ export interface TierTheme {
   emoji: string;
   ink: TierInk;
   cardGrad: string;
+  /** สีตราระดับ (จุดวงกลม) ถ้าไม่อยากให้เหมือนสีบัตร — Welcome ใช้วงโปร่ง เพราะบัตรน้ำเงินเหมือน Diamond (ผู้ตรวจ r5) */
+  mark?: string;
 }
 
 // ไล่สีทุกใบเลือกให้ "จุดสว่างสุด/เข้มสุด" อยู่ในช่วงที่ตัวอักษรชุดเดียวผ่าน AA ได้ทั้งใบ
 // (ของเดิมไล่จากเข้มไปสว่างมาก เช่น เงิน #37474F → #B0BEC5 จึงไม่มีสีตัวอักษรใดผ่านทั้งใบ)
 export const TIER_THEME: Record<string, TierTheme> = {
-  Welcome:  { emoji: "👋", ink: "light", cardGrad: "linear-gradient(135deg, #0E2F5F 0%, #174C96 55%, #2A67C8 100%)" },
-  Bronze:   { emoji: "🥉", ink: "light", cardGrad: "linear-gradient(135deg, #3F2409 0%, #6E3F16 55%, #8F5A27 100%)" },
+  Welcome:  { emoji: "👋", ink: "light", cardGrad: "linear-gradient(135deg, #0E2F5F 0%, #174C96 55%, #2156A4 100%)", mark: "var(--surface)" },
+  Bronze:   { emoji: "🥉", ink: "dark",  cardGrad: "linear-gradient(135deg, #EDC39A 0%, #F6D8B8 45%, #E0AE7E 100%)" },
   Silver:   { emoji: "🥈", ink: "dark",  cardGrad: "linear-gradient(135deg, #C6D2DC 0%, #EEF3F7 45%, #AEBDC9 100%)" },
   Gold:     { emoji: "🥇", ink: "dark",  cardGrad: "linear-gradient(135deg, #FFD86B 0%, #FFC02E 45%, #F2A80C 100%)" },
-  Platinum: { emoji: "🔱", ink: "light", cardGrad: "linear-gradient(135deg, #1E2A34 0%, #3A4C5C 55%, #4E6376 100%)" },
-  Diamond:  { emoji: "💎", ink: "light", cardGrad: "linear-gradient(135deg, #0A2A66 0%, #12459E 55%, #1C5BC8 100%)" },
+  Platinum: { emoji: "🔱", ink: "light", cardGrad: "linear-gradient(135deg, #1E2A34 0%, #3A4C5C 55%, #43556A 100%)" },
+  Diamond:  { emoji: "💎", ink: "light", cardGrad: "linear-gradient(135deg, #0A2A66 0%, #12459E 55%, #1A54B8 100%)" },
 };
 
 const FALLBACK_THEME: TierTheme = TIER_THEME.Welcome;

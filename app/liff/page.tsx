@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Shell, Loading } from "./ui";
+import Icon from "./components/Icon";
 import { isReview, reviewQS } from "./review";
 import { getEffectiveTier, getNextTier, getTierFromPoints, monthsSince } from "./lib/tiers";
 import type { Expiry, Member, Profile, TxItem } from "./lib/types";
@@ -10,6 +11,7 @@ import MemberCard from "./components/MemberCard";
 import AlertNotes from "./components/AlertNotes";
 import QuickActions from "./components/QuickActions";
 import HistoryList, { type TxFilter } from "./components/HistoryList";
+import TierPerks from "./components/TierPerks";
 
 // หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม · ตรรกะเดิม (16 ก.ย. 69 ผ่าเป็นคอมโพเนนต์ย่อยใน components/ หน้าตาเท่าเดิม)
 // ไฟล์นี้เหลือแค่ state + โหลดข้อมูล + ประกอบคอมโพเนนต์
@@ -126,7 +128,7 @@ export default function LiffPage() {
   /* ── Error (ไม่มี profile) ── */
   if (error && !profile) return (
     <Shell sub="ระบบสมาชิกสะสมแต้ม" short>
-      <div className="lf-card lf-center" style={{ marginTop: 16 }}><i>⚠️</i>{error}</div>
+      <div className="lf-card lf-center"><i><Icon name="alert" size={40} /></i>{error}</div>
     </Shell>
   );
 
@@ -135,10 +137,10 @@ export default function LiffPage() {
 
   /* ── แก้ไขข้อมูล ── */
   if (registered && editing) return (
-    <Shell sub="แก้ไขข้อมูลสมาชิก">
+    <Shell sub="แก้ไขข้อมูลสมาชิก" layout="form">
       <div className="lf-card">
         <h2 className="lf-title">แก้ไขข้อมูล</h2>
-        <p className="lf-sub" style={{ marginBottom: 16 }}>ชื่อ วันเกิด และบริษัท แก้ได้เลย</p>
+        <p className="lf-sub">ชื่อ วันเกิด และบริษัท แก้ได้เลย</p>
         <MemberForm isEdit {...formProps} />
       </div>
     </Shell>
@@ -159,33 +161,40 @@ export default function LiffPage() {
   const formattedPhone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
 
   return (
-    <Shell sub="บัตรสมาชิกสะสมแต้ม">
-      {/* บัตร */}
-      <MemberCard
-        tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
-        name={name} formattedPhone={formattedPhone} member={member} profile={profile}
-      />
+    <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
+      {/* มือถือ: คอลัมน์เดียว เรียงตาม order ใน liff.css → บัตร · ปุ่มลัด · คำเตือน · ประวัติ · สิทธิ์ · กติกา
+          เดสก์ท็อป: ซ้าย = บัตร+ปุ่มลัด+คำเตือน (ของที่ต้องเห็นก่อน) · ขวา = ประวัติ+สิทธิ์+กติกา
+          (ผู้ตรวจ r5: ซ้ายมีบัตรก้อนเดียวแล้วว่าง ขวายาวเกิน → สองคอลัมน์ไม่สมดุล) */}
+      <div className="lf-col lf-col--main">
+        <MemberCard
+          tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
+          name={name} formattedPhone={formattedPhone} member={member} profile={profile}
+        />
+        <QuickActions
+          txLoading={txLoading} txOpen={txOpen}
+          onToggleHistory={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
+          onEdit={() => {
+            setFirstName(member?.first_name ?? ""); setLastName(member?.last_name ?? ""); setPhone(member?.phone ?? "");
+            setCompany(member?.company ?? ""); setBirthday(member?.birthday ? member.birthday.substring(0, 10) : ""); setError(""); setEditing(true);
+          }}
+        />
+        <AlertNotes
+          isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} months={months} expiry={expiry} points={points}
+          onViewExpiring={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); setTxOpen(true); }}
+        />
+      </div>
 
-      {/* เตือน */}
-      <AlertNotes
-        isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} months={months} expiry={expiry}
-        onViewExpiring={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); setTxOpen(true); }}
-      />
-
-      {/* ปุ่มลัด */}
-      <QuickActions
-        txLoading={txLoading} txOpen={txOpen}
-        onToggleHistory={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
-        onEdit={() => {
-          setFirstName(member?.first_name ?? ""); setLastName(member?.last_name ?? ""); setPhone(member?.phone ?? "");
-          setCompany(member?.company ?? ""); setBirthday(member?.birthday ? member.birthday.substring(0, 10) : ""); setError(""); setEditing(true);
-        }}
-      />
-
-      {/* ประวัติ */}
-      {txOpen && <HistoryList txList={txList} txFilter={txFilter} onFilter={setTxFilter} />}
-
-      <div className="lf-foot">ทุก 100 บาท = 1 แต้ม · แต้มมีอายุ 1 ปี · บอกเบอร์โทรที่แคชเชียร์ทุกครั้ง</div>
+      <div className="lf-col lf-col--side">
+        {txOpen &&<HistoryList txList={txList} txFilter={txFilter} onFilter={setTxFilter} />}
+        {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน ผู้ตรวจ r5) · ปิดประวัติแล้วกลับมา */}
+        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} />
+        <div className="lf-foot">
+          {/* กติกา 3 ข้อ บรรทัดละข้อ — ไม่ต่อกันด้วย · ที่ตัดบรรทัดกลางข้อ */}
+          <div>ซื้อทุก 100 บาท = 1 แต้ม</div>
+          <div>แต้มใช้ได้ 1 ปี นับจากวันที่ได้</div>
+          <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์นะคะ</span></div>
+        </div>
+      </div>
     </Shell>
   );
 }

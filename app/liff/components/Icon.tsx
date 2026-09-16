@@ -5,7 +5,7 @@
 
 export type IconName =
   | "gift" | "history" | "edit" | "star" | "tag" | "cake" | "hourglass"
-  | "alert" | "alertCircle" | "chevron" | "phone" | "building" | "trophy" | "check";
+  | "alert" | "alertCircle" | "chevron" | "phone" | "building" | "trophy" | "check" | "user";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   gift: <><path d="M3 12h18v9H3z" /><path d="M2 8h20v4H2z" /><path d="M12 8v13" /><path d="M12 8S10.5 3.5 8 3.5 4.5 8 8 8h4zM12 8s1.5-4.5 4-4.5S19.5 8 16 8h-4z" /></>,
@@ -22,6 +22,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   building: <><path d="M4 21V5.5L13 3v18" /><path d="M13 9h7v12" /><path d="M7.5 8h2M7.5 12h2M7.5 16h2M16 13h1.5M16 17h1.5" /></>,
   trophy: <><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 5.5H4.5V7A3.5 3.5 0 0 0 8 10.5M17 5.5h2.5V7a3.5 3.5 0 0 1-3.5 3.5" /><path d="M12 14v3M8.5 20.5h7" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
+  // รูปแทนคนที่ยังไม่มีรูปโปรไฟล์ LINE
+  user: <><circle cx="12" cy="8" r="3.8" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></>,
 };
 
 export default function Icon({ name, size = 24, strokeWidth = 2, className }: {

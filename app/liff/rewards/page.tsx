@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { isReview, reviewQS } from "../review";
 import { Shell, Loading } from "../ui";
+import Icon from "../components/Icon";
 
 // หน้าของรางวัล — ตรรกะเดิม (ตัวตน = LIFF access token) · รื้อหน้าตาเป็นชุดเดียวกับ /liff (14 ก.ย. 69) สไตล์อยู่ ../liff.css
 interface Member {
@@ -99,14 +100,14 @@ export default function RewardsPage() {
   const userPoints = member?.points ?? 0;
 
   return (
-    <Shell sub="ของรางวัล · แลกแต้มสะสม" back={{ label: "‹ บัตรสมาชิก", href: "/liff" + reviewQS() }} short>
-      <div className="lf-balance" style={{ marginTop: -14 }}>
-        <div><span>แต้มของคุณ</span><br /><b style={{ color: "#fff" }}>{userPoints.toLocaleString()}</b></div>
-        <span style={{ fontSize: 28 }}>⭐</span>
+    <Shell sub="ของรางวัล · แลกแต้มสะสม" back={{ label: "บัตรสมาชิก", href: "/liff" + reviewQS() }} short layout="catalog">
+      <div className="lf-balance">
+        <div><span>แต้มของคุณ</span><b>{userPoints.toLocaleString()}</b></div>
+        <i><Icon name="star" size={32} /></i>
       </div>
 
       {rewards.length === 0 ? (
-        <div className="lf-card lf-center" style={{ marginTop: 14 }}><i>🎁</i>ยังไม่มีของรางวัลในขณะนี้</div>
+        <div className="lf-card lf-center"><i><Icon name="gift" size={40} /></i>ยังไม่มีของรางวัลในขณะนี้</div>
       ) : rewards.map(reward => {
         const canRedeem  = userPoints >= reward.points_required;
         const lacking    = reward.points_required - userPoints;
@@ -116,7 +117,7 @@ export default function RewardsPage() {
         return (
           <div key={reward.id} className={`lf-reward${ok ? " can" : ""}${outOfStock ? " out" : ""}`}>
             <div className="lf-reward-img">
-              {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <span style={{ fontSize: 72 }}>🎁</span>}
+              {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name="gift" size={72} strokeWidth={1.5} />}
               {outOfStock ? <span className="lf-badge lf-badge--out">หมดชั่วคราว</span>
                 : canRedeem ? <span className="lf-badge lf-badge--ok">แลกได้เลย</span> : null}
             </div>
@@ -126,14 +127,14 @@ export default function RewardsPage() {
               {reward.stock !== null && reward.stock > 0 && <div className="lf-reward-desc">เหลือ {reward.stock} ชิ้น</div>}
               <div className="lf-reward-row">
                 <div className={`lf-cost${ok ? " ok" : ""}`}>{reward.points_required.toLocaleString()} แต้ม</div>
-                <div className={`lf-need${ok ? " ok" : ""}`}>{outOfStock ? "รอของเข้า" : canRedeem ? "✓ แต้มพอแล้ว" : `ขาดอีก ${lacking.toLocaleString()} แต้ม`}</div>
+                <div className={`lf-need${ok ? " ok" : ""}`}>{outOfStock ? "รอของเข้า" : canRedeem ? <><Icon name="check" size={18} /> แต้มพอแล้ว</> : `ขาดอีก ${lacking.toLocaleString()} แต้ม`}</div>
               </div>
               {ok && !msg?.ok && (
-                <button className="lf-btn lf-btn--accent" style={{ marginTop: 12 }} onClick={() => handleRedeem(reward)} disabled={redeemingId === reward.id}>
-                  {redeemingId === reward.id ? "กำลังส่งคำขอ…" : "🎁 แลกเลย"}
+                <button className="lf-btn lf-btn--accent lf-btn--stack" onClick={() => handleRedeem(reward)} disabled={redeemingId === reward.id}>
+                  {redeemingId === reward.id ? "กำลังส่งคำขอ…" : <><Icon name="gift" size={22} /> แลกเลย</>}
                 </button>
               )}
-              {msg && <div className={`lf-msg ${msg.ok ? "ok" : "err"}`}>{msg.ok ? "✅ " : "⚠️ "}{msg.text}</div>}
+              {msg && <div className={`lf-msg ${msg.ok ? "ok" : "err"}`}><i><Icon name={msg.ok ? "check" : "alert"} size={20} /></i><span>{msg.text}</span></div>}
             </div>
           </div>
         );

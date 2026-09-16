@@ -1,6 +1,8 @@
 "use client";
 // ฟอร์มข้อมูลสมาชิก — ใช้ทั้งตอนสมัครและตอนแก้ไข (JSX เดิมจาก page.tsx ไม่เปลี่ยนข้อความ/คลาส)
 import { Field } from "../ui";
+import Icon from "./Icon";
+import BirthdayField from "./BirthdayField";
 
 export interface MemberFormProps {
   isEdit: boolean;
@@ -29,23 +31,23 @@ export default function MemberForm({
     <div className="lf-form">
       <div className="lf-row">
         <Field label="ชื่อ">
-          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="สมชาย" autoComplete="given-name" />
+          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="ชื่อจริง" autoComplete="given-name" />
         </Field>
         <Field label="นามสกุล">
-          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="ใจดี" autoComplete="family-name" />
+          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="นามสกุล" autoComplete="family-name" />
         </Field>
       </div>
       <Field label="เบอร์มือถือ" hint={isEdit ? "เปลี่ยนเบอร์ได้ที่ร้าน — พนักงานจะแก้ให้ค่ะ" : "ใช้ยืนยันตัวตนและรับแต้มจากบิลที่ร้าน"}>
         <input className="lf-input lf-input--num" type="tel" inputMode="numeric" maxLength={10} value={phone} readOnly={isEdit}
           onChange={e => onPhone(e.target.value.replace(/\D/g, ""))} placeholder="08X XXX XXXX" autoComplete="tel" />
       </Field>
-      <Field label="วันเกิด" hint="รับคูปองวันเกิดทุกปี 🎂">
-        <input className="lf-input" type="date" value={birthday} onChange={e => onBirthday(e.target.value)} max={new Date().toISOString().slice(0, 10)} />
+      <Field label="วันเกิด" hint="รับของขวัญวันเกิดทุกปี">
+        <BirthdayField value={birthday} onChange={onBirthday} />
       </Field>
       <Field label="บริษัท / ร้านค้า" optional>
         <input className="lf-input" type="text" value={company} onChange={e => onCompany(e.target.value)} placeholder="เช่น หจก. ก่อสร้างดี" autoComplete="organization" />
       </Field>
-      {error && <div className="lf-alert lf-alert--err"><span>⚠️</span><span>{error}</span></div>}
+      {error && <div className="lf-alert lf-alert--err"><i><Icon name="alert" size={20} /></i><span>{error}</span></div>}
       <button className="lf-btn lf-btn--primary" onClick={onSubmit} disabled={submitting}>
         {submitting ? "กำลังบันทึก…" : isEdit ? "บันทึกข้อมูล" : "สมัครสมาชิกฟรี"}
       </button>
