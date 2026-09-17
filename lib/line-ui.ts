@@ -102,10 +102,13 @@ const progressText = (remaining: number, next: NextTier) => `อีก ${fmt(rem
 
 // ---------- การ์ดแจ้งเตือนสมาชิก (โครงกลาง) ----------
 type NoticeRow = { label: string; value: string; color?: string };
-type NoticeTone = "info" | "warn" | "neutral" | "birthday";
+type NoticeTone = "info" | "warn" | "neutral" | "birthday" | "success";
+type NoticeChip = { text: string; color: string; background: string };
 type NoticeMetric = {
-  value: string; unit?: string; caption: string; color?: string; size?: "xl" | "xxl" | "3xl";
+  value: string; unit?: string; caption?: string; color?: string; size?: "xl" | "xxl" | "3xl";
   captionColor?: string; strike?: boolean; ticket?: boolean;
+  label?: string;          // ป้ายเหนือตัวเลข (อ่านจากบนลงล่าง: ป้าย → ค่า → คำอธิบาย)
+  chip?: NoticeChip;       // ป้ายสถานะเล็กข้างตัวเลข เช่น "อีก 30 วัน" / "หมดอายุ"
 };
 type NoticeButton = { label: string; action: Msg; style?: "primary" | "secondary"; color?: string };
 type HeaderStyle = { background: string; eyebrow: string; title: string };
@@ -115,6 +118,8 @@ export const TONE_STYLE: Record<NoticeTone, HeaderStyle> = {
   warn: { background: BRAND.warnBg, eyebrow: BRAND.warn, title: BRAND.ink },
   neutral: { background: "#EEF1F6", eyebrow: BRAND.muted, title: BRAND.ink },
   birthday: { background: "#FDE7EF", eyebrow: "#A3244F", title: BRAND.ink },
+  // สถานะเสร็จสิ้น (รับของแล้ว) — ต่างจากหัวน้ำเงินของ "จองแล้ว" ชัดเจน
+  success: { background: "#E7F5EE", eyebrow: "#0E6B4C", title: BRAND.ink },
 };
 
 const noticeBtn = (button: NoticeButton): Msg => ({
@@ -143,16 +148,26 @@ function metricBlock(m: NoticeMetric): Msg {
       ...(m.unit ? [{ type: "span", text: m.unit === "%" ? "%" : ` ${m.unit}`, size: "md", weight: "bold", color }] : []),
     ],
   };
-  const caption: Msg = { type: "text", text: m.caption, size: "xs", color: m.captionColor ?? BRAND.muted, wrap: true, ...(m.ticket ? { align: "center" } : {}) };
+  const caption: Msg[] = m.caption ? [{ type: "text", text: m.caption, size: "xs", color: m.captionColor ?? BRAND.muted, wrap: true, ...(m.ticket ? { align: "center" } : {}) }] : [];
   if (m.ticket) {
     // ป้ายหมายเลขแบบตั๋ว: ป้ายกำกับอยู่บน ตัวเลขใหญ่ตรงกลาง พื้นฟ้าอ่อน ขอบน้ำเงิน
     return {
       type: "box", layout: "vertical", spacing: "xs", backgroundColor: BRAND.sky, cornerRadius: "md",
       borderWidth: "normal", borderColor: BRAND.blue, paddingAll: "12px",
-      contents: [caption, valueText],
+      contents: [...caption, valueText],
     };
   }
-  return { type: "box", layout: "vertical", spacing: "xs", contents: [valueText, caption] };
+  const valueRow: Msg = m.chip ? {
+    type: "box", layout: "horizontal", spacing: "md", alignItems: "center",
+    contents: [
+      { ...valueText, flex: 0 },
+      { type: "box", layout: "vertical", flex: 0, backgroundColor: m.chip.background, cornerRadius: "xxl",
+        paddingTop: "3px", paddingBottom: "3px", paddingStart: "10px", paddingEnd: "10px",
+        contents: [{ type: "text", text: m.chip.text, size: "xs", weight: "bold", color: m.chip.color }] },
+    ],
+  } : valueText;
+  const label: Msg[] = m.label ? [{ type: "text", text: m.label, size: "xs", weight: "bold", color: BRAND.muted, wrap: true }] : [];
+  return { type: "box", layout: "vertical", spacing: "xs", contents: [...label, valueRow, ...caption] };
 }
 
 function memberNoticeFlex(o: {
@@ -225,7 +240,7 @@ const progressBar = (pct: number, fill: string): Msg => ({
 const progressBlock = (totalEarned: number, next: NextTier, fill: string = BRAND.blue): Msg[] => [
   { type: "text", text: progressText(Math.max(0, next.min - totalEarned), next), size: "sm", weight: "bold", color: BRAND.ink, wrap: true },
   progressBar(progressPct(totalEarned, next.min), fill),
-  { type: "text", text: `สะสมแล้ว ${fmt(totalEarned)} / ${fmt(next.min)} แต้ม`, size: "xs", color: BRAND.muted },
+  { type: "text", text: `สะสมเลื่อนระดับ ${fmt(totalEarned)} / ${fmt(next.min)}`, size: "xs", color: BRAND.muted, wrap: true },
 ];
 
 export function pointsEarnedFlex(o: {
@@ -258,13 +273,41 @@ export const MEMBER_BENEFITS: Record<string, { discount: number; steelBonus: num
 };
 const fmtRate = (value: number): string => Number.isInteger(value) ? value.toFixed(0) : value.toString();
 
+// ลำดับระดับจากต่ำไปสูง (เหมือน TIER_ORDER ใน lib/tierRules.ts)
+const TIER_ASC = Object.keys(TIER_MIN).sort((a, b) => TIER_MIN[a] - TIER_MIN[b]);
+const nextTierOf = (tierName: string): string | null => {
+  const i = TIER_ASC.indexOf(tierName);
+  return i >= 0 && i < TIER_ASC.length - 1 ? TIER_ASC[i + 1] : null;
+};
+// ระดับแรกที่ได้สิทธิ์นั้น (ใช้กับข้อความต้อนรับ)
+const firstTierWith = (key: "discount" | "steelBonus" | "birthday"): string =>
+  TIER_ASC.find((t) => (MEMBER_BENEFITS[t]?.[key] ?? 0) > 0) ?? "Welcome";
+
+// สิทธิ์ของระดับ — ข้อความตรงกับกติกาจริงเท่านั้น (ส่วนลดหน้าร้าน = หมวดปลีก, แต้มคืนเหล็ก = ไม่รวมเหล็กเส้น)
+const benefitText = {
+  discount: (v: number) => `ส่วนลดหน้าร้าน ${fmtRate(v)}% (สินค้าปลีก)`,
+  steelBonus: (v: number) => `แต้มคืนเหล็ก ${fmtRate(v)}% (ไม่รวมเหล็กเส้น)`,
+  birthday: (v: number) => `แต้มของขวัญวันเกิด ${fmt(v)} แต้ม/ปี`,
+};
+type BenefitKey = keyof typeof benefitText;
+const BENEFIT_KEYS: BenefitKey[] = ["discount", "steelBonus", "birthday"];
+// รูปย่อสำหรับบรรทัด "ระดับถัดไปได้…" ให้จบในบรรทัดเดียวหรือสองบรรทัด
+const benefitShort: Record<BenefitKey, (v: number) => string> = {
+  discount: (v) => `ส่วนลด ${fmtRate(v)}%`,
+  steelBonus: (v) => `คืนเหล็ก ${fmtRate(v)}%`,
+  birthday: (v) => `วันเกิด ${fmt(v)} แต้ม`,
+};
+
 function tierBenefitLines(tierName: string): string[] {
-  const { discount, steelBonus, birthday } = MEMBER_BENEFITS[tierName] ?? MEMBER_BENEFITS.Welcome;
-  return [
-    ...(discount > 0 ? [`ส่วนลดหน้าร้านสูงสุด ${fmtRate(discount)}%`] : ["รับแต้มทุก 100 บาท = 1 แต้ม"]),
-    ...(steelBonus > 0 ? [`โบนัสแต้มหมวดเหล็ก ${fmtRate(steelBonus)}%`] : []),
-    ...(birthday > 0 ? [`แต้มของขวัญวันเกิด ${fmt(birthday)} แต้ม`] : []),
-  ].slice(0, 3);
+  const b = MEMBER_BENEFITS[tierName] ?? MEMBER_BENEFITS.Welcome;
+  return BENEFIT_KEYS.filter((k) => b[k] > 0).map((k) => benefitText[k](b[k]));
+}
+// สิ่งที่ระดับถัดไปให้เพิ่ม (เฉพาะรายการที่ค่าสูงขึ้น) — ใช้แสดง "ระดับถัดไป" บนการ์ดเลื่อนระดับ
+function nextTierGains(tierName: string, nextName: string): string[] {
+  const cur = MEMBER_BENEFITS[tierName] ?? MEMBER_BENEFITS.Welcome;
+  const nxt = MEMBER_BENEFITS[nextName];
+  if (!nxt) return [];
+  return BENEFIT_KEYS.filter((k) => nxt[k] > cur[k]).map((k) => benefitShort[k](nxt[k]));
 }
 
 const checkRow = (line: string): Msg => ({
@@ -275,35 +318,46 @@ const checkRow = (line: string): Msg => ({
   ],
 });
 
+// เหรียญ 🥇🥈🥉 สื่อ "ที่ 1/2/3" ซึ่งกลับด้านกับลำดับระดับ (Gold ไม่ใช่ระดับสูงสุด) → การ์ดเลื่อนระดับไม่ใช้อีโมจิระดับ
+// tierEmoji ยังรับไว้ให้จุดเรียกเดิมคอมไพล์ได้
 export function tierUpFlex(o: { name: string; tierName: string; tierEmoji: string; points: number; earned: number; billNo: string }): Msg {
   const theme = tierTheme(o.tierName);
+  const benefits = tierBenefitLines(o.tierName);
+  const next = nextTierOf(o.tierName);
+  const gains = next ? nextTierGains(o.tierName, next) : [];
+  const rank = TIER_ASC.indexOf(o.tierName);
   return memberNoticeFlex({
     altText: `🎉 เลื่อนเป็น ${o.tierName} แล้ว · ดูสิทธิ์สมาชิกใหม่`,
     eyebrow: "DK MEMBER · ระดับสมาชิก",
-    title: `เลื่อนเป็น ${o.tierName} แล้ว`,
+    title: "ยินดีด้วย เลื่อนระดับแล้ว",
     header: { background: theme.bg, eyebrow: theme.text, title: theme.text },
     lead: [{
       type: "box", layout: "vertical", backgroundColor: theme.tint, cornerRadius: "md", paddingAll: "12px", spacing: "xs",
       contents: [
-        { type: "text", text: `${o.tierEmoji} ${o.tierName}`, size: "3xl", weight: "bold", color: theme.ink, align: "center" },
-        { type: "text", text: "ระดับใหม่ของคุณ", size: "xs", color: theme.ink, align: "center" },
+        { type: "text", text: o.tierName.toUpperCase(), size: "3xl", weight: "bold", color: theme.ink, align: "center" },
+        { type: "text", text: rank > 0 ? `ระดับใหม่ของคุณ · ขั้น ${rank} จาก ${TIER_ASC.length - 1}` : "ระดับใหม่ของคุณ", size: "xs", color: theme.ink, align: "center" },
       ],
     }],
-    message: `${who(o.name)}ได้รับสิทธิ์เหล่านี้แล้วค่ะ`,
-    bodyExtra: [{ type: "box", layout: "vertical", spacing: "sm", contents: tierBenefitLines(o.tierName).map(checkRow) }],
+    message: benefits.length ? `${who(o.name)}ได้รับสิทธิ์เหล่านี้แล้วค่ะ` : `${who(o.name)}สะสมแต้มต่อเพื่อปลดล็อกสิทธิ์ค่ะ`,
+    bodyExtra: benefits.length ? [{ type: "box", layout: "vertical", spacing: "sm", contents: benefits.map(checkRow) }] : undefined,
+    rows: next ? [{ label: "ระดับถัดไป", value: next }] : undefined,
+    panelExtra: next && gains.length ? [
+      { type: "text", text: `สะสมครบ ${fmt(TIER_MIN[next])} แต้ม ได้เพิ่ม`, size: "xs", color: BRAND.muted, wrap: true },
+      { type: "text", text: gains.join("\n"), size: "sm", weight: "bold", color: BRAND.ink, wrap: true },
+    ] : undefined,
     note: `บิล ${o.billNo} · +${fmt(o.earned)} แต้ม`,
-    buttons: [{ label: `🎴 ดูบัตร ${o.tierName} ของฉัน`, action: { type: "uri", uri: SHOP.liffUrl } }],
+    buttons: [{ label: "🎴 ดูบัตรสมาชิกของฉัน", action: { type: "uri", uri: SHOP.liffUrl } }],
   });
 }
 
 export function birthdayGiftFlex(o: { name: string; tierName: string; tierEmoji: string; points: number }): Msg {
   return memberNoticeFlex({
     altText: `🎂 +${fmt(o.points)} แต้มวันเกิด · ใช้แลกของรางวัล`,
-    eyebrow: "DK MEMBER · วันเกิด",
-    title: "สุขสันต์วันเกิด 🎂",
+    eyebrow: "DK MEMBER · 🎂 วันเกิด",
+    title: "สุขสันต์วันเกิด",
     message: `${who(o.name)} ขอให้ปีนี้งานเข้าไม่ขาดสาย ขอบคุณที่อยู่กับ DK ค่ะ`,
     tone: "birthday",
-    metric: { value: `+${fmt(o.points)}`, unit: "แต้ม", caption: "ของขวัญวันเกิดเข้าบัญชีแล้ว", color: BRAND.success },
+    metric: { value: `+${fmt(o.points)}`, unit: "แต้ม", caption: `ของขวัญวันเกิดสมาชิก ${o.tierName} · เข้าบัญชีแล้ว`, color: BRAND.success },
     buttons: [{ label: "🎁 ใช้แต้มแลกของรางวัล", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
 }
@@ -313,9 +367,12 @@ export function pointsExpiringFlex(o: { name: string; points: number; daysLeft: 
     altText: `⏳ ${fmt(o.points)} แต้มใกล้หมดอายุ · แลกก่อน ${o.expiryDate}`,
     eyebrow: "DK MEMBER · แจ้งเตือนแต้ม",
     title: "แต้มใกล้หมดอายุ",
-    message: "แลกเป็นของรางวัลได้ทันทีค่ะ",
+    message: `${who(o.name)} แลกเป็นของรางวัลได้ทันทีค่ะ`,
     tone: "warn",
-    metric: { value: fmt(o.points), unit: "แต้ม", caption: `หมดอายุ ${o.expiryDate} (อีก ${fmt(o.daysLeft)} วัน)`, color: BRAND.warn },
+    metric: {
+      value: fmt(o.points), unit: "แต้ม", caption: `หมดอายุ ${o.expiryDate}`, color: BRAND.warn,
+      chip: { text: `อีก ${fmt(o.daysLeft)} วัน`, color: "#FFFFFF", background: BRAND.warn },
+    },
     rows: o.balance == null ? undefined : [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }],
     buttons: [{ label: "🎁 แลกของรางวัลตอนนี้", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
@@ -326,17 +383,22 @@ export function pointsExpiredFlex(o: { name: string; points: number; balance: nu
   return memberNoticeFlex({
     altText: `🔔 ${fmt(o.points)} แต้มหมดอายุ · คงเหลือ ${fmt(o.balance)} แต้ม`,
     eyebrow: "DK MEMBER · แจ้งผลแต้ม",
-    title: "แต้มบางส่วนหมดอายุ",
-    message: hasBalance ? "แลกแต้มที่เหลือได้เลยค่ะ" : "ซื้อสินค้าครั้งถัดไป รับแต้มใหม่ทุก 100 บาทค่ะ",
+    title: hasBalance ? "แต้มบางส่วนหมดอายุ" : "แต้มหมดอายุแล้ว",
+    message: hasBalance
+      ? `${who(o.name)} แต้มมีอายุ 1 ปี แลกแต้มที่เหลือได้เลยค่ะ`
+      : `${who(o.name)} แต้มมีอายุ 1 ปี ซื้อครั้งถัดไปรับแต้มใหม่ทุก 100 บาทค่ะ`,
     tone: "neutral",
-    metric: { value: fmt(o.points), unit: "แต้ม", caption: "หมดอายุแล้ว", color: BRAND.muted, strike: true },
+    metric: {
+      value: fmt(o.points), unit: "แต้ม", caption: "ครบ 1 ปี ตัดออกจากบัญชีแล้ว", color: BRAND.muted, strike: true,
+      chip: { text: "หมดอายุ", color: "#9B2C2C", background: "#FBE9E9" },
+    },
     rows: [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }],
     buttons: [{ label: hasBalance ? "🎁 แลกของรางวัล" : "🎁 ดูของรางวัล", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
 }
 
 // หมายเลขคำขอเว้นช่องแคบระหว่างตัว ให้พนักงานอ่านง่ายแบบตั๋ว (U+200A hair space)
-const ticketCode = (id: number) => `#REQ-${id}`.split("").join(" ");
+const ticketCode = (id: number) => `#REQ-${id}`.split("").join(" ");
 
 export function redemptionRequestedFlex(o: { rewardName: string; points: number; requestId: number; availablePoints: number }): Msg {
   return memberNoticeFlex({
@@ -364,7 +426,7 @@ export function redemptionConfirmedFlex(o: { rewardName: string; points: number;
     eyebrow: "DK MEMBER · ของรางวัล",
     title: "รับของรางวัลแล้ว",
     message: "ขอบคุณที่ใช้แต้มกับ DK ค่ะ",
-    tone: "info",
+    tone: "success",
     metric: { value: o.rewardName, size: "xl", caption: `✓ แลกสำเร็จ · ใช้ ${fmt(o.points)} แต้ม`, color: BRAND.navy, captionColor: BRAND.success },
     rows: [
       ...(o.requestId != null ? [{ label: "หมายเลขคำขอ", value: `#REQ-${o.requestId}` }] : []),
@@ -376,17 +438,17 @@ export function redemptionConfirmedFlex(o: { rewardName: string; points: number;
 
 export function redemptionCancelledFlex(o: { rewardName: string; points: number; requestId: number; reason?: string; balance?: number }): Msg {
   return memberNoticeFlex({
-    altText: `❌ #REQ-${o.requestId} ยกเลิกแล้ว · ปลดแต้มที่จองไว้ ${fmt(o.points)} แต้ม`,
+    altText: `❌ #REQ-${o.requestId} ยกเลิกแล้ว · แต้มไม่ถูกหัก ใช้แลกได้ตามเดิม`,
     eyebrow: "DK MEMBER · ของรางวัล",
     title: "ยกเลิกคำขอแล้ว",
-    message: o.balance != null ? `ตอนนี้ใช้ได้ ${fmt(o.balance)} แต้มค่ะ` : undefined,
+    message: `แต้ม ${fmt(o.points)} ยังอยู่ครบ ไม่ถูกหัก ขออภัยในความไม่สะดวกค่ะ`,
     tone: "neutral",
-    // คำขอแค่ "จอง" แต้มไว้ — ยกเลิกแล้วแต้มไม่เคยถูกหัก จึงไม่ใช่ "คืนแต้ม" (app/api/admin/redemptions/logic.ts)
-    metric: { value: fmt(o.points), unit: "แต้ม", caption: "ปลดแต้มที่จองไว้แล้ว · ไม่ได้หัก", color: BRAND.navy },
+    // คำขอแค่ "จอง" แต้มไว้ — แต้มถูกหักตอนพนักงานยืนยันเท่านั้น ยกเลิกแล้วยอดแต้มจึงเท่าเดิม (app/api/admin/redemptions/logic.ts)
+    metric: { label: "แต้มที่ใช้แลกได้ตามเดิม", value: fmt(o.points), unit: "แต้ม", color: BRAND.navy },
     rows: [
-      { label: "หมายเลขคำขอ", value: `#REQ-${o.requestId}` },
       { label: "ของรางวัล", value: o.rewardName },
-      ...(o.reason ? [{ label: "เหตุผล", value: o.reason }] : []),
+      { label: "หมายเลขคำขอ", value: `#REQ-${o.requestId}` },
+      ...(o.reason ? [{ label: "เหตุผล", value: o.reason }] : o.balance != null ? [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }] : []),
     ],
     buttons: [{ label: "🎁 เลือกของรางวัลอื่น", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
@@ -400,20 +462,22 @@ export function tierExpiryWarningFlex(o: { name: string; tierName?: string; dead
   const consequence = drops
     ? `ถ้าไม่มีบิลใหม่ ระดับ ${o.tierName} จะกลับเป็น ${fallback}`
     : `ถ้าไม่มีบิลใหม่ ระดับ${o.tierName ? ` ${o.tierName} ` : ""}จะคิดจากแต้มคงเหลือ และอาจลดลง`;
-  const action = "ซื้อสินค้า 1 บิล เพื่อคงระดับไว้";
-  const leadText = "ซื้อสินค้า 1 บิลภายใน 1 ปีนับจากการซื้อล่าสุด เพื่อคงระดับไว้";
+
   return memberNoticeFlex({
     altText: `📌 ${o.tierName ? `ระดับ ${o.tierName} ` : "ระดับสมาชิก"}ใกล้หมดอายุ · ซื้อ 1 บิล${o.deadline ? `ภายใน ${o.deadline}` : "เพื่อคงระดับ"}`,
     eyebrow: "DK MEMBER · แจ้งเตือนระดับ",
     title: "ระดับใกล้หมดอายุ",
     tone: "warn",
     ...(o.deadline
-      ? { metric: { value: `ภายใน ${o.deadline}`, size: "xl" as const, caption: action, color: BRAND.warn } }
-      : { lead: [{ type: "text", text: leadText, size: "md", weight: "bold", color: BRAND.warn, wrap: true }] }),
+      ? { metric: { label: "ซื้อสินค้า 1 บิลภายใน", value: o.deadline, size: "xl" as const, caption: "เพื่อคงระดับไว้", color: BRAND.warn } }
+      : { lead: [{ type: "text", size: "sm", color: BRAND.ink, wrap: true, contents: [
+          { type: "span", text: "ซื้อสินค้า 1 บิล", weight: "bold", color: BRAND.warn },
+          { type: "span", text: " ภายใน 1 ปีนับจากการซื้อล่าสุด เพื่อคงระดับไว้" },
+        ] }] }),
     message: `${who(o.name)} ${consequence}ค่ะ`,
     rows: o.lastPurchaseDate ? [{ label: "ซื้อล่าสุด", value: o.lastPurchaseDate }] : undefined,
     buttons: [
-      { label: "🎴 ดูบัตรสมาชิก", action: { type: "uri", uri: SHOP.liffUrl } },
+      { label: "🎴 ดูระดับและเงื่อนไข", action: { type: "uri", uri: SHOP.liffUrl } },
       { label: "📞 ติดต่อฝ่ายขาย", action: { type: "message", text: "ติดต่อฝ่ายขาย" }, style: "secondary" },
     ],
   });
@@ -421,7 +485,9 @@ export function tierExpiryWarningFlex(o: { name: string; tierName?: string; dead
 
 // ข้อความต้อนรับตอนเพิ่มเพื่อน — การ์ดเดียว ปุ่มหลักสมัครสมาชิก ปุ่มรองคู่กันแถวเดียว
 export function welcomeFlex(): Msg {
-  const maxDiscount = Math.max(...Object.values(MEMBER_BENEFITS).map((benefit) => benefit.discount));
+  const discounts = Object.values(MEMBER_BENEFITS).map((b) => b.discount).filter((d) => d > 0);
+  const discountFrom = firstTierWith("discount");
+  const discountRange = `${fmtRate(Math.min(...discounts))}–${fmtRate(Math.max(...discounts))}%`;
   return {
     type: "flex",
     altText: "👋 ยินดีต้อนรับสู่ DK · สมัครสมาชิกฟรี รับแต้มทุกบิล",
@@ -433,15 +499,19 @@ export function welcomeFlex(): Msg {
         type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", paddingBottom: "8px",
         contents: [
           { type: "text", text: "ยินดีต้อนรับสู่ DK 👋", weight: "bold", size: "xl", color: BRAND.ink },
-          { type: "text", text: "วัสดุก่อสร้าง เหล็ก เครื่องมือช่าง เมทัลชีท ท่อ PVC ปั๊มน้ำ ครบจบที่เดียว", size: "sm", color: BRAND.muted, wrap: true },
+          { type: "text", text: "สมัครสมาชิกฟรี สะสมแต้มจากบิลซื้อของที่ร้าน แลกของรางวัลได้", size: "sm", color: BRAND.muted, wrap: true },
           ...[
-            ["⭐", "สะสมแต้ม", "ทุก 100 บาท = 1 แต้ม เข้าอัตโนมัติจากบิล"],
-            ["🏷️", "ส่วนลดสมาชิก", `ลดสูงสุด ${maxDiscount}% ตามระดับ`],
-            ["🎁", "ของรางวัล + วันเกิด", "แลกแต้มที่ร้าน รับแต้มของขวัญวันเกิดทุกปี"],
+            ["★", "สะสมแต้ม", "ทุก 100 บาท = 1 แต้ม เข้าอัตโนมัติจากบิล"],
+            ["%", "ส่วนลดหน้าร้าน", `สินค้าปลีกลด ${discountRange} เริ่มที่ระดับ ${discountFrom}`],
+            ["♥︎", "ของรางวัล + วันเกิด", `แลกแต้มเป็นของรางวัลที่ร้าน
+แต้มวันเกิดทุกปี ตั้งแต่ระดับ ${firstTierWith("birthday")}`],
           ].map(([ic, t, d], i) => ({
             type: "box", layout: "horizontal", spacing: "md", alignItems: "center", ...(i === 0 ? { margin: "lg" } : {}),
             contents: [
-              { type: "text", text: ic, size: "xl", flex: 0 },
+              // ไอคอนวงกลมสีแบรนด์ชุดเดียว (อีโมจิหน้าตาต่างกันแต่ละเครื่อง)
+              { type: "box", layout: "vertical", flex: 0, width: "32px", height: "32px", cornerRadius: "16px",
+                backgroundColor: BRAND.sky, justifyContent: "center", alignItems: "center",
+                contents: [{ type: "text", text: ic, size: "md", weight: "bold", color: BRAND.navy, align: "center" }] },
               { type: "box", layout: "vertical", contents: [
                 { type: "text", text: t, weight: "bold", size: "sm", color: BRAND.ink },
                 { type: "text", text: d, size: "xs", color: BRAND.muted, wrap: true },
@@ -480,7 +550,9 @@ export function contactFlex(): Msg {
           contents: [
             { type: "text", text: "เวลาทำการ", size: "xs", color: BRAND.muted },
             { type: "text", text: SHOP.hours, size: "sm", weight: "bold", color: BRAND.navy, margin: "none" },
-            { type: "text", text: `โทรร้าน ${SHOP.phone}`, size: "sm", color: BRAND.ink },
+            { type: "separator", margin: "md", color: "#DDE2EA" },
+            rowBox({ label: "โทรร้าน", value: SHOP.phone }),
+            rowBox({ label: "LINE ร้าน", value: SHOP.lineId }),
           ] },
       ],
     },
@@ -492,25 +564,24 @@ export function contactFlex(): Msg {
       ],
     },
   };
-  const staff: Msg[] = SALES_STAFF.map((s) => ({
+  const staff: Msg[] = SALES_STAFF.map((s, i) => ({
     type: "bubble", size: "kilo",
-    header: {
-      type: "box", layout: "vertical", backgroundColor: BRAND.navy, paddingAll: "10px", paddingStart: "16px",
-      contents: [{ type: "text", text: "DK STEEL · ฝ่ายขาย", size: "xs", weight: "bold", color: "#FFFFFF" }],
-    },
     body: {
       type: "box", layout: "vertical", paddingAll: "16px", paddingBottom: "4px",
       contents: [
-        { type: "image", url: s.photo, size: "full", aspectRatio: "10:9", aspectMode: "cover" },
-        { type: "text", text: s.name, size: "lg", weight: "bold", color: BRAND.ink, align: "center", margin: "md" },
-        { type: "text", text: s.phone, size: "sm", color: BRAND.muted, align: "center", margin: "xs" },
+        { type: "box", layout: "vertical", cornerRadius: "md", contents: [
+          { type: "image", url: s.photo, size: "full", aspectRatio: "5:6", aspectMode: "cover" },
+        ] },
+        { type: "text", text: s.name, size: "lg", weight: "bold", color: BRAND.ink, align: "center", margin: "sm" },
+        // ป้ายตำแหน่ง + ลำดับใบ (ไม่แต่งความถนัดขึ้นเอง) · เบอร์อยู่ที่ปุ่มโทรแล้ว
+        { type: "text", text: `พนักงานขาย · ${i + 1}/${SALES_STAFF.length}`, size: "xs", color: BRAND.muted, align: "center" },
       ],
     },
     footer: {
       type: "box", layout: "vertical", spacing: "sm", paddingAll: "12px",
       contents: [
         { type: "button", style: "primary", height: "sm", color: BRAND.blue, action: { type: "uri", label: `📞 โทรหา${s.name}`, uri: `tel:${s.tel}` } },
-        { type: "button", style: "primary", height: "sm", color: BRAND.line, action: { type: "uri", label: "🟢 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` } },
+        { type: "button", style: "secondary", height: "sm", action: { type: "uri", label: "เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` } },
       ],
     },
   }));
@@ -538,13 +609,13 @@ export function pointsFlex(o: { name: string; tierName: string; tierEmoji: strin
             { type: "text", text: "DK MEMBER", size: "xs", color: theme.text, weight: "bold" },
             { type: "text", text: `${o.tierEmoji} ${o.tierName}`, size: "xs", color: theme.text, weight: "bold", align: "end" },
           ] },
-          { type: "text", text: o.name, size: "md", color: theme.text, weight: "bold", margin: "sm", wrap: true },
+          { type: "text", text: who(o.name), size: "md", color: theme.text, weight: "bold", margin: "sm", wrap: true },
           { type: "text", text: fmt(o.points), size: "3xl", color: theme.text, weight: "bold", margin: "md" },
           { type: "text", text: "แต้มคงเหลือ", size: "xs", color: theme.text },
         ],
       },
       body: {
-        type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px",
+        type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", paddingBottom: "12px",
         contents: [
           ...(showProgress ? progressBlock(o.totalEarned, o.next!, theme.bar) : []),
           ...(!o.next ? [

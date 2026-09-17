@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  BRAND, SHOP, TIER_COLOR, TIER_TEXT, TIER_THEME, TIER_MIN, TONE_STYLE, MEMBER_BENEFITS, visualLength, TITLE_MAX,
+  BRAND, SHOP, SALES_STAFF, TIER_COLOR, TIER_TEXT, TIER_THEME, TIER_MIN, TONE_STYLE, MEMBER_BENEFITS, visualLength, TITLE_MAX,
   welcomeFlex, contactFlex, pointsFlex, pointsEarnedFlex, tierUpFlex,
   birthdayGiftFlex, pointsExpiringFlex, pointsExpiredFlex,
   redemptionRequestedFlex, redemptionConfirmedFlex, redemptionCancelledFlex,
@@ -12,24 +12,27 @@ import {
 export const examples = [
   ["ต้อนรับ", welcomeFlex()],
   ["ติดต่อฝ่ายขาย", contactFlex()],
-  ["เช็คแต้ม Gold", pointsFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", tierColor: TIER_COLOR.Gold, points: 8450, totalEarned: 3200, tierMin: 2000, next: { name: "Platinum", emoji: "🔱", min: 5000 } })],
+  ["เช็คแต้ม Gold", pointsFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", tierColor: TIER_COLOR.Gold, points: 2450, totalEarned: 3200, tierMin: 2000, next: { name: "Platinum", emoji: "🔱", min: 5000 } })],
   ["เช็คแต้ม Silver", pointsFlex({ name: "คุณสมชาย", tierName: "Silver", tierEmoji: "🥈", tierColor: TIER_COLOR.Silver, points: 845, totalEarned: 900, tierMin: 500, next: { name: "Gold", emoji: "🥇", min: 2000 } })],
   // ---- ตั้งแต่ตรงนี้เป็นการ์ดแจ้งเตือนสมาชิก (memberNoticeFlex) ----
-  ["ได้แต้มจากบิล (ข้อมูลเดิม)", pointsEarnedFlex({ name: "คุณสมชาย", points: 1250, balance: 8450, billNo: "IV-690001" })],
-  ["ได้แต้มจากบิล (มีระดับ)", pointsEarnedFlex({ name: "คุณสมชาย", points: 1250, balance: 8450, billNo: "IV-690001", tierName: "Gold", tierEmoji: "🥇", totalEarned: 3200, tierMin: 2000, next: { name: "Platinum", emoji: "🔱", min: 5000 } })],
-  ["เลื่อนระดับ", tierUpFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", points: 8450, earned: 1250, billNo: "IV-690001" })],
+  ["ได้แต้มจากบิล (ข้อมูลเดิม)", pointsEarnedFlex({ name: "คุณสมชาย", points: 250, balance: 2450, billNo: "IV-690001" })],
+  ["ได้แต้มจากบิล (มีระดับ)", pointsEarnedFlex({ name: "คุณสมชาย", points: 250, balance: 2450, billNo: "IV-690001", tierName: "Gold", tierEmoji: "🥇", totalEarned: 3200, tierMin: 2000, next: { name: "Platinum", emoji: "🔱", min: 5000 } })],
+  ["เลื่อนระดับ", tierUpFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", points: 2150, earned: 250, billNo: "IV-690001" })],
   ["เลื่อนระดับ Bronze", tierUpFlex({ name: "สมชาย", tierName: "Bronze", tierEmoji: "🥉", points: 120, earned: 120, billNo: "IV-690002" })],
+  ["เลื่อนระดับ Silver", tierUpFlex({ name: "สมชาย", tierName: "Silver", tierEmoji: "🥈", points: 520, earned: 60, billNo: "IV-690004" })],
+  ["เลื่อนระดับ Diamond", tierUpFlex({ name: "สมชาย", tierName: "Diamond", tierEmoji: "💎", points: 9800, earned: 700, billNo: "IV-690005" })],
   ["เลื่อนระดับ Platinum", tierUpFlex({ name: "สมชาย", tierName: "Platinum", tierEmoji: "🔱", points: 5200, earned: 400, billNo: "IV-690003" })],
   ["ของขวัญวันเกิด", birthdayGiftFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", points: 500 })],
-  ["แต้มใกล้หมดอายุ (ข้อมูลเดิม)", pointsExpiringFlex({ name: "คุณสมชาย", points: 1250, daysLeft: 30, expiryDate: "16 ตุลาคม 2569" })],
-  ["แต้มใกล้หมดอายุ (มียอดคงเหลือ)", pointsExpiringFlex({ name: "คุณสมชาย", points: 1250, daysLeft: 30, expiryDate: "16 ตุลาคม 2569", balance: 7200 })],
-  ["แต้มหมดอายุ", pointsExpiredFlex({ name: "คุณสมชาย", points: 1250, balance: 7200 })],
+  ["แต้มใกล้หมดอายุ (ข้อมูลเดิม)", pointsExpiringFlex({ name: "คุณสมชาย", points: 300, daysLeft: 30, expiryDate: "16 ตุลาคม 2569" })],
+  ["แต้มใกล้หมดอายุ (มียอดคงเหลือ)", pointsExpiringFlex({ name: "คุณสมชาย", points: 300, daysLeft: 30, expiryDate: "16 ตุลาคม 2569", balance: 2450 })],
+  ["แต้มหมดอายุ", pointsExpiredFlex({ name: "คุณสมชาย", points: 300, balance: 2150 })],
   ["แต้มหมดอายุ (ไม่เหลือแต้ม)", pointsExpiredFlex({ name: "คุณ", points: 300, balance: 0 })],
-  ["จองของรางวัล", redemptionRequestedFlex({ rewardName: "สว่านไร้สาย", points: 2500, requestId: 88, availablePoints: 5950 })],
-  ["รับของรางวัล", redemptionConfirmedFlex({ rewardName: "สว่านไร้สาย", points: 2500, balance: 5950 })],
-  ["รับของรางวัล (มีเลขคำขอ)", redemptionConfirmedFlex({ rewardName: "สว่านไร้สาย", points: 2500, balance: 5950, requestId: 88 })],
-  ["ยกเลิกคำขอ (ข้อมูลเดิม)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 2500, requestId: 88 })],
-  ["ยกเลิกคำขอ (มีเหตุผล+ยอด)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 2500, requestId: 88, reason: "สินค้าหมด", balance: 8450 })],
+  ["จองของรางวัล", redemptionRequestedFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, availablePoints: 950 })],
+  ["รับของรางวัล", redemptionConfirmedFlex({ rewardName: "สว่านไร้สาย", points: 1500, balance: 950 })],
+  ["รับของรางวัล (มีเลขคำขอ)", redemptionConfirmedFlex({ rewardName: "สว่านไร้สาย", points: 1500, balance: 950, requestId: 88 })],
+  ["ยกเลิกคำขอ (ข้อมูลเดิม)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88 })],
+  ["ยกเลิกคำขอ (มีเหตุผล)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, reason: "สินค้าหมด" })],
+  ["ยกเลิกคำขอ (มียอด)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, balance: 2450 })],
   ["รักษาระดับ (ข้อมูลเดิม)", tierExpiryWarningFlex({ name: "คุณสมชาย" })],
   ["รักษาระดับ (คำนวณระดับที่จะตก)", tierExpiryWarningFlex({ name: "สมชาย", tierName: "Gold", points: 800 })],
   ["รักษาระดับ (ข้อมูลครบ)", tierExpiryWarningFlex({ name: "คุณสมชาย", tierName: "Platinum", deadline: "16 ตุลาคม 2569", lastPurchaseDate: "16 ตุลาคม 2568" })],
@@ -122,21 +125,22 @@ assert.equal(silver.contents.header.contents[0].contents[0].color, TIER_TEXT.Sil
 assert.equal(gold.contents.header.contents[0].contents[0].text, "DK MEMBER", "pointsFlex eyebrow ต้องเป็น DK MEMBER");
 assert.equal(gold.contents.header.backgroundColor, TIER_COLOR.Gold, "Gold ต้องใช้ TIER_COLOR.Gold");
 
-// หลอดความคืบหน้าต้องตรงกับป้าย "สะสมแล้ว X / Y" (เติม = totalEarned / next.min เหมือนหน้า LIFF)
+// หลอดความคืบหน้าต้องตรงกับป้าย "สะสมเลื่อนระดับ X / Y" (เติม = totalEarned / next.min เหมือนหน้า LIFF)
 const barOf = (msg) => {
   let bar = null;
   walk(msg.contents, (node) => { if (node && node.type === "box" && node.height === "8px" && typeof node.width === "string") bar = node; });
   return bar;
 };
-const pf = pointsFlex({ name: "ก", tierName: "Gold", tierEmoji: "🥇", tierColor: TIER_COLOR.Gold, points: 8450, totalEarned: 12000, tierMin: 10000, next: { name: "Platinum", emoji: "🔱", min: 20000 } });
-assert.equal(barOf(pf).width, "60%", "pointsFlex: หลอดต้องเติม 12000/20000 = 60%");
-assert(JSON.stringify(pf).includes("สะสมแล้ว 12,000 / 20,000 แต้ม"), "pointsFlex: ป้ายต้องเป็น สะสมแล้ว X / Y");
+const pf = pointsFlex({ name: "ก", tierName: "Gold", tierEmoji: "🥇", tierColor: TIER_COLOR.Gold, points: 2800, totalEarned: 3500, tierMin: 2000, next: { name: "Platinum", emoji: "🔱", min: 5000 } });
+assert.equal(barOf(pf).width, "70%", "pointsFlex: หลอดต้องเติม 3500/5000 = 70%");
+assert(JSON.stringify(pf).includes("สะสมเลื่อนระดับ 3,500 / 5,000"), "pointsFlex: ป้ายต้องบอกว่าเป็นแต้มสะสม (ไม่ใช่แต้มที่ใช้ได้)");
+assert(pointsFlex({ name: "0812345678", tierName: "Gold", tierEmoji: "", tierColor: TIER_COLOR.Gold, points: 1, totalEarned: 2100, tierMin: 2000, next: null }).contents.header.contents[1].text === "คุณ", "pointsFlex: ชื่อต้องผ่าน who() (ไม่โชว์เบอร์)");
 const pe = examples.find(([n]) => n === "ได้แต้มจากบิล (มีระดับ)")[1];
 assert.equal(barOf(pe).width, "64%", "pointsEarnedFlex: หลอดต้องเติม 3200/5000 = 64%");
 for (const msg of [pf, pe]) assert(/อีก [\d,]+ แต้ม → /.test(JSON.stringify(msg)), "ข้อความระดับถัดไปต้องเป็นรูป อีก X แต้ม → ระดับ");
 assert.equal(barOf(silver).backgroundColor, BRAND.navy, "Silver: สีระดับสว่าง หลอดต้องใช้น้ำเงินเข้ม");
 for (const [tier, t] of Object.entries(TIER_THEME)) assert(contrast(t.bar, "#DDE2EA") >= 3, `หลอด ${tier} คอนทราสต์กับรางต่ำกว่า 3:1`);
-const inactive = pointsFlex({ name: "ก", tierName: "Silver", tierEmoji: "🥈", tierColor: TIER_COLOR.Silver, points: 845, totalEarned: 3000, tierMin: 500, next: { name: "Gold", emoji: "🥇", min: 2000 }, inactiveRealTier: "🥇 Gold" });
+const inactive = pointsFlex({ name: "ก", tierName: "Silver", tierEmoji: "🥈", tierColor: TIER_COLOR.Silver, points: 845, totalEarned: 2400, tierMin: 500, next: { name: "Gold", emoji: "🥇", min: 2000 }, inactiveRealTier: "🥇 Gold" });
 assert(!barOf(inactive), "ระดับพักอยู่: ห้ามโชว์หลอด (แต้มสะสมเกินเกณฑ์แล้ว)");
 assert(JSON.stringify(inactive).includes(BRAND.warnBg), "ระดับพักอยู่: คำเตือนต้องอยู่ในกล่องสีเตือน");
 
@@ -150,6 +154,18 @@ assert(JSON.stringify(inactive).includes(BRAND.warnBg), "ระดับพั�
   for (const bubble of staff) {
     assert(!bubble.hero, "contactFlex: การ์ดพนักงานห้ามมีแบนเนอร์ซ้ำ");
     assert(!JSON.stringify(bubble).includes(SHOP.hours), "contactFlex: การ์ดพนักงานห้ามมีบรรทัดเวลาซ้ำ");
+    assert.equal(bubble.body.contents[0].cornerRadius, "md", "contactFlex: รูปพนักงานต้องมุมมน");
+    assert(!bubble.header, "contactFlex: การ์ดพนักงานไม่ต้องมีหัวซ้ำ 4 ใบ");
+    const [call, line] = bubble.footer.contents;
+    assert.equal(call.style, "primary", "contactFlex: ปุ่มโทรเป็นปุ่มหลัก");
+    assert.equal(line.style, "secondary", "contactFlex: ปุ่ม LINE เป็นปุ่มรอง");
+    assert(!/🟢/u.test(line.action.label), "contactFlex: ปุ่ม LINE ไม่ใช้อีโมจิ 🟢");
+  }
+  // ห้ามแต่งความเชี่ยวชาญพนักงานขึ้นเอง: ข้อความในการ์ดพนักงานมีแค่ชื่อ เบอร์ และหัวการ์ด
+  for (const [i, bubble] of staff.entries()) {
+    const texts = [];
+    walk(bubble.body, (n) => { if (n && n.type === "text") texts.push(n.text); });
+    assert.deepEqual(texts, [SALES_STAFF[i].name, `พนักงานขาย · ${i + 1}/${staff.length}`], "contactFlex: การ์ดพนักงานมีข้อความเกินชื่อ/ตำแหน่ง");
   }
 }
 
@@ -172,7 +188,7 @@ for (const [tone, s] of Object.entries(TONE_STYLE)) {
 pairs.push(
   ["ตั๋วคำขอ", BRAND.navy, BRAND.sky], ["ป้ายตั๋ว", BRAND.muted, BRAND.sky],
   ["กล่องเตือน", BRAND.warn, BRAND.warnBg], ["ข้อความในกล่องเตือน", BRAND.ink, BRAND.warnBg],
-  ["หัวการ์ดพนักงาน", "#FFFFFF", BRAND.navy], ["ป้ายในกล่องข้อมูล", BRAND.muted, BRAND.panel],
+  ["ป้ายวันเหลือ", "#FFFFFF", BRAND.warn], ["ป้ายหมดอายุ", "#9B2C2C", "#FBE9E9"], ["ไอคอนต้อนรับ", BRAND.navy, BRAND.sky], ["ป้ายในกล่องข้อมูล", BRAND.muted, BRAND.panel],
   ["success บนขาว", BRAND.success, "#FFFFFF"], ["warn บนขาว", BRAND.warn, "#FFFFFF"],
 );
 for (const [label, fg, bg] of pairs) {
@@ -220,5 +236,90 @@ assert(!keep.includes("กลับเป็น"), "tierExpiryWarningFlex: แ�
 const unknown = JSON.stringify(tierExpiryWarningFlex({ name: "ก" }));
 assert(!unknown.includes("กลับเป็น") && unknown.includes("อาจลดลง"), "tierExpiryWarningFlex: ไม่มีข้อมูลห้ามเดาชื่อระดับ");
 console.log("✓ หลอดความคืบหน้า · สีระดับ · กติกาลดระดับตรงกับ lib/points.ts");
+
+// ---------- ตัวเลขตัวอย่างต้องเป็นไปได้จริง ----------
+// "สะสมเลื่อนระดับ X / Y": Y ต้องเป็นเกณฑ์ระดับจริง และ X ต้องอยู่ในระดับที่อยู่ก่อน Y พอดี
+{
+  const mins = Object.values(TIER_MIN).sort((a, b) => a - b);
+  for (const [name, message] of examples) {
+    for (const m of JSON.stringify(message).matchAll(/สะสมเลื่อนระดับ ([\d,]+) \/ ([\d,]+)/g)) {
+      const [x, y] = [m[1], m[2]].map((v) => Number(v.replace(/,/g, "")));
+      const i = mins.indexOf(y);
+      assert(i > 0, `${name}: ${y} ไม่ใช่เกณฑ์ระดับ`);
+      assert(x >= mins[i - 1] && x < y, `${name}: สะสม ${x} ไม่อยู่ในช่วงระดับก่อน ${y} (ตัวเลขเป็นไปไม่ได้)`);
+    }
+  }
+}
+
+// ---------- ต้อนรับ: ส่วนลดต้องบอกช่วงและระดับเริ่มต้นตามจริง ----------
+{
+  const w = JSON.stringify(welcomeFlex());
+  const tiers = tierOrder.filter((t) => MEMBER_BENEFITS[t].discount > 0);
+  const lo = MEMBER_BENEFITS[tiers[0]].discount, hi = Math.max(...tiers.map((t) => MEMBER_BENEFITS[t].discount));
+  assert(w.includes(`${lo}–${hi}%`) && w.includes(`เริ่มที่ระดับ ${tiers[0]}`), `welcomeFlex: ต้องบอกส่วนลด ${lo}–${hi}% เริ่มที่ ${tiers[0]}`);
+  assert(!/ลดสูงสุด/.test(w), "welcomeFlex: ห้ามเขียน 'ลดสูงสุด' ลอย ๆ (ส่วนลดเริ่มที่ Silver)");
+  const bdFrom = tierOrder.find((t) => MEMBER_BENEFITS[t].birthday > 0);
+  assert(w.includes(`วันเกิดทุกปี ตั้งแต่ระดับ ${bdFrom}`), `welcomeFlex: แต้มวันเกิดต้องบอกว่าเริ่มที่ ${bdFrom}`);
+}
+
+// ---------- เลื่อนระดับ: ไม่ใช้เหรียญ ไม่เคลมสิทธิ์เกินกติกา บอกระดับถัดไป ----------
+for (const [i, tier] of tierOrder.entries()) {
+  if (tier === "Welcome") continue;
+  const m = tierUpFlex({ name: "ก", tierName: tier, tierEmoji: "🥇", points: 1, earned: 1, billNo: "X" });
+  const j = JSON.stringify(m);
+  assert(!/[🥇🥈🥉]/u.test(j), `tierUpFlex ${tier}: ห้ามใช้เหรียญ 🥇🥈🥉 (ลำดับเหรียญกลับด้านกับระดับ)`);
+  const b = MEMBER_BENEFITS[tier];
+  // บรรทัด ✓ = สิทธิ์ที่ได้แล้ว ต้องตรง MEMBER_BENEFITS ของระดับนั้นพอดี
+  const checks = [];
+  walk(m.contents.body, (n) => { if (n && n.type === "box" && n.contents?.[0]?.text === "✓") checks.push(n.contents[1].text); });
+  assert.equal(checks.some((t) => t.includes("ส่วนลดหน้าร้าน")), b.discount > 0, `tierUpFlex ${tier}: บรรทัดส่วนลดไม่ตรงกติกา`);
+  assert.equal(checks.some((t) => t.includes("เหล็ก")), b.steelBonus > 0, `tierUpFlex ${tier}: บรรทัดแต้มคืนเหล็กไม่ตรงกติกา`);
+  assert.equal(checks.some((t) => t.includes(`วันเกิด ${b.birthday.toLocaleString("en-US")} แต้ม`)), b.birthday > 0, `tierUpFlex ${tier}: บรรทัดวันเกิดไม่ตรงกติกา`);
+  assert(!j.includes("100 บาท = 1 แต้ม"), `tierUpFlex ${tier}: สิทธิ์พื้นฐานไม่ใช่สิทธิ์ที่เพิ่งปลดล็อก`);
+  const next = tierOrder[i + 1];
+  if (next) assert(j.includes(`"text":"${next}"`) && j.includes(`สะสมครบ ${TIER_MIN[next].toLocaleString("en-US")} แต้ม`), `tierUpFlex ${tier}: ต้องบอกระดับถัดไป ${next}`);
+  else assert(!j.includes("ระดับถัดไป"), "tierUpFlex Diamond: ไม่มีระดับถัดไป");
+}
+
+// ---------- ยกเลิกคำขอ: แต้มแค่ถูกจอง ไม่เคยถูกหัก → ห้ามพูดว่า "คืน" ----------
+for (const [name, message] of examples.filter(([n]) => n.startsWith("ยกเลิกคำขอ"))) {
+  const j = JSON.stringify(message);
+  assert(!/คืน|\+[\d,]+/.test(j), `${name}: ห้ามสื่อว่าคืนแต้ม/ได้แต้มเพิ่ม (แต้มไม่เคยถูกหัก)`);
+  assert(j.includes("ไม่ถูกหัก"), `${name}: ต้องบอกว่าแต้มไม่ถูกหัก`);
+}
+{
+  const find = (n) => JSON.stringify(examples.find(([name]) => name === n)[1]);
+  const fullNotices = examples.slice(NOTICE_START).map(([, m]) => m);
+  // หัวข้อการ์ดแจ้งเตือนไม่มีอีโมจิ
+  for (const m of fullNotices) assert(!/\p{Extended_Pictographic}/u.test(m.contents.header.contents[1].text), `หัวข้อห้ามมีอีโมจิ: ${m.contents.header.contents[1].text}`);
+  // หมดอายุทั้งหมด → หัวข้อต้องไม่พูดว่า "บางส่วน"
+  const allGone = examples.find(([n]) => n === "แต้มหมดอายุ (ไม่เหลือแต้ม)")[1];
+  assert(!allGone.contents.header.contents[1].text.includes("บางส่วน"), "pointsExpiredFlex: ยอดเหลือ 0 ห้ามใช้หัวข้อ 'บางส่วน'");
+  assert(find("แต้มหมดอายุ").includes('"text":"หมดอายุ"'), "pointsExpiredFlex: ต้องมีป้าย 'หมดอายุ' ข้างตัวเลข");
+  assert(find("แต้มใกล้หมดอายุ (ข้อมูลเดิม)").includes('"text":"อีก 30 วัน"'), "pointsExpiringFlex: จำนวนวันต้องเป็นป้ายแยก");
+  for (const n of ["แต้มใกล้หมดอายุ (ข้อมูลเดิม)", "แต้มหมดอายุ"]) assert(find(n).includes("คุณสมชาย"), `${n}: ต้องทักชื่อ`);
+  // วันเกิดใช้ชื่อระดับ
+  assert(find("ของขวัญวันเกิด").includes("ของขวัญวันเกิดสมาชิก Gold"), "birthdayGiftFlex: ต้องบอกว่าเป็นของขวัญตามระดับ");
+  // รับของแล้วใช้โทนสำเร็จ
+  const conf = examples.find(([n]) => n === "รับของรางวัล")[1];
+  assert.equal(conf.contents.header.backgroundColor, TONE_STYLE.success.background, "redemptionConfirmedFlex: หัวต้องเป็นโทนสำเร็จ");
+  // ตั๋วใช้ hair space
+  assert(find("จองของรางวัล").includes("#\u200AR\u200AE"), "ticketCode: ต้องเว้นด้วย U+200A");
+  // ยกเลิก: มีป้ายเหนือตัวเลข + ประโยคขออภัยเสมอ
+  const cancel = find("ยกเลิกคำขอ (ข้อมูลเดิม)");
+  assert(cancel.includes("แต้มที่ใช้แลกได้ตามเดิม") && cancel.includes("ขออภัย"), "redemptionCancelledFlex: ต้องมีป้ายเหนือตัวเลขและประโยคขออภัย");
+  assert(!/ปลด|จองไว้/.test(cancel), "redemptionCancelledFlex: ห้ามใช้คำระบบ ปลด/จองไว้");
+  // เลื่อนระดับ: ชื่อระดับไม่ซ้ำในหัวข้อ/ปุ่ม
+  const up = examples.find(([n]) => n === "เลื่อนระดับ")[1];
+  assert(!up.contents.header.contents[1].text.includes("Gold") && !JSON.stringify(up.contents.footer).includes("Gold"), "tierUpFlex: ชื่อระดับอยู่ที่ป้ายใหญ่ที่เดียว");
+  // ใกล้ลดระดับ: ป้ายอยู่เหนือวันที่ ค่าใหญ่เป็นวันที่อย่างเดียว
+  const exp = find("รักษาระดับ (ข้อมูลครบ)");
+  assert(exp.includes('"text":"ซื้อสินค้า 1 บิลภายใน"') && exp.includes('"text":"16 ตุลาคม 2569"'), "tierExpiryWarningFlex: ป้ายเหนือวันที่");
+  // ต้อนรับ: ซับไตเติลไม่ซ้ำแบนเนอร์ + ไอคอนชุดเดียว
+  const w = welcomeFlex();
+  assert(!JSON.stringify(w).includes("ครบจบที่เดียว"), "welcomeFlex: ซับไตเติลต้องเป็นเหตุผลที่ควรสมัคร");
+  assert(!/[⭐🏷🎁]/u.test(JSON.stringify(w.contents.body)), "welcomeFlex: ไอคอนแถวใช้ชุดเดียวกัน ไม่ใช้อีโมจิ");
+}
+console.log("✓ ตัวเลขตัวอย่างเป็นไปได้ · ข้อความต้อนรับ/เลื่อนระดับ/ยกเลิกตรงกติกา · รายการรีวิวรอบ 6");
 
 console.log(`ตรวจโครงสร้างและเนื้อหาผ่าน ${examples.length}/${examples.length} ตัวอย่าง (local only · ไม่เรียก LINE API)`);

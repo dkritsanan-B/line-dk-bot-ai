@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { migrateDB, listExpiryNotices, markExpiryNotified, EXPIRY_NOTICE_DAYS } from "@/lib/points";
+import { migrateDB, listExpiryNotices, markExpiryNotified, EXPIRY_NOTICE_DAYS, getTierFromPoints } from "@/lib/points";
 import { pointsExpiringFlex, tierExpiryWarningFlex } from "@/lib/line-ui";
 
 
@@ -11,6 +11,8 @@ async function pushMessage(lineUserId: string, message: object): Promise<boolean
   // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "notice" (ดู lib/line-push.ts)
   return (await pushLine(lineUserId, message, "notice")).sent;
 }
+
+const thaiDate = (d: Date) => d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   // แจ้งเตือนสมาชิกที่ไม่ซื้อสินค้า 11 เดือน (เหลืออีก 1 เดือนก่อนระดับลด)
   const inactiveUsers = await sql`
-    SELECT id, line_user_id, first_name, last_purchase_at
+    SELECT id, line_user_id, first_name, last_purchase_at, total_earned, points
     FROM users
     WHERE line_user_id IS NOT NULL
       AND last_purchase_at IS NOT NULL
@@ -58,7 +60,14 @@ export async function GET(req: NextRequest) {
   for (const row of inactiveUsers) {
     const sent = await pushMessage(
       row.line_user_id as string,
-      tierExpiryWarningFlex({ name: (row.first_name as string | null) ?? "คุณ" }),
+      tierExpiryWarningFlex({
+        name: (row.first_name as string | null) ?? "คุณ",
+        // ยังไม่ครบ 12 เดือน → ระดับตอนนี้ยังคิดจากแต้มสะสม · ครบ 365 วันแล้วจะคิดจากแต้มคงเหลือ (getEffectiveTier)
+        tierName: getTierFromPoints(Number(row.total_earned ?? 0)).name,
+        points: Number(row.points ?? 0),
+        deadline: thaiDate(new Date(new Date(row.last_purchase_at as string).getTime() + 365 * 86400000)),
+        lastPurchaseDate: thaiDate(new Date(row.last_purchase_at as string)),
+      }),
     );
     if (sent) {
       await sql`
