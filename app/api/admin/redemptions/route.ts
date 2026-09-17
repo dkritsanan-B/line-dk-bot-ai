@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 
+import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { sql, db } from "@/lib/db";
 import { getAdminRole, hasRole } from "@/lib/admin-auth";
@@ -7,15 +8,10 @@ import { confirmRedemption, cancelRedemption } from "./logic";
 import { redemptionCancelledFlex, redemptionConfirmedFlex } from "@/lib/line-ui";
 import { ADMIN_REVIEW_REDEMPTIONS, isAdminReviewRequest } from "@/lib/review-admin";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
-async function pushMessage(to: string, message: object) {
-  await fetch(LINE_PUSH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to, messages: [message] }),
-  });
+async function pushMessage(to: string, message: object): Promise<void> {
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "critical" (ดู lib/line-push.ts)
+  await pushLine(to, message, "critical");
 }
 
 async function auth(req: NextRequest) {

@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 
+import { pushLine } from "@/lib/line-push";
 import { NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
@@ -11,8 +12,6 @@ import {
   type RedeemErrorCode, type SqlTag,
 } from "./logic";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 const STAFF_GROUP_ID = process.env.LINE_STAFF_GROUP_ID ?? "";
 
 // ตรรกะทั้งหมดอยู่ใน ./logic.ts (ทดสอบได้โดยไม่ต่อฐานข้อมูล — tests/redeem-guard.test.ts)
@@ -29,12 +28,9 @@ const CODE_MAP: Record<RedeemErrorCode, ApiErrorCode> = {
   RACE_LOST: "RACE_LOST",
 };
 
-async function pushMessage(to: string, messages: object[]) {
-  await fetch(LINE_PUSH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to, messages }),
-  });
+async function pushMessage(to: string, messages: object[]): Promise<void> {
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "critical" (ดู lib/line-push.ts)
+  await pushLine(to, messages, "critical");
 }
 
 /**

@@ -1,28 +1,17 @@
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 import { usersWithDueLots, expireUserPoints, previewExpiredPoints, EXPIRE_USERS_PER_RUN } from "@/lib/points-ledger";
 import { pointsExpiredFlex } from "@/lib/line-ui";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
 async function pushMessage(lineUserId: string, message: object): Promise<boolean> {
-  try {
-    const res = await fetch(LINE_PUSH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ to: lineUserId, messages: [message] }),
-    });
-    if (!res.ok) console.error(`[expire-points] ส่ง LINE ไม่ผ่าน ${res.status} ถึง ${lineUserId.slice(0, 6)}…`);
-    return res.ok;
-  } catch (e) {
-    console.error("[expire-points] ส่ง LINE ไม่ผ่าน", e);
-    return false;
-  }
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "notice" (ดู lib/line-push.ts)
+  return (await pushLine(lineUserId, message, "notice")).sent;
 }
 
 // ตัดแต้มที่ครบ 1 ปี — รันทุกคืน (vercel.json)

@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 
+import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getEffectiveTier, migrateDB } from "@/lib/points";
@@ -10,13 +11,10 @@ import { birthdayGiftFlex } from "@/lib/line-ui";
 // ให้เป็น "แต้มโบนัส" (1 แต้ม = มูลค่า 1 บาท เหมือนโบนัสตามหมวด) ไม่นับ total_earned ไม่ดันระดับ · หมดอายุ 1 ปี · ปีละครั้ง
 // Vercel cron ทุกวัน 01:00 UTC = 08:00 ไทย · push LINE แจ้งเจ้าของวันเกิด 1 ข้อความ (วันเกิดมีไม่กี่คน/วัน ไม่กินโควตา)
 const BIRTHDAY_POINTS = [0, 100, 200, 500, 800, 1000];   // index = tierIndex (Welcome..Diamond)
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 
-async function push(to: string, message: object) {
-  try {
-    const r = await fetch(LINE_PUSH_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ""}` }, body: JSON.stringify({ to, messages: [message] }) });
-    return r.ok;
-  } catch { return false; }
+async function push(to: string, message: object): Promise<boolean> {
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "courtesy" (ดู lib/line-push.ts)
+  return (await pushLine(to, message, "courtesy")).sent;
 }
 
 export async function GET(req: NextRequest) {

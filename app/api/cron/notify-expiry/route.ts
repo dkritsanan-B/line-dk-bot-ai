@@ -1,20 +1,15 @@
 export const runtime = "nodejs";
 
+import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { migrateDB, listExpiryNotices, markExpiryNotified, EXPIRY_NOTICE_DAYS } from "@/lib/points";
 import { pointsExpiringFlex, tierExpiryWarningFlex } from "@/lib/line-ui";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
-async function pushMessage(lineUserId: string, message: object) {
-  const res = await fetch(LINE_PUSH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ to: lineUserId, messages: [message] }),
-  });
-  return res.ok;
+async function pushMessage(lineUserId: string, message: object): Promise<boolean> {
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "notice" (ดู lib/line-push.ts)
+  return (await pushLine(lineUserId, message, "notice")).sent;
 }
 
 export async function GET(req: NextRequest) {

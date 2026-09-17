@@ -13,14 +13,13 @@ export const runtime = "nodejs";
 //  ยืนยันตัวด้วย header x-hero-secret = env HERO_POINTS_SECRET (ตั้งทั้ง Vercel และ .env.local ที่เครื่องร้าน)
 //  แจ้ง LINE เฉพาะตอน "เลื่อนระดับ" — push ต่อบิลจะกินโควตาฟรี 300 ข้อความ/เดือนหมดในไม่กี่วัน
 // ===================================================================
+import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { addPoints, getUserByPhone, getTierFromPoints, getEffectiveTier, migrateDB } from "@/lib/points";
 import { computeBonus, bonusPoints, tierIndex, ruleForLine, RULES, type HeroLine } from "@/lib/tierRules";
 import { tierUpFlex } from "@/lib/line-ui";
 
-const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? "";
 
 function authed(req: NextRequest): boolean {
   const secret = process.env.HERO_POINTS_SECRET ?? "";
@@ -45,14 +44,9 @@ async function ensureTable() {
   await sql`ALTER TABLE hero_point_bills ADD COLUMN IF NOT EXISTS bonus_detail JSONB`;
 }
 
-async function pushMessage(to: string, message: object) {
-  try {
-    await fetch(LINE_PUSH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ to, messages: [message] }),
-    });
-  } catch (e) { console.error("[hero-points] push failed", e); }
+async function pushMessage(to: string, message: object): Promise<void> {
+  // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "notice" (ดู lib/line-push.ts)
+  await pushLine(to, message, "notice");
 }
 
 const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
