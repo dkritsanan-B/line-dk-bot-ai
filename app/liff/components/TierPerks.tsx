@@ -17,7 +17,7 @@ import { useState } from "react";
 //   - pending (สมัครแล้ว ยังไม่ยืนยันที่ร้าน) → หัวการ์ดไม่สัญญาสิทธิ์ก่อนยืนยัน
 //     และไม่ขึ้น "ตอนนี้คุณได้แล้ว" (ยังไม่ได้แต้มจนกว่าจะยืนยัน)
 import { TIERS, type Tier } from "../lib/tiers";
-import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, VIA_HEAD, type PerkVia } from "../lib/perks";
+import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, reactivateText, VIA_HEAD, type PerkVia } from "../lib/perks";
 import { BONUS_BAHT_PER_POINT, RULES, tierIndex, type RuleKey } from "@/lib/tierRules";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
@@ -53,8 +53,28 @@ export function PointsHowTo() {
   );
 }
 
-export default function TierPerks({ tier, currentTier, restore, hideOnMobile, showHow, pending }: {
+/** r6: ระดับถัดไปยังไม่มีส่วนลด (Welcome → Bronze) — บอกตรง ๆ ว่าได้อะไร และส่วนลดเริ่มที่ระดับไหน */
+function BridgeNote({ next, target }: { next: Tier; target: Tier }) {
+  const bd = birthdayPointsOf(next.name);
+  return (
+    <p className="lf-ct-bridge">
+      <span className="lf-ct-bridge-line">
+        <span className="lf-nw"><TierMark tier={next} /> <b>{next.name}</b> = สะสมแต้ม</span>
+        {bd > 0 && <>{" "}<span className="lf-nw">+ คูปองวันเกิด <b>{bd.toLocaleString()}</b> แต้ม</span></>}
+        {" "}<span className="lf-nw">(ยังไม่มีส่วนลด)</span>
+      </span>
+      <span className="lf-ct-bridge-line">
+        <span className="lf-nw">ส่วนลดเริ่มที่ <TierMark tier={target} /> <b>{target.name}</b></span>
+        {" "}<span className="lf-nw">(สะสม {target.min.toLocaleString()} แต้ม)</span>
+      </span>
+    </p>
+  );
+}
+
+export default function TierPerks({ tier, currentTier, nextTier, restore, hideOnMobile, showHow, pending }: {
   tier: Tier; currentTier?: Tier; restore?: boolean; hideOnMobile?: boolean; showHow?: boolean;
+  /** ระดับถัดไปตัวเดียวกับที่บัตรใช้ (page.tsx getNextTier) — ทุกที่ต้องพูดถึงระดับเดียวกัน (r6) */
+  nextTier?: Tier | null;
   /** true = สมัครแล้วแต่ยังไม่ยืนยันตัวตนที่ร้าน */
   pending?: boolean;
 }) {
@@ -66,6 +86,12 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
   const target = mine.length ? null : upper.find(t => perksOf(t.name).length > 0) ?? null;
   const lines = mine.length ? mine : target ? perksOf(target.name) : [];
   if (!lines.length) return null;
+  // r6 (ผู้ตรวจ): บัตรบอก "อีก 100 แต้ม เป็น Bronze" แต่การ์ดนี้บอก "ถึง Silver ได้เพิ่ม" → ใช้ระดับถัดไปตัวเดียวกัน
+  //     ถ้าระดับถัดไปยังไม่มีส่วนลด ให้บอกตรง ๆ แล้วค่อยโชว์สิทธิ์ของระดับแรกที่มีส่วนลด
+  const next = mine.length ? null : (nextTier ?? upper[0] ?? null);
+  const bridge = next && target && next.name !== target.name ? next : null;
+  const goal = bridge ?? target;
+  const paused = !!restore && mine.length > 0 && !pending;
   const groups = (["discount", "points"] as PerkVia[])
     .map(via => ({ via, rows: lines.filter(l => l.via === via) }))
     .filter(g => g.rows.length);
@@ -76,7 +102,7 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
   const visibleGroups = expanded ? groups : groups.slice(0, 1);
   const activeBirthday = currentTier ? birthdayPointsOf(currentTier.name) : 0;
   return (
-    <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}`}>
+    <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}${paused ? " lf-perkcard--paused" : ""}`}>
       {pending ? (
         <>
           {/* r5: หัวการ์ดไม่พูด "หลังยืนยัน" ซ้ำกับกล่องเขียวข้างล่าง */}
@@ -88,10 +114,14 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
           {mine.length ? (
             <p>ระดับ <TierMark tier={tier} /> <b>{tier.name}</b></p>
           ) : (
-            <p>
-              เป้าหมายถัดไป: <TierMark tier={target!} /> <b>{target!.name}</b> <span className="lf-nw">· สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม</span>
-              {" "}<span className="lf-nw">(ซื้อรวมราว {bahtFor(target!.min)} บาท)</span>
-            </p>
+            <>
+              <p>
+                <span className="lf-ct-bridge-line">เป้าหมายถัดไป: <TierMark tier={goal!} /> <b>{goal!.name}</b></span>
+                <span className="lf-ct-bridge-line"><span className="lf-nw">สะสมครบ <b>{goal!.min.toLocaleString()}</b> แต้ม</span>
+                {" "}<span className="lf-nw">(ซื้อรวมราว {bahtFor(goal!.min)} บาท)</span></span>
+              </p>
+              {bridge && <BridgeNote next={bridge} target={target!} />}
+            </>
           )}
         </>
       ) : restore && mine.length ? (
@@ -117,17 +147,28 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
               <span>สะสมแต้มทุกบิล · คูปองวันเกิด <b className="lf-nw">{myBirthday.toLocaleString()} แต้ม</b></span>
             </div>
           )}
-          <h3><Icon name="tag" size={22} /> ถึงระดับ {target!.name} ได้เพิ่ม</h3>
-          <p>
-            สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม <span className="lf-nw">(ซื้อรวมราว {bahtFor(target!.min)} บาท)</span>
-            {" "}<span className="lf-nw">เริ่มได้ส่วนลดทันที</span>
-          </p>
+          {bridge ? (
+            <>
+              <h3><Icon name="tag" size={22} /> ระดับถัดไป <TierMark tier={bridge} /> {bridge.name}</h3>
+              <p>สะสมครบ <b>{bridge.min.toLocaleString()}</b> แต้ม <span className="lf-nw">(ซื้อรวมราว {bahtFor(bridge.min)} บาท)</span></p>
+              <BridgeNote next={bridge} target={target!} />
+            </>
+          ) : (
+            <>
+              <h3><Icon name="tag" size={22} /> ถึงระดับ {target!.name} ได้เพิ่ม</h3>
+              <p>
+                สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม <span className="lf-nw">(ซื้อรวมราว {bahtFor(target!.min)} บาท)</span>
+                {" "}<span className="lf-nw">เริ่มได้ส่วนลดทันที</span>
+              </p>
+            </>
+          )}
         </>
       )}
+      {bridge && <div className="lf-ct-target">สิทธิ์เมื่อถึง <TierMark tier={target!} /> {target!.name}</div>}
       {visibleGroups.map(g => (
         <div key={g.via} className={`lf-perkgroup`}>
           <div className="lf-perkhead lf-ct-head">
-            <b>{VIA_HEAD[g.via].title}</b>
+            <b>{VIA_HEAD[g.via].title}{paused && <em className="lf-ct-paused-tag">พักไว้ · กลับมาเมื่อ{reactivateText()[0]}</em>}</b>
             {/* แต้มกลุ่มนี้เป็นแต้ม "เพิ่ม" แยกจากแต้มยอดซื้อ (lib/tierRules.ts computeBonus → รายการแยกในประวัติ) */}
             {g.via === "points" && <span className="lf-ct-headnote"><span className="lf-nw">บวกเพิ่มจากแต้มปกติ</span> <span className="lf-nw">(ทุก {BAHT_PER_POINT} บาท = 1 แต้ม)</span></span>}
           </div>

@@ -15,7 +15,7 @@
 /* ป้ายสองปลายอธิบายแถบ โดยไม่ใช้ขีดตั้งที่ดูคล้ายปุ่มเลื่อน */
 .lf-mcard .lf-cd-bar { position: relative; }
 .lf-mcard .lf-cd-prog-ends {
-  display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1);
+  display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1);
   font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--card-ink);
 }
 .lf-mcard .lf-cd-mark { display: inline-flex; align-items: center; gap: var(--sp-1); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -135,20 +135,26 @@
   color: var(--card-ink-2);
 }
 
-/* ── พักระดับ (ไม่ได้ซื้อเกิน 1 ปี): สีระดับจริงเต็ม + ขอบเส้นประด้านใน ──────────────
- * r5 (ผู้ตรวจ): บัตรซีดสีเบจอ่านเป็นระดับอื่น → คงสีระดับไว้ให้จำได้ แล้วบอกสถานะด้วยเส้นประ + ป้าย "พักระดับ"
- * เส้นประใช้สีตัวอักษรชุดเดียวกับบัตร (ผ่านคอนทราสต์กับไล่สีอยู่แล้ว) · พื้นไม่เปลี่ยน คอนทราสต์ตัวอักษรจึงเท่าบัตรปกติ */
+/* ── พักระดับ (ไม่ได้ซื้อเกิน 1 ปี): สีระดับจริง + ม่านเทาจางทับ + ป้ายอำพัน ──────────────
+ * r5: คงสีระดับไว้ให้จำได้ · r6 (ผู้ตรวจ): เส้นประอ่านเป็นคูปอง/ที่ว่าง และชนกับ "ข้อมูลที่จำไว้" → ขอบทึบ + ม่านจาง
+ * ม่านของบัตรพื้นสว่าง = เทาอ่อน (ตัวเข้มยิ่งชัด) · บัตรพื้นเข้ม = เทาเข้ม (ตัวขาวยิ่งชัด) → คอนทราสต์ไม่ลดลง
+ * scripts/check-contrast.mjs ตรวจตัวอักษรบนพื้นที่มีม่านแล้ว */
 .lf-mcard.lf-cd-card--rest::before {
-  content: ""; position: absolute; inset: 4px; z-index: 0; pointer-events: none;
-  border: 2px dashed var(--card-ink-2); border-radius: calc(var(--r-lg) - 4px);
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--card-rest-veil);
 }
+.lf-mcard.lf-cd-card--rest[data-ink="dark"] { --card-rest-veil: var(--card-d-rest-veil); }
+.lf-mcard.lf-cd-card--rest[data-ink="light"] { --card-rest-veil: var(--card-l-rest-veil); }
 /* ป้ายระดับและ "พักระดับ" แยกเป็นสองเม็ด */
 .lf-mcard .lf-cd-tier-group { display: flex; align-items: center; gap: var(--sp-2); }
+/* r6: ป้าย "พักระดับ" เป็นป้ายสถานะอำพัน (ภาษาเดียวกับ "รอยืนยัน") ไม่ใช่เม็ดขาวที่ดูเป็นปุ่ม */
 .lf-mcard .lf-cd-rest-tag {
-  min-height: var(--h-chip); box-sizing: border-box; display: inline-flex; align-items: center; padding: 0 var(--sp-3); border-radius: var(--r-pill);
-  background: var(--card-badge-ink); color: var(--card-badge-bg);
-  font-size: 14px; font-weight: var(--fw-bold); line-height: 1.4;
+  min-height: var(--h-chip); box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--sp-1);
+  padding: 0 var(--sp-3); border-radius: var(--r-pill);
+  background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 var(--bw) var(--warn-line);
+  font-size: 14px; font-weight: var(--fw-black); line-height: 1.4; white-space: nowrap;
 }
+.lf-mcard .lf-cd-rest-tag svg { flex-shrink: 0; }
 .lf-mcard .lf-cd-rest { margin-top: var(--sp-2); padding-top: var(--sp-2); }
 .lf-mcard .lf-cd-rest-msg { font-size: var(--fs-body); font-weight: var(--fw-bold); line-height: 1.4; color: var(--card-ink); }
 .lf-mcard .lf-cd-rest-msg .lf-nw { display: inline-flex; align-items: center; gap: var(--sp-1); }
@@ -169,8 +175,11 @@
   --card-fill: var(--dk-blue);
   --card-sheen: transparent;
   background: var(--surface);
-  box-shadow: var(--sh-2), inset 0 0 0 var(--bw) var(--line-strong);
+  /* r6 (ผู้ตรวจ): ขอบเทาหนาไม่มีการ์ดอื่นใช้ → เงาเดียวกับการ์ดทั่วไป */
+  box-shadow: var(--sh-2);
 }
+/* r6: บรรทัด "สมาชิกตั้งแต่" ห่างกล่องฟ้าเท่าระยะอื่นในการ์ด (เดิมชิดราว 8px) */
+.lf-mcard .lf-cd-foot.lf-cd-foot--pend { margin-top: var(--sp-4); }
 .lf-mcard.lf-cd-card--pend .lf-mcard-label { color: var(--ink-2); }
 .lf-mcard.lf-cd-card--pend .lf-mcard-who img,
 .lf-mcard.lf-cd-card--pend .lf-mcard-who .ph { border-color: var(--line); }
@@ -180,3 +189,30 @@
 .lf-mcard.lf-cd-card--pend .lf-cd-pend-kicker { color: var(--ink-2); }
 .lf-mcard.lf-cd-card--pend .lf-cd-pend-say { color: var(--dk-navy); }
 .lf-mcard.lf-cd-card--pend .lf-cd-pend-phone b { color: var(--ink); }
+
+/* ── r6: แต้มที่จองไว้ (ใต้ตัวเลขใหญ่) — ตัวเลขชุดเดียวกับหน้าของรางวัล ── */
+.lf-mcard .lf-cd-reserved {
+  margin-top: var(--sp-1); display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-1);
+  font-size: 15px; font-weight: var(--fw-bold); line-height: 1.4; color: var(--card-ink);
+}
+.lf-mcard .lf-cd-reserved svg { flex-shrink: 0; }
+.lf-mcard .lf-cd-reserved .lf-nw { font-weight: 400; }
+
+/* ── r6: รอรับของ — แถบกดได้บนบัตร พาไปรายการคำขอในหน้าของรางวัล ──
+ * พื้นกล่องเดียวกับกล่องแต้ม (--card-well) → คอนทราสต์ตรวจแล้วทุกระดับ · ราวซ้ายอำพันบอกว่าเป็นเรื่องรอ */
+.lf-mcard .lf-cd-pickup {
+  margin-top: var(--sp-3); min-height: var(--h-tap); box-sizing: border-box;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm);
+  background: var(--card-well); box-shadow: inset 0 0 0 1px var(--card-well-line);
+  color: var(--card-ink); text-decoration: none;
+}
+.lf-mcard .lf-cd-pickup > svg { flex-shrink: 0; }
+.lf-mcard .lf-cd-pickup-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4; }
+.lf-mcard .lf-cd-pickup-txt b { font-size: var(--fs-body); font-weight: var(--fw-black); }
+.lf-mcard .lf-cd-pickup-row { font-size: 15px; font-weight: var(--fw-med); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lf-mcard .lf-cd-pickup-no { font-weight: var(--fw-black); font-variant-numeric: tabular-nums; }
+.lf-mcard .lf-cd-pickup:active { transform: scale(.99); }
+
+/* ── r6: บัตร Welcome (น้ำเงิน) บนหัวน้ำเงิน — ขอบบนหาย → เส้นขอบจางด้านใน ── */
+.lf-mcard[data-tier="Welcome"]:not(.lf-cd-card--pend) { box-shadow: var(--sh-3), inset 0 0 0 1px var(--card-l-edge); }

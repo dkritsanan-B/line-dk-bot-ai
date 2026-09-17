@@ -6,7 +6,8 @@
 export type IconName =
   | "gift" | "history" | "edit" | "star" | "tag" | "cake" | "hourglass"
   | "alert" | "alertCircle" | "chevron" | "phone" | "building" | "trophy" | "check" | "user" | "refresh"
-  | "ticket" | "fuel" | "ruler" | "glove" | "receipt" | "wifiOff";
+  | "ticket" | "fuel" | "ruler" | "glove" | "receipt" | "wifiOff"
+  | "lock" | "coupon" | "pause";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   gift: <><path d="M3 12h18v9H3z" /><path d="M2 8h20v4H2z" /><path d="M12 8v13" /><path d="M12 8S10.5 3.5 8 3.5 4.5 8 8 8h4zM12 8s1.5-4.5 4-4.5S19.5 8 16 8h-4z" /></>,
@@ -33,6 +34,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ruler: <><path d="M3 8h18v8H3z" /><path d="M7 8v3M11 8v4M15 8v3M19 8v4" /></>,
   glove: <><path d="M7 21v-4.5L4.5 13a1.8 1.8 0 0 1 2.9-2.1L9 12.5V5a1.5 1.5 0 0 1 3 0v5.5V4a1.5 1.5 0 0 1 3 0v6.5V5.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-2 4.5V21" /></>,
   receipt: <><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" /><path d="M9 8h6M9 12h6M9 16h4" /></>,
+  // r6: ปุ่ม/ของที่ยังใช้ไม่ได้จนกว่าจะยืนยันตัวตน
+  lock: <><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></>,
+  // r6: ส่วนลดเป็น "บาท" ไม่ใช่ % → คูปองมีสัญลักษณ์บาท
+  coupon: <><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z" /><path d="M10 9h2.8a1.5 1.5 0 0 1 0 3H10zM10 12h3.1a1.5 1.5 0 0 1 0 3H10zM10 9v6M11.8 7.5v9" /></>,
+  // r6: ป้าย "พักระดับ"
+  pause: <><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></>,
   wifiOff: <><path d="m3 3 18 18" /><path d="M8.5 8.7A9.8 9.8 0 0 1 20 10M4 10a12 12 0 0 1 2.8-1.6M7 14a7.2 7.2 0 0 1 6.1-2M17 14a7 7 0 0 1 1 .8M10 18a3 3 0 0 1 4 0" /></>,
 };
 

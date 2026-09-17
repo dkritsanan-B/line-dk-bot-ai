@@ -2,33 +2,45 @@
  * ใช้ตัวแปรจาก liff.css เท่านั้น · คลาสใหม่ขึ้นต้น lf-ac-
  * selector ".lf-actions .lf-action.lf-ac-locked" หนักกว่ากฎ .lf-actions .lf-cd-act ใน styles/card.css → ไม่พึ่งลำดับไฟล์ */
 
-/* ตัวอักษร --ink-2 บนขาว ≈ 10:1 · ไอคอน --ink-3 บนขาว ≈ 6:1
- * r5 (ผู้ตรวจ): กรอบ/พื้นเหมือนปุ่มอื่นทุกอย่าง (ไม่ดูเป็นปุ่มเสีย) — บอกสถานะด้วยไอคอนเทา + ข้อความรองใต้ชื่อ */
-.lf-actions .lf-action.lf-ac-locked { cursor: not-allowed; }
+/* กล่องข้อความในปุ่ม: ชื่อ + บรรทัดรอง ซ้อนกัน (มือถือกึ่งกลาง · เดสก์ท็อปชิดซ้ายข้างไอคอน) */
+.lf-actions .lf-ac-txt { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+
+/* r6 (ผู้ตรวจ): ปุ่มที่ยังใช้ไม่ได้ต้องดูต่างจากปุ่มที่กดได้ — พื้นเทาอ่อน ขอบบาง ไม่มีเงา ตัว/ไอคอนเทา
+ * ตัวอักษร --ink-2 บน --surface-2 ≈ 9:1 · ไอคอน --ink-3 บน --surface-2 ≈ 5.8:1 */
+.lf-actions .lf-action.lf-ac-locked {
+  background: var(--surface-2); border-color: var(--line); box-shadow: none; cursor: not-allowed;
+}
+.lf-actions .lf-action.lf-ac-locked--browse { cursor: pointer; }
 .lf-actions .lf-action.lf-ac-locked:active { transform: none; }
 .lf-actions .lf-action.lf-ac-locked i { color: var(--ink-3); }
 .lf-actions .lf-action.lf-ac-locked b { color: var(--ink-2); }
 
-/* ป้าย "หลังยืนยัน" — 13px หนา ตัวเข้มบนขาว (≈ 16:1) ขอบเทาเข้ม */
-.lf-actions .lf-ac-tag {
-  display: inline-block; padding: 1px var(--sp-2);
-  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
-  background: var(--surface); color: var(--ink);
-  font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.4;
-  white-space: normal;
-}
+/* ปุ่มแถวนี้มีบรรทัดรองทุกปุ่ม → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง */
+.lf-actions--locked .lf-action { gap: var(--sp-1); }
 
-/* ปุ่มแถวนี้มีป้ายเพิ่ม 1 บรรทัด → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง (ยังสูงเกิน --h-tap) */
-.lf-actions--locked .lf-action { gap: var(--sp-1); justify-content: flex-start; }
-@media (max-width: 359px) {
-  .lf-actions .lf-ac-tag { padding: 0 var(--sp-1); }
-}
-
-/* ข้อความรองใต้ชื่อปุ่ม (ของรางวัล/ประวัติแต้ม ตอนรอยืนยัน) — ไม่มีกรอบ บรรทัดเดียว (--ink-2 บนขาว ≈ 10:1) */
+/* บรรทัดรองใต้ชื่อปุ่ม — ไม่มีกรอบ บรรทัดเดียว (--ink-2 ≈ 9–10:1 บนขาว/เทาอ่อน) */
 .lf-actions .lf-ac-tag.lf-ac-tag--text {
+  display: inline-flex; align-items: center; gap: 3px;
   padding: 0; border: 0; background: transparent; color: var(--ink-2);
-  font-size: 14px; font-weight: var(--fw-bold); text-align: center; white-space: nowrap;
+  font-style: normal; font-size: 14px; font-weight: var(--fw-bold); line-height: 1.35; text-align: center; white-space: nowrap;
 }
+.lf-actions .lf-ac-tag svg { flex-shrink: 0; }
 @media (max-width: 359px) {
   .lf-actions .lf-ac-tag.lf-ac-tag--text { font-size: var(--fs-label); letter-spacing: -.2px; }
+  .lf-actions .lf-ac-tag svg { display: none; }
+}
+
+/* เดสก์ท็อป (r6 ผู้ตรวจ): ปุ่มสูง ~170px ว่างเปล่า → ปุ่มเตี้ย 88px ไอคอนอยู่ข้างชื่อ */
+@media (min-width: 900px) {
+  .lf-wrap--split .lf-actions .lf-action {
+    min-height: 88px; flex-direction: row; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  }
+  .lf-wrap--split .lf-actions .lf-ac-txt { align-items: flex-start; }
+  .lf-wrap--split .lf-actions .lf-action b { font-size: var(--fs-body); white-space: nowrap; }
+}
+/* เดสก์ท็อป + รอยืนยัน: ปุ่มมีบรรทัดรอง ความกว้างไม่พอวางไอคอนข้างชื่อ → ไอคอนอยู่บน (ยังสูง 88px) */
+@media (min-width: 900px) {
+  .lf-wrap--split .lf-actions--locked .lf-action { flex-direction: column; gap: 2px; }
+  .lf-wrap--split .lf-actions--locked .lf-ac-txt { align-items: center; }
+  .lf-wrap--split .lf-actions--locked .lf-action i svg { width: 24px; height: 24px; }
 }

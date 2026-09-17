@@ -56,7 +56,10 @@
   font-size: var(--lf-rw-fs-name); font-weight: var(--fw-black); line-height: var(--lh-tight); color: var(--ink);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.lf-rw-copy { margin-top: var(--sp-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+/* r6: บรรทัด 1 คำอธิบาย · บรรทัด 2 ป้ายเงื่อนไข · เหตุผลของหมดต่อท้าย — ทุกใบโครงเดียวกัน */
+.lf-rw-copy { margin-top: var(--sp-1); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; }
+.lf-rw-copy > .lf-rw-cond { max-width: 100%; }
+.lf-rw-reason { font-size: var(--lf-rw-fs-cond); font-weight: var(--fw-bold); line-height: 1.45; color: var(--ink-2); }
 .lf-rw-cond {
   font-size: var(--lf-rw-fs-cond); line-height: 1.45; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -97,6 +100,24 @@
 .lf-rw-btn:disabled { opacity: .6; cursor: default; }
 .lf-rw-btn:focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
 
+/* r6: ป้ายเทาแทนที่ปุ่ม ("หมดชั่วคราว" / "ยืนยันตัวตนก่อนแลก") — พื้นเทาอ่อน ไม่มีขอบ ไม่มีเงา จึงไม่ดูเป็นปุ่ม
+ * --ink-2 บน --surface-2 ≈ 9.6:1 */
+.lf-rw-pill {
+  margin-left: auto; min-height: 32px; box-sizing: border-box;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  padding: 0 var(--sp-3); border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2);
+  font-size: 14px; font-weight: var(--fw-bold); line-height: 1.3; white-space: nowrap;
+}
+.lf-rw-pill svg { flex-shrink: 0; }
+/* ของหมด (การ์ดพื้นเทาอ่อน) → ป้ายเทาเข้มขึ้นหนึ่งขั้น ไม่มีขอบ (--ink-2 บน --line ≈ 8:1) */
+.lf-rw-card.is-out .lf-rw-pill { background: var(--line); }
+
+/* r6: ของหมด — ทั้งใบหรี่ลง (พื้นเทาอ่อน ชื่อสีรอง) */
+.lf-rw-card.is-out { background: var(--surface-2); }
+.lf-rw-card.is-out .lf-rw-name { color: var(--ink-2); }
+.lf-rw-card.is-out .lf-rw-thumb { background: var(--surface); }
+
 /* สถานะไม่มีรูปทรงปุ่ม เพื่อแยกจากสิ่งที่กดได้ชัดเจน */
 .lf-rw-status {
   margin-left: auto; min-width: 104px; max-width: 148px;
@@ -127,13 +148,30 @@
 .lf-wrap .lf-rules summary { font-size: var(--fs-body); }
 .lf-wrap .lf-rules summary::after { font-size: var(--fs-h2); line-height: 1; }
 
-/* ชิปกรองของรางวัล (17 ก.ย. 69) — สูง 44px · มือถือเลื่อนแนวนอนชนขอบจอ · เดสก์ท็อปตัดบรรทัดได้
+/* ชิปกรองของรางวัล (17 ก.ย. 69) — สูง 44px
  * ปกติ: --ink-2 บน --surface ขอบ --line-strong (≥ 3:1) · เลือกอยู่: ขาวบน --dk-blue (ภาษาเดียวกับ .lf-tab.on) */
-/* r5 (ผู้ตรวจ): ชิปสุดท้ายโดนตัดขอบโดยไม่มีสัญญาณว่าเลื่อนได้ → ตัดบรรทัดแทนการเลื่อนข้าง เห็นครบทุกชิป ทุกจอ */
-.lf-rw-chips-wrap { min-width: 0; }
+/* r6 (ผู้ตรวจ): ตัดบรรทัดแล้วได้สองแถวไม่เท่ากัน → แถวเดียวเลื่อนข้าง ชนขอบจอ
+ * สัญญาณว่าเลื่อนได้ = ขอบจางด้านที่ยังมีชิปซ่อนอยู่ (คลาส fade-start / fade-end จาก rewards/page.tsx)
+ * ไม่ล้นหน้า: กล่องเลื่อนกว้างเท่าจอพอดี (ดึงออกเท่าระยะขอบของ .lf-wrap) และ overflow-x อยู่ในกล่องเท่านั้น */
+.lf-rw-chips-wrap { min-width: 0; margin: 0 calc(var(--sp-4) * -1); }
 .lf-rw-chips {
   --lf-rw-h-chip: 44px;
-  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  display: flex; flex-wrap: nowrap; gap: var(--sp-2);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  padding: 2px var(--sp-4); scroll-padding: 0 var(--sp-4);
+  --lf-fade-l: 0px; --lf-fade-r: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, var(--ink) var(--lf-fade-l), var(--ink) calc(100% - var(--lf-fade-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, var(--ink) var(--lf-fade-l), var(--ink) calc(100% - var(--lf-fade-r)), transparent 100%);
+}
+.lf-rw-chips-wrap.fade-start .lf-rw-chips { --lf-fade-l: 36px; }
+.lf-rw-chips-wrap.fade-end .lf-rw-chips { --lf-fade-r: 48px; }
+@media (max-width: 419px) {
+  .lf-rw-chips-wrap { margin: 0 calc(var(--sp-3) * -1); }
+  .lf-rw-chips { padding: 2px var(--sp-3); scroll-padding: 0 var(--sp-3); }
+}
+@media (min-width: 900px) {
+  .lf-rw-chips-wrap { margin: 0; }
+  .lf-rw-chips { padding: 2px 0; }
 }
 .lf-rw-chips::-webkit-scrollbar { display: none; }
 .lf-rw-chip {
@@ -189,14 +227,15 @@
 .lf-balance--signup .lf-balance-cta { padding-left: var(--sp-3); padding-right: var(--sp-3); }
 
 /* กล่องยืนยันและผลสำเร็จวางชิดขอบล่างแบบ LIFF */
+/* r6 (ผู้ตรวจ): มือถือ sheet ติดขอบล่างจริง มุมล่างเหลี่ยม เผื่อพื้นที่ขอบล่างของเครื่อง (safe-area) */
 .lf-rw-modal {
-  position: fixed; z-index: 20; inset: 0; padding: var(--sp-4);
+  position: fixed; z-index: 20; inset: 0; padding: var(--sp-4) 0 0;
   display: flex; align-items: flex-end; justify-content: center;
   background: color-mix(in srgb, var(--dk-navy) 64%, transparent);
 }
 .lf-rw-sheet {
-  width: min(100%, 520px); max-height: calc(100vh - var(--sp-7)); overflow-y: auto;
-  padding: var(--sp-3) var(--sp-4) var(--sp-5); border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-sm);
+  width: min(100%, 520px); max-height: calc(100dvh - var(--sp-7)); overflow-y: auto; box-sizing: border-box;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom, 0px)); border-radius: var(--r-lg) var(--r-lg) 0 0;
   background: var(--surface); box-shadow: var(--sh-3);
 }
 .lf-rw-sheet-handle { width: 40px; height: 4px; margin: 0 auto var(--sp-4); border-radius: var(--r-pill); background: var(--line-strong); }
@@ -243,9 +282,11 @@
 .lf-rw-paused {
   display: flex; align-items: center; gap: var(--sp-2); min-height: var(--h-tap); box-sizing: border-box;
   padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm);
-  background: var(--surface); border: 2px dashed var(--line-strong);
-  color: var(--ink-2); font-size: 15px; line-height: 1.4;
+  /* r6: แถบอำพันทึบ (เส้นประสงวนไว้ให้ "ข้อมูลที่เครื่องจำไว้") */
+  background: var(--warn-tint); border: 1px solid var(--warn-line); border-left: var(--bw-rail) solid var(--warn);
+  color: var(--ink); font-size: 15px; line-height: 1.4;
 }
+.lf-rw-paused > svg { flex-shrink: 0; color: var(--warn); }
 .lf-rw-paused b { color: var(--ink); font-weight: var(--fw-black); }
 .lf-rw-paused .lf-tmark { flex-shrink: 0; }
 
@@ -276,7 +317,7 @@
   }
   .lf-rw-extra { grid-row: 4; }
   .lf-rw-cond { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .lf-rw-modal { align-items: center; }
+  .lf-rw-modal { align-items: center; padding: var(--sp-4); }
   /* กล่องกลางจอไม่ใช่ sheet ที่ลากได้ — ไม่ต้องมีขีดจับ */
   .lf-rw-sheet-handle { display: none; }
   .lf-rw-sheet { border-radius: var(--r-lg); padding: var(--sp-4) var(--sp-5) var(--sp-5); }

@@ -12,7 +12,8 @@
 //
 // สามสภาพของบัตร (ผู้ตรวจรอบ 7.5/10)
 //   ปกติ      → สีระดับเต็ม · แต้มตัวใหญ่ + ยอดสะสม (ข้อความรอง) + บรรทัดจิ๋วบอกว่ายอดสะสมต่างจากแต้มยังไง
-//   พักระดับ   → สีของ "ระดับจริง" แต่ซีด (lf-cd-card--rest) + ป้ายระดับจริงติดป้าย "พักระดับ" + ประโยคเดียวบอกทางกลับ
+//   พักระดับ   → สีของ "ระดับจริง" ใต้ม่านเทาจาง (lf-cd-card--rest) + ป้ายอำพัน "พักระดับ" + ประโยคเดียวบอกทางกลับ
+//               r6: ไม่ใช้เส้นประแล้ว — เส้นประสงวนไว้สำหรับ "ข้อมูลที่เครื่องจำไว้" (ProblemNotice) ความหมายเดียว
 //               บัตรเป็นที่เดียวที่อธิบายเรื่องนี้ (AlertNotes ไม่พูดซ้ำแล้ว)
 //   รอยืนยัน   → พื้นขาวขอบเทา (lf-cd-card--pend) ไม่ใช้ไล่สีน้ำเงินที่ชนกับ Diamond · คำสั่ง "บอกพนักงาน" เป็นจุดเด่นจุดเดียว
 //
@@ -21,7 +22,8 @@
 import { useState, type CSSProperties } from "react";
 import { formatDate, type Tier } from "../lib/tiers";
 import { SHOP_PHONE, SHOP_TEL } from "../lib/api";
-import type { ClientLink, Member, Profile } from "../lib/types";
+import type { ClientLink, Member, Profile, RedeemSummary } from "../lib/types";
+import { reviewQS } from "../review";
 import { PENDING_POINTS_DAYS, reactivateText } from "../lib/perks";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
@@ -29,7 +31,7 @@ import "../styles/card.css";
 
 export default function MemberCard({
   tier: effTier, nextTier, totalEarned, points, progress, name, formattedPhone, member, profile, pendingLink, realTier,
-  birthdayBonus = 0,
+  birthdayBonus = 0, reserve = null,
 }: {
   tier: Tier;
   nextTier: Tier | null;
@@ -47,6 +49,9 @@ export default function MemberCard({
   /** มีค่า = ระดับลดชั่วคราว (ไม่ได้ซื้อเกิน 1 ปี) · ค่าคือระดับจริงตามยอดสะสม
    *  ผู้ตรวจ c1: บัตรสี Bronze แต่ยอดสะสม 2,600 = ดูเหมือนระบบคิดผิด → ต้องบอกบนบัตรเลยว่าทำไม */
   realTier?: Tier | null;
+  /** r6: สรุปแต้มที่จองไว้ (GET /api/liff/redeem) — ตัวเลข "ใช้แลกได้" ต้องตรงกับหน้าของรางวัล
+   *  null = โหลดไม่ได้ → ป้ายเปลี่ยนเป็น "แต้มคงเหลือ" (ไม่อ้างว่าใช้แลกได้ทั้งหมด) */
+  reserve?: RedeemSummary | null;
 }) {
   const [showProgressHelp, setShowProgressHelp] = useState(false);
   // หน้าตาบัตร (สี/ชุดตัวอักษร/ป้าย) ใช้ระดับจริงเสมอ — ตอนพักระดับ ป้าย Bronze บนบัตรที่ยอดสะสมถึง Gold ดูเหมือนระบบคิดผิด
@@ -54,6 +59,10 @@ export default function MemberCard({
   const tier = realTier ?? effTier;
   const resting = !pendingLink && !!realTier;
   const toNext = nextTier ? Math.max(0, nextTier.min - totalEarned) : 0;
+  // แต้มใช้แลกได้ = แต้มคงเหลือ − แต้มที่จองไว้ (ตัวเลขชุดเดียวกับหน้าของรางวัล · ติดลบในเคสขอบ → 0)
+  const reservedPts = reserve?.pending_points ?? 0;
+  const usable = reserve ? Math.max(0, reserve.available_points) : points;
+  const pickups = reserve?.pending ?? [];
   const birthday = member?.birthday
     ? new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })
     : null;
@@ -70,7 +79,7 @@ export default function MemberCard({
         <div className="lf-mcard-top">
           <div className="lf-cd-tier-group">
             <div className="lf-tier"><TierMark tier={tier} /> {tier.name}</div>
-            {resting && <small className="lf-cd-rest-tag">พักระดับ</small>}
+            {resting && <small className="lf-cd-rest-tag"><Icon name="pause" size={16} /> พักระดับ</small>}
           </div>
         </div>
       )}
@@ -96,8 +105,13 @@ export default function MemberCard({
       {/* 2. ยังไม่ผูก → เรื่องแรกที่ต้องรู้คือ "แต้มยังไม่เข้า" ไม่ใช่เลข 0 เฉย ๆ (บั๊กเงียบ 16 ก.ย. 69) */}
       {pendingLink ? <PendingWell link={pendingLink} phone={formattedPhone} createdAt={member?.created_at} /> : (
       <div className="lf-mcard-well">
-        <div className="lf-points-lbl">แต้มที่ใช้แลกได้</div>
-        <div className="lf-points-num">{points.toLocaleString()}<span className="lf-points-unit">แต้ม</span></div>
+        <div className="lf-points-lbl">{reserve ? "แต้มที่ใช้แลกได้" : "แต้มคงเหลือ"}</div>
+        <div className="lf-points-num">{usable.toLocaleString()}<span className="lf-points-unit">แต้ม</span></div>
+        {reservedPts > 0 && (
+          <div className="lf-cd-reserved">
+            <Icon name="hourglass" size={16} /> จองไว้ {reservedPts.toLocaleString()} แต้ม <span className="lf-nw">(จากทั้งหมด {points.toLocaleString()} แต้ม)</span>
+          </div>
+        )}
         {birthdayBonus > 0 && (
           <div className="lf-cd-birthday-points">
             <Icon name="cake" size={18} /> รวมแต้มวันเกิด {birthdayBonus.toLocaleString()} แต้ม <span className="lf-nw">(ไม่นับเข้าระดับ)</span>
@@ -136,8 +150,8 @@ export default function MemberCard({
               <i style={{ width: `${progress}%` }} />
             </div>
             {/* ไม่มีขีดตั้งบนแถบ เพราะดูคล้ายปุ่มเลื่อน · ป้ายสองปลาย: แถบเริ่มที่ 0 จบที่เกณฑ์ระดับถัดไป (ตรงกับ X / Y) */}
+            {/* r6: ตัด "0" ที่ปลายซ้ายออก (ไม่ได้บอกอะไรเพิ่ม) เหลือปลายขวาคือเป้าหมาย */}
             <div className="lf-cd-prog-ends">
-              <span className="lf-cd-mark">0</span>
               <span className="lf-cd-mark lf-cd-mark--next"><TierMark tier={nextTier} /> {nextTier.name} <b>{nextTier.min.toLocaleString()}</b></span>
             </div>
             <div className="lf-cd-prog-msg">
@@ -168,13 +182,28 @@ export default function MemberCard({
       </div>
       )}
 
+      {/* r6: คำขอแลกของที่รอรับ — หน้าของรางวัลบอกให้ "เปิดหน้าบัตรให้พนักงานดู" จึงต้องเห็นเลขคำขอบนบัตรนี้ */}
+      {!pendingLink && pickups.length > 0 && (
+        <a className="lf-cd-pickup" href={"/liff/rewards" + reviewQS()}>
+          <Icon name="gift" size={20} />
+          <span className="lf-cd-pickup-txt">
+            <b>รอรับของ {pickups.length.toLocaleString()} รายการ</b>
+            {pickups.slice(0, 2).map(p => (
+              <span key={p.id} className="lf-cd-pickup-row"><span className="lf-cd-pickup-no">#REQ-{p.id}</span> {p.reward_name ?? "ของรางวัล"}</span>
+            ))}
+            {pickups.length > 2 && <span className="lf-cd-pickup-row">และอีก {(pickups.length - 2).toLocaleString()} รายการ</span>}
+          </span>
+          <Icon name="chevron" size={20} />
+        </a>
+      )}
+
       {/* ประโยคนี้มีที่บัตรที่เดียวทั้งหน้า */}
       {!pendingLink && (
         <div className="lf-mcard-use lf-cd-use"><Icon name="phone" size={18} /> ยื่นบัตรนี้ หรือบอกเบอร์ก่อนคิดเงิน</div>
       )}
 
       {/* บรรทัดเล็กบรรทัดเดียว หน้าตาเดียวกันทั้งมือถือและเดสก์ท็อป (ซื้อล่าสุดไม่อยู่บนบัตรแล้ว — กล่อง "รักษาระดับ" บอกวันที่ต้องมาซื้อเองเมื่อจำเป็น) */}
-      <div className="lf-cd-foot">
+      <div className={`lf-cd-foot${pendingLink ? " lf-cd-foot--pend" : ""}`}>
         {member?.created_at && <span className="lf-nw">สมาชิกตั้งแต่ {formatDate(member.created_at)}</span>}
         {birthday && <span className="lf-nw">วันเกิด {birthday}</span>}
       </div>

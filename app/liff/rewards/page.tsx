@@ -37,7 +37,8 @@ interface RewardCopy {
 function rewardCopy(description: string | null): RewardCopy {
   if (!description) return { detail: null, condition: null };
   const minimum = description.match(/^ใช้กับบิลตั้งแต่\s*([0-9,]+)\s*บาทขึ้นไป$/);
-  if (minimum) return { detail: null, condition: `บิลขั้นต่ำ ${minimum[1]} บาท` };
+  // r6: ทุกใบมีบรรทัดคำอธิบาย (บรรทัด 1) + ป้ายเงื่อนไข (บรรทัด 2) — ข้อความ "ใช้กับบิล…" ของร้านบอกว่าเป็นส่วนลดในบิล
+  if (minimum) return { detail: "ใช้เป็นส่วนลดในบิล", condition: `บิลขั้นต่ำ ${minimum[1]} บาท` };
   if (/ไม่มีขั้นต่ำ\s*$/.test(description)) {
     const detail = description.replace(/[,·]?\s*ไม่มีขั้นต่ำ\s*$/, "").trim();
     return { detail: detail || null, condition: "ไม่มีขั้นต่ำ" };
@@ -107,7 +108,8 @@ function rulesText(minReward: number | null, example: string | null): string[] {
 
 /** รูปแทนของรางวัลที่ไม่มีรูป — เดาจากชื่อ ให้แต่ละชิ้นหน้าตาไม่ซ้ำกัน */
 function rewardIcon(name: string): IconName {
-  if (/ส่วนลด|คูปอง|เงินสด/.test(name)) return "ticket";
+  // r6: ส่วนลดเป็นจำนวนบาท → คูปองสัญลักษณ์บาท (เดิมตั๋ว % ชวนเข้าใจว่าลดเป็นเปอร์เซ็นต์)
+  if (/ส่วนลด|คูปอง|เงินสด/.test(name)) return "coupon";
   if (/น้ำมัน/.test(name)) return "fuel";
   if (/ตลับเมตร|ไม้บรรทัด|ฉาก/.test(name)) return "ruler";
   if (/ถุงมือ/.test(name)) return "glove";
@@ -180,6 +182,16 @@ export default function RewardsPage() {
   const [paused, setPaused] = useState<Tier | null>(null);
   // r5: กดยืนยันแลกแล้วไม่ผ่านเพราะหมดเวลา/เน็ตหลุด/ระบบขัดข้อง → บอกในกล่องยืนยันเลย (แต้มยังไม่ถูกหัก)
   const [sheetError, setSheetError] = useState<{ id: number; problem: Problem } | null>(null);
+  // r6: ชิปเลื่อนข้างแถวเดียว — จางขอบด้านที่ยังมีชิปซ่อนอยู่
+  const chipsRef = useRef<HTMLDivElement | null>(null);
+  const [chipFade, setChipFade] = useState({ start: false, end: false });
+  const syncChipFade = useCallback(() => {
+    const el = chipsRef.current;
+    if (!el) return;
+    const start = el.scrollLeft > 2;
+    const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setChipFade(prev => (prev.start === start && prev.end === end ? prev : { start, end }));
+  }, []);
 
   /** โหลดของรางวัล + แต้มที่ใช้ได้พร้อมกัน — ถ้าอย่างใดอย่างหนึ่งล้ม ขึ้นจอแจ้งปัญหา (ไม่โชว์ตัวเลขที่ไม่จริง) */
   const loadAll = useCallback(async (tok: string): Promise<boolean> => {
@@ -315,6 +327,11 @@ export default function RewardsPage() {
   const available = Math.max(0, summary?.available_points ?? 0);
   const reservedPts = summary?.pending_points ?? 0;
   const animatedAvailable = useAnimatedAvailable(available);
+  useEffect(() => {
+    syncChipFade();
+    window.addEventListener("resize", syncChipFade);
+    return () => window.removeEventListener("resize", syncChipFade);
+  }, [syncChipFade, chips, loading]);
 
   if (loading) return <Loading />;
 
@@ -367,6 +384,7 @@ export default function RewardsPage() {
 
       {summary && paused && (
         <div className="lf-rw-paused" role="status">
+          <Icon name="pause" size={20} />
           <TierMark tier={paused} />
           <span><b className="lf-nw">ระดับ {paused.name} พักไว้</b> <ReactivateRule /> <span className="lf-nw">กลับมาทันที</span></span>
         </div>
@@ -396,11 +414,12 @@ export default function RewardsPage() {
         <div className="lf-card lf-center"><i><Icon name="gift" size={40} /></i>ยังไม่มีของรางวัลในขณะนี้</div>
       ) : <>
       {chips.length > 1 && (
-        <div className="lf-rw-chips-wrap">
-          <div className="lf-rw-chips" role="group" aria-label="กรองของรางวัล">
+        <div className={`lf-rw-chips-wrap${chipFade.start ? " fade-start" : ""}${chipFade.end ? " fade-end" : ""}`}>
+          <div className="lf-rw-chips" role="group" aria-label="กรองของรางวัล" ref={chipsRef} onScroll={syncChipFade}>
             {chips.map(c => (
               <button key={c.key} type="button" className={`lf-rw-chip${activeFilter === c.key ? " on" : ""}`}
-                aria-pressed={activeFilter === c.key} onClick={() => setFilter(c.key)}>
+                aria-pressed={activeFilter === c.key}
+                onClick={e => { setFilter(c.key); e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" }); }}>
                 {c.label}<span className="lf-rw-chip-n">{c.count.toLocaleString()}</span>
               </button>
             ))}
@@ -432,20 +451,25 @@ export default function RewardsPage() {
         const left = reward.stock === null ? null : Math.max(0, reward.stock - reserved);
         const copy = rewardCopy(reward.description);
         const showPassiveStatus = Boolean(summary && summary.earns_points !== false);
+        // r6: ยังไม่ยืนยันตัวตน / ยังไม่สมัคร → ป้ายกุญแจแทนที่ว่างด้านขวา (เดิมดูเหมือนการ์ดพัง)
+        const lockText = !summary ? "สมัครสมาชิกก่อนแลก" : summary.earns_points === false ? "ยืนยันตัวตนก่อนแลก" : null;
+        const outReason = st.kind === "out" ? (st.reservedFull ? "มีคนจองครบแล้ว" : "รอของเข้ารอบหน้า") : null;
         // r5: ของหมดมีรูปแบบเดียว — ข้อความด้านขวาของแถวล่าง (ไม่มีป้ายบนรูปแล้ว) · เป็นข้อเท็จจริงของร้าน แสดงกับทุกคน
         const progress = st.kind === "lack" && reward.points_required > 0
           ? Math.min(100, Math.max(0, available / reward.points_required * 100)) : 0;
         return (
-          <div key={reward.id} className={`lf-rw-card${ok ? "" : st.kind === "mine" ? " is-mine" : " is-off"}`}>
+          <div key={reward.id} className={`lf-rw-card${ok ? "" : st.kind === "mine" ? " is-mine" : " is-off"}${st.kind === "out" ? " is-out" : ""}`}>
             <div className="lf-rw-thumb">
               {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={34} strokeWidth={1.75} />}
             </div>
             <div className="lf-rw-body">
               <div className="lf-rw-name">{reward.name}</div>
-              {(copy.detail || copy.condition) && (
+              {/* r6: บรรทัด 1 = คำอธิบาย · บรรทัด 2 = ป้ายเงื่อนไข · ของหมด = เหตุผลต่อท้าย */}
+              {(copy.detail || copy.condition || outReason) && (
                 <div className="lf-rw-copy">
                   {copy.detail && <span className="lf-rw-cond" title={copy.detail}>{copy.detail}</span>}
                   {copy.condition && <span className="lf-rw-condition">{copy.condition}</span>}
+                  {outReason && <span className="lf-rw-reason">{outReason}</span>}
                 </div>
               )}
             </div>
@@ -468,10 +492,9 @@ export default function RewardsPage() {
                   <span className="lf-rw-progress" aria-label={`มี ${available.toLocaleString()} จาก ${reward.points_required.toLocaleString()} แต้ม`}><i style={{ width: `${progress}%` }} /></span>
                 </div>
               ) : st.kind === "out" ? (
-                <div className="lf-rw-status lf-rw-status--out">
-                  <b>{st.reservedFull ? "หมดชั่วคราว" : "หมด"}</b>
-                  <span>{st.reservedFull ? "มีคนจองครบแล้ว" : "รอของเข้ารอบหน้า"}</span>
-                </div>
+                <div className="lf-rw-pill">หมดชั่วคราว</div>
+              ) : lockText ? (
+                <div className="lf-rw-pill lf-rw-pill--lock"><Icon name="lock" size={16} strokeWidth={2.25} />{lockText}</div>
               ) : null}
             </div>
             {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
@@ -510,10 +533,13 @@ export default function RewardsPage() {
                 {confirmCopy?.condition && <span className="lf-rw-condition">{confirmCopy.condition}</span>}
               </div>
             </div>
-            <div className="lf-rw-sheet-math">
-              <span>หักจากแต้มที่ใช้ได้</span><b>−{confirmReward.points_required.toLocaleString()} แต้ม</b>
-              <span>คงเหลือหลังแลก</span><b>{Math.max(0, available - confirmReward.points_required).toLocaleString()} แต้ม</b>
-            </div>
+            {/* r6: ส่งไม่สำเร็จ → ซ่อนตัวเลขหัก/คงเหลือ (ชวนเข้าใจว่าแต้มถูกหักไปแล้ว) */}
+            {!sheetErr && (
+              <div className="lf-rw-sheet-math">
+                <span>หักจากแต้มที่ใช้ได้</span><b>−{confirmReward.points_required.toLocaleString()} แต้ม</b>
+                <span>คงเหลือหลังแลก</span><b>{Math.max(0, available - confirmReward.points_required).toLocaleString()} แต้ม</b>
+              </div>
+            )}
             {sheetErr ? (
               <div className="lf-msg err lf-rw-sheet-err" role="alert">
                 <i><Icon name="alert" size={20} /></i>

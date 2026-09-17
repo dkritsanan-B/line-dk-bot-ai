@@ -160,3 +160,26 @@
 @media (min-width: 900px) {
   .lf-form .lf-ct-sticky { position: static; box-shadow: var(--sh-2); }
 }
+
+/* ── r6: ระดับถัดไปยังไม่มีส่วนลด (Welcome → Bronze) — บอกตรง ๆ แล้วค่อยโชว์สิทธิ์ของระดับที่เริ่มมีส่วนลด ── */
+.lf-perkcard p.lf-ct-bridge { margin: calc(var(--sp-2) * -1) 0 var(--sp-3); color: var(--ink-2); line-height: 1.5; }
+.lf-perkcard .lf-ct-bridge b { color: var(--ink); font-weight: var(--fw-black); }
+.lf-perkcard .lf-ct-target {
+  margin: 0 0 var(--sp-2); display: flex; align-items: center; gap: var(--sp-1);
+  font-size: 15px; font-weight: var(--fw-bold); color: var(--ink-2);
+}
+
+/* ── r6: สิทธิ์ที่พักไว้ (ระดับลดชั่วคราว) — หรี่ลง ไม่ให้อ่านว่าใช้ได้ตอนนี้ ──
+ * ค่าสิทธิ์ --ink-3 บนขาว ≈ 6:1 · หัวกลุ่มมีป้ายอำพัน "พักไว้ · กลับมาเมื่อซื้อ 1 บิล" */
+.lf-perkcard--paused .lf-perkrow span,
+.lf-perkcard--paused .lf-perkrow .lf-ct-sub { color: var(--ink-3); }
+.lf-perkcard--paused .lf-perkrow b,
+.lf-perkcard--paused .lf-perkrow b small { color: var(--ink-3); }
+.lf-perkcard--paused .lf-perkhead { background: var(--surface-2); }
+.lf-perkcard--paused .lf-perkhead b { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-1) var(--sp-2); color: var(--ink-2); }
+.lf-perkhead .lf-ct-paused-tag {
+  display: inline-flex; align-items: center; min-height: 26px; padding: 0 var(--sp-2); border-radius: var(--r-pill);
+  background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn-line);
+  font-style: normal; font-size: 14px; font-weight: var(--fw-bold); white-space: nowrap;
+}
+.lf-perkcard .lf-ct-bridge-line { display: block; }

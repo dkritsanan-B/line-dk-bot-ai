@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell, Loading } from "./ui";
 import { isReview, reviewQS } from "./review";
 import { getEffectiveTier, getNextTier, getTierFromPoints, monthsSince } from "./lib/tiers";
-import type { ClientLink, Expiry, Member, MemberResponse, Profile, TxItem } from "./lib/types";
+import type { ClientLink, Expiry, Member, MemberResponse, Profile, RedeemSummary, TxItem } from "./lib/types";
 import { callApi, problemOf, SHOP_PHONE, type Problem } from "./lib/api";
 import SignupCard from "./components/SignupCard";
 import SignupSuccess from "./components/SignupSuccess";
@@ -59,6 +59,9 @@ export default function LiffPage() {
   const [txOpen, setTxOpen]       = useState(false);
   const [token, setToken]         = useState("");   // LIFF access token — ใช้ยืนยันตัวตนกับ API
   const [txFilter, setTxFilter]   = useState<TxFilter>("all");
+  // r6: แต้มที่จองไว้กับคำขอแลกของ — ตัวเลขเดียวกับหน้าของรางวัล (GET /api/liff/redeem)
+  //     null = ยังไม่รู้ / โหลดไม่ได้ → บัตรไม่อ้างว่า "ใช้แลกได้" (ดู MemberCard)
+  const [reserve, setReserve]     = useState<RedeemSummary | null>(null);
   const liffReady = useRef(false);
   const scrollToHistory = useRef(false);   // กดเปิดประวัติ → เลื่อนไปที่รายการเลย ไม่ต้องไถผ่านบัตร
 
@@ -73,6 +76,11 @@ export default function LiffPage() {
       return;
     }
     if (d.registered === true && d.user) {
+      // รอยืนยันตัวตน = ยังแลกไม่ได้ ไม่มีอะไรให้จอง · ข้อมูลเสริม: ล้มก็ไม่ขึ้นจอแจ้งปัญหา
+      if (d.link?.status !== "pending") {
+        const rs = await callApi<RedeemSummary>("/api/liff/redeem" + reviewQS(), { headers: { Authorization: `Bearer ${tok}` } });
+        setReserve(rs.ok && typeof rs.data.points === "number" && Array.isArray(rs.data.pending) ? rs.data : null);
+      } else setReserve(null);
       setProblem(null); setRegistered(true);
       setMember(d.user);
       setExpiry(d.expiry ?? null);
@@ -134,9 +142,9 @@ export default function LiffPage() {
       name: member.first_name ? `${member.first_name} ${member.last_name ?? ""}`.trim() : (member.display_name ?? ""),
       phone: member.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "",
       tier: t.name,
-      points: link?.status === "pending" ? 0 : (member.points ?? 0),
+      points: link?.status === "pending" ? 0 : reserve ? Math.max(0, reserve.available_points) : (member.points ?? 0),
     });
-  }, [member, registered, link]);
+  }, [member, registered, link, reserve]);
 
   useEffect(() => {
     if (!txOpen || !scrollToHistory.current) return;
@@ -265,14 +273,19 @@ export default function LiffPage() {
   return (
     <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
       {/* มือถือ: คอลัมน์เดียว เรียงตาม order ใน liff.css → บัตร · ปุ่มลัด · คำเตือน · ประวัติ · สิทธิ์ · กติกา
-          เดสก์ท็อป (r5 ผู้ตรวจ: คอลัมน์ขวาจบก่อนซ้ายราว 500px): ซ้าย = บัตร+ปุ่มลัด · ขวา = คำเตือน+ประวัติ+สิทธิ์+กติกา */}
+          เดสก์ท็อป (r6): ซ้าย = บัตร · ขวา = ปุ่มลัด+คำเตือน+ประวัติ+สิทธิ์ · ท้ายหน้าเต็มความกว้าง */}
       <div className="lf-col lf-col--main">
         <MemberCard
           tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
           name={name} formattedPhone={formattedPhone} member={member} profile={profile} pendingLink={pendingLink}
           realTier={isInactive ? baseTier : null}
           birthdayBonus={birthdayBonus}
+          reserve={reserve}
         />
+      </div>
+
+      <div className="lf-col lf-col--side">
+        {/* r6 (ผู้ตรวจ): เดสก์ท็อปปุ่มลัดอยู่บนสุดของคอลัมน์ขวา — สองคอลัมน์สมดุลขึ้น · มือถือยังอยู่ใต้บัตรด้วย order */}
         <QuickActions
           txLoading={txLoading} txOpen={txOpen} locked={!!pendingLink}
           onToggleHistory={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } else setTxOpen(false); }}
@@ -281,9 +294,6 @@ export default function LiffPage() {
             setCompany(member?.company ?? ""); setBirthday(member?.birthday ? member.birthday.substring(0, 10) : ""); setError(""); setEditing(true);
           }}
         />
-      </div>
-
-      <div className="lf-col lf-col--side">
         <AlertNotes
           isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry}
           totalEarned={totalEarned} lastPurchaseAt={lastPurchaseAt}
@@ -298,12 +308,12 @@ export default function LiffPage() {
           />
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
-        <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
-        {/* ท้ายหน้าอยู่ท้ายคอลัมน์ขวา → เดสก์ท็อปตรงแนวคอลัมน์ (r5) · มือถือยังอยู่ท้ายสุดด้วย order */}
-        <div className="lf-foot">
-          {/* บรรทัดกติกาบรรทัดเดียว — "ยื่นบัตร/บอกเบอร์" อยู่บนบัตรที่เดียว · ตอนรอยืนยันก็ไม่บอกว่าแต้มเข้าเอง */}
-          <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
-        </div>
+        <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} nextTier={nextTier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
+      </div>
+      {/* r6: ท้ายหน้ากินเต็มความกว้างทั้งสองคอลัมน์ (เดสก์ท็อป) · มือถืออยู่ท้ายสุดด้วย order */}
+      <div className="lf-foot">
+        {/* บรรทัดกติกาบรรทัดเดียว — "ยื่นบัตร/บอกเบอร์" อยู่บนบัตรที่เดียว · ตอนรอยืนยันก็ไม่บอกว่าแต้มเข้าเอง */}
+        <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
       </div>
     </Shell>
   );

@@ -57,7 +57,12 @@
   --card-d-track: rgba(20,24,31,.08);   /* รางสีอ่อน — ส่วนที่เต็ม (ดำ) ต้องต่างจากรางชัด ๆ กลางแดด */
   --card-d-track-line: rgba(20,24,31,.62);
   --card-d-fill: #14181F;
-  --card-sheen-tint: rgba(255,255,255,.08);   /* ชั้นเงาไล่แสงบนบัตร — คุมไว้ต่ำเพื่อไม่ให้กินคอนทราสต์ */
+  --card-sheen-tint: rgba(255,255,255,.08);
+  /* r6: ม่านจางบนบัตรพักระดับ — พื้นเข้มทับเทาเข้ม · พื้นสว่างทับเทาอ่อน (ตัวอักษรชัดขึ้นทั้งคู่) */
+  --card-l-rest-veil: rgba(20,28,40,.34);
+  --card-d-rest-veil: rgba(238,242,249,.50);
+  /* r6: เส้นขอบจางของบัตรน้ำเงิน (Welcome) บนหัวน้ำเงิน */
+  --card-l-edge: rgba(255,255,255,.45);   /* ชั้นเงาไล่แสงบนบัตร — คุมไว้ต่ำเพื่อไม่ให้กินคอนทราสต์ */
 
   /* ── สถานะ ── */
   --ok: #146B31;
@@ -540,6 +545,8 @@
   /* บัตรสมาชิก: สองคอลัมน์ บัตรใหญ่ขึ้นจริง ไม่ใช่การ์ดมือถือยืด */
   .lf-wrap--split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
   .lf-wrap--split .lf-mcard { padding: var(--sp-6) var(--sp-6) var(--sp-5); }
+  /* r6: ท้ายหน้ากินเต็มความกว้างทั้งสองคอลัมน์ */
+  .lf-wrap--split > .lf-foot { grid-column: 1 / -1; }
   .lf-wrap--split .lf-points-num { font-size: var(--fs-points-lg); }
   .lf-wrap--split .lf-mcard-who img, .lf-wrap--split .lf-mcard-who .ph { width: var(--sz-avatar-lg); height: var(--sz-avatar-lg); }
   .lf-wrap--split .lf-mcard-name { font-size: var(--fs-h1); }
