@@ -200,6 +200,18 @@
 .lf-who .ph { display: flex; align-items: center; justify-content: center; background: var(--dk-sky); color: var(--dk-blue-strong); }
 .lf-who b { display: block; font-size: var(--fs-lead); line-height: var(--lh-tight); }
 .lf-who span { font-size: var(--fs-body); color: var(--ink-3); }
+.lf-signup-pitch { margin: 0 0 var(--sp-4); padding: var(--sp-4); border-radius: var(--r-md); background: var(--dk-sky); border-left: var(--bw-rail) solid var(--dk-blue); }
+.lf-signup-pitch b, .lf-signup-pitch span, .lf-signup-pitch small { display: block; }
+.lf-signup-pitch b { font-size: var(--fs-h2); font-weight: var(--fw-black); color: var(--dk-navy); line-height: var(--lh-tight); }
+.lf-signup-pitch span { margin-top: var(--sp-2); color: var(--ink); font-weight: var(--fw-bold); }
+.lf-signup-pitch small { margin-top: var(--sp-2); font-size: var(--fs-body); color: var(--ink-2); }
+.lf-signup-steps { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: start; gap: var(--sp-2); margin: 0 0 var(--sp-5); }
+.lf-signup-steps > div { min-width: 0; text-align: center; color: var(--ink-3); }
+.lf-signup-steps > div > b { width: 32px; height: 32px; margin: 0 auto var(--sp-1); border: 2px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--ink-2); font-size: var(--fs-body); }
+.lf-signup-steps > div.on > b { background: var(--dk-blue); border-color: var(--dk-blue); color: var(--on-brand); }
+.lf-signup-steps > div > span { display: block; font-size: 14px; font-weight: var(--fw-bold); line-height: 1.3; color: var(--ink-2); }
+.lf-signup-steps > div > span small { display: block; font-size: var(--fs-label); font-weight: var(--fw-med); color: var(--ink-3); }
+.lf-signup-steps > i { width: 20px; height: 2px; margin-top: 15px; background: var(--line-strong); }
 
 /* ══ ฟอร์ม ════════════════════════════════════════════════════════ */
 .lf-form { display: grid; gap: var(--sp-4); }
@@ -241,6 +253,11 @@
 
 /* ══ สิทธิประโยชน์ + บันไดระดับ (หน้าสมัคร) ══════════════════════ */
 .lf-perks { display: grid; gap: var(--sp-2); margin-top: var(--sp-5); }
+.lf-benefit-details { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.lf-benefit-details summary { min-height: var(--h-tap); cursor: pointer; color: var(--dk-blue-strong); font-weight: var(--fw-black); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.lf-benefit-details summary::after { content: "+"; font-size: var(--fs-h1); }
+.lf-benefit-details[open] summary::after { content: "−"; }
+.lf-benefit-details .lf-perks { margin-top: var(--sp-3); }
 .lf-perk { display: flex; align-items: center; gap: var(--sp-3); background: var(--dk-sky); border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-4); }
 .lf-perk i { font-style: normal; flex-shrink: 0; display: flex; color: var(--dk-blue-strong); }
 .lf-perk b { font-size: var(--fs-body); display: block; color: var(--dk-navy); line-height: var(--lh-tight); }
@@ -339,6 +356,7 @@
 .lf-prog-txt { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-bold); margin-top: var(--sp-2); color: var(--card-ink); }
 .lf-prog-txt b { font-weight: var(--fw-black); font-variant-numeric: tabular-nums; }
 .lf-prog-txt span { display: inline-flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.lf-prog-txt span i { display: inline-flex; align-items: center; gap: var(--sp-1); font-style: normal; }
 .lf-prog-txt span { white-space: nowrap; }
 .lf-prog-bar { height: var(--h-prog); background: var(--card-track); box-shadow: inset 0 0 0 var(--bw) var(--card-track-line); border-radius: var(--r-pill); overflow: hidden; }
 .lf-prog-bar i { display: block; height: 100%; min-width: var(--h-prog); background: var(--card-fill); border-radius: var(--r-pill); transition: width .8s ease; }
@@ -346,6 +364,8 @@
 .lf-prog-msg b { font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; }
 .lf-prog--max { border-top: none; padding-top: 0; text-align: center; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--card-ink); display: flex; align-items: center; justify-content: center; gap: var(--sp-2); }
 .lf-mcard-foot { margin-top: var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-med); color: var(--card-ink); text-align: right; }
+.lf-mcard-use { margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--card-well-line); display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); font-size: var(--fs-body); font-weight: var(--fw-black); color: var(--card-ink); text-align: right; line-height: 1.4; }
+.lf-mcard-use svg { flex-shrink: 0; }
 
 /* ══ ปุ่มลัด ══════════════════════════════════════════════════════ */
 .lf-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
@@ -426,6 +446,8 @@
 .lf-reward-body { padding: var(--sp-4); display: flex; flex-direction: column; flex: 1; }
 .lf-reward-name { font-size: var(--fs-lead); font-weight: var(--fw-black); line-height: var(--lh-tight); }
 .lf-reward-desc { font-size: var(--fs-body); color: var(--ink-3); margin-top: var(--sp-1); }
+.lf-reward-condition { color: var(--ink-2); line-height: 1.45; }
+.lf-reward-condition b { color: var(--ink); font-weight: var(--fw-black); }
 .lf-reward-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: auto; padding-top: var(--sp-3); gap: var(--sp-2); }
 .lf-cost { border-radius: var(--r-pill); padding: var(--sp-2) var(--sp-4); font-weight: var(--fw-black); font-size: var(--fs-body); background: var(--warn-tint); border: 1px solid var(--warn-line); color: var(--warn); white-space: nowrap; }
 .lf-cost.ok { background: var(--ok-tint); border-color: var(--ok-line); color: var(--ok); }
@@ -435,7 +457,10 @@
 .lf-msg i { font-style: normal; display: flex; flex-shrink: 0; margin-top: 2px; }
 .lf-msg.ok { background: var(--ok-tint); border-color: var(--ok-line); color: var(--ok); }
 .lf-msg.err { background: var(--danger-tint); border-color: var(--danger-line); color: var(--danger); }
-.lf-rules h4 { margin: 0 0 var(--sp-3); font-size: var(--fs-h2); }
+.lf-rules summary { min-height: var(--h-tap); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-h2); font-weight: var(--fw-black); color: var(--ink); cursor: pointer; line-height: var(--lh-tight); }
+.lf-rules summary::after { content: "+"; color: var(--dk-blue-strong); font-size: var(--fs-h1); }
+.lf-rules[open] summary::after { content: "−"; }
+.lf-rules-body { margin-top: var(--sp-3); }
 .lf-rule { display: flex; gap: var(--sp-3); align-items: flex-start; font-size: var(--fs-body); color: var(--ink-2); line-height: var(--lh); margin-bottom: var(--sp-3); }
 .lf-rule i { font-style: normal; flex-shrink: 0; width: var(--sz-rule-ic); height: var(--sz-rule-ic); border-radius: 50%; background: var(--dk-blue); color: var(--on-brand); font-size: var(--fs-label); font-weight: var(--fw-bold); display: flex; align-items: center; justify-content: center; margin-top: 3px; }
 
@@ -481,7 +506,7 @@
 /* ══ เบ็ดเตล็ด ════════════════════════════════════════════════════ */
 /* กติกาท้ายหน้า — เป็นข้อมูลสำคัญ ใช้ตัวอักษรเข้ม (ink-2) บนแผ่นขาวมีขอบ ไม่ใช่เทาอ่อนบนเทาอ่อน */
 /* เป็นข้อความท้ายหน้า ไม่ใช่การ์ด (ผู้ตรวจ r5: กล่องท้ายหน้าหนักเกินความจำเป็น) — เส้นคั่นบนเส้นเดียว ตัวอักษรเข้มพอกลางแดด */
-.lf-foot { text-align: center; font-size: var(--fs-body); font-weight: var(--fw-med); color: var(--ink); margin-top: var(--sp-1); line-height: var(--lh); border-top: 1px solid var(--line-strong); padding: var(--sp-3) var(--sp-2) 0; }
+.lf-foot { text-align: center; font-size: var(--fs-body); font-weight: 400; color: var(--ink-2); margin-top: 0; line-height: 1.45; border-top: 1px solid var(--line); padding: var(--sp-2) var(--sp-2) 0; }
 .lf-center { text-align: center; padding: var(--sp-8) var(--sp-4); color: var(--ink-2); font-size: var(--fs-body); }
 .lf-center i { font-style: normal; font-size: var(--fs-emoji-lg); display: block; margin-bottom: var(--sp-3); }
 .lf-spin { width: var(--sz-spin); height: var(--sz-spin); border: 4px solid var(--line); border-top-color: var(--dk-blue); border-radius: 50%; margin: 0 auto var(--sp-3); animation: lfspin .8s linear infinite; }
@@ -508,7 +533,7 @@
   .lf-wrap--lift { margin-top: calc(var(--lift-lg) * -1); }
 
   /* บัตรสมาชิก: สองคอลัมน์ บัตรใหญ่ขึ้นจริง ไม่ใช่การ์ดมือถือยืด */
-  .lf-wrap--split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: start; gap: var(--sp-4); }
+  .lf-wrap--split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
   .lf-wrap--split .lf-mcard { padding: var(--sp-6) var(--sp-6) var(--sp-5); }
   .lf-wrap--split .lf-points-num { font-size: var(--fs-points-lg); }
   .lf-wrap--split .lf-mcard-who img, .lf-wrap--split .lf-mcard-who .ph { width: var(--sz-avatar-lg); height: var(--sz-avatar-lg); }
@@ -644,6 +669,12 @@
 .lf-prog-real > span b { font-weight: var(--fw-black); }
 .lf-mcard-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--sp-3); }
 
+/* ขั้นถัดไปหลังปุ่มสมัคร — เป็นข้อความรอง ไม่ใช่กล่องเตือนอีกชั้น */
+.lf-after-signup { margin-top: var(--sp-4); padding-left: var(--sp-3); border-left: var(--bw-rail) solid var(--dk-sky-line); font-size: var(--fs-body); line-height: 1.45; }
+.lf-after-signup b { display: block; color: var(--ink); font-weight: var(--fw-black); }
+.lf-after-signup span, .lf-after-signup small { display: block; color: var(--ink-2); }
+.lf-after-signup small { margin-top: var(--sp-1); font-size: var(--fs-body); font-weight: var(--fw-bold); }
+
 /* บัตร: รอยืนยันตัวตน — หัวข้อชวนทำ ไม่ใช่พาดหัวเตือน */
 .lf-pendwell-big { font-size: var(--fs-h2); }
 .lf-pendwell-do > span { display: block; }
@@ -668,8 +699,12 @@
 .lf-perkrow span svg { vertical-align: -3px; margin-right: var(--sp-1); color: var(--accent-strong); }
 .lf-ladder-min small { font-size: var(--fs-body); color: var(--ink-3); }
 
-/* ประวัติแต้ม: ยอดบิล + คำอธิบายสูตร · เว้นจังหวะแถวให้หายใจ */
-.lf-histnote { margin: var(--sp-3) 0 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
+/* ประวัติแต้ม: สูตรเป็นข้อมูลรอง เปิดดูเมื่อต้องการ เพื่อลดความแน่นของรายการ */
+.lf-histhelp { margin-top: var(--sp-2); border-bottom: 1px solid var(--line); }
+.lf-histhelp summary { min-height: var(--h-tap); display: flex; align-items: center; justify-content: space-between; color: var(--dk-blue-strong); font-size: var(--fs-body); font-weight: var(--fw-black); cursor: pointer; }
+.lf-histhelp summary::after { content: "+"; font-size: var(--fs-h2); }
+.lf-histhelp[open] summary::after { content: "−"; }
+.lf-histhelp p { margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
 .lf-tx { padding: var(--sp-4) 0; }
 .lf-tx-main > .lf-tx-amtline { color: var(--ink-2); font-weight: var(--fw-med); }
 
@@ -685,6 +720,71 @@
 .lf-snap-row span { color: var(--ink-2); }
 .lf-snap-row b { font-weight: var(--fw-black); text-align: right; min-width: 0; }
 .lf-snap-num { font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); white-space: nowrap; }
+
+/* จอแคบจริง 320–390px: เก็บข้อมูลสำคัญครบโดยไม่เบียดหรือตัดกลางคำ */
+@media (max-width: 419px) {
+  .lf-hero { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .lf-brand { gap: var(--sp-2); }
+  .lf-hero--short .lf-brand-sub { display: none; }
+  .lf-hero--short .lf-brand-name { overflow: visible; text-overflow: clip; }
+  .lf-hero--short .lf-hero-back { min-width: var(--h-tap); width: var(--h-tap); justify-content: center; padding: 0; }
+  .lf-hero--short .lf-hero-back span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+  .lf-wrap { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .lf-card { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .lf-mcard { padding: var(--sp-4) var(--sp-3); border-radius: var(--r-md); }
+  .lf-mcard-top { align-items: flex-start; }
+  .lf-tier { white-space: nowrap; flex-shrink: 0; }
+  .lf-mcard-who { margin-top: var(--sp-3); }
+  .lf-mcard-name { font-size: var(--fs-lead); font-weight: var(--fw-bold); }
+  .lf-mcard-meta { font-size: 15px; font-weight: var(--fw-med); }
+  .lf-mcard-birthday { display: none; }
+  .lf-mcard-well { margin-top: var(--sp-2); padding-top: var(--sp-2); padding-bottom: var(--sp-3); }
+  .lf-points-lbl { font-weight: var(--fw-bold); }
+  .lf-points-lbl small { display: inline; margin-left: var(--sp-1); font-size: 14px; }
+  .lf-mcard-well { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .lf-prog-head { align-items: baseline; flex-direction: row; gap: var(--sp-2); font-size: 15px; font-weight: var(--fw-med); }
+  .lf-prog-note { margin-top: 0; margin-bottom: var(--sp-2); font-size: 14px; font-weight: var(--fw-med); }
+  .lf-prog { margin-top: var(--sp-2); padding-top: var(--sp-2); }
+  .lf-prog-txt { gap: var(--sp-2); }
+  .lf-prog-txt span { flex: 1; flex-direction: column; align-items: flex-start; gap: 0; white-space: nowrap; line-height: 1.25; font-size: 14px; }
+  .lf-prog-txt span:last-child { align-items: flex-end; text-align: right; }
+  .lf-prog-txt span i { max-width: 100%; }
+  .lf-prog-txt span b { font-size: 13px; font-weight: var(--fw-bold); }
+  .lf-prog-msg { margin-top: var(--sp-2); text-align: left; }
+  .lf-mcard-use { margin-top: var(--sp-2); padding-top: var(--sp-2); justify-content: flex-start; text-align: left; font-size: 15px; }
+  .lf-mcard-foot { margin-top: var(--sp-2); font-size: var(--fs-label); }
+  .lf-member-since { display: none; }
+
+  .lf-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+  .lf-action { min-height: 68px; padding: var(--sp-2) var(--sp-1); gap: var(--sp-1); }
+  .lf-action i svg { width: 22px; height: 22px; }
+  .lf-action b { font-size: 14px; white-space: nowrap; }
+  .lf-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; }
+  .lf-tab { min-height: 48px; padding: 2px; font-size: 14px; }
+  .lf-tab { white-space: nowrap; word-break: keep-all; }
+  .lf-date { grid-template-columns: .85fr 1.35fr 1.05fr; gap: var(--sp-1); }
+  .lf-select { padding: 0 var(--sp-1); font-size: 14px; }
+  .lf-signup-steps { gap: var(--sp-1); }
+  .lf-signup-steps > i { width: 8px; }
+  .lf-signup-steps > div > span { font-size: 13px; }
+  .lf-signup-steps > div > span small { font-size: 12px; }
+  .lf-tx { gap: var(--sp-2); padding: var(--sp-3) 0; }
+  .lf-tx-head { align-items: flex-start; gap: var(--sp-2); }
+  .lf-tx-main b { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .lf-note-row { display: grid; gap: var(--sp-2); }
+  .lf-note-row .lf-link { justify-self: start; }
+}
+
+@media (max-width: 359px) {
+  .lf-hero--short .lf-brand img { width: 40px; height: 40px; }
+  .lf-row { grid-template-columns: 1fr; }
+  .lf-points-num { font-size: 46px; }
+  .lf-points-unit { font-size: var(--fs-lead); }
+  .lf-tx-ic { display: none; }
+  .lf-tx-amt { font-size: var(--fs-lead); }
+  .lf-ladder { grid-template-columns: 1fr; }
+}
 
 /* ของรางวัล: ยืนยันก่อนแลก + วิธียกเลิก */
 .lf-reqs .lf-reqs-cancel { margin-top: 0; color: var(--ink-2); }

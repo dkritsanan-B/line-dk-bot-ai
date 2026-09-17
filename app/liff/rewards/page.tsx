@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isReview, reviewQS } from "../review";
 import { Shell, Loading } from "../ui";
 import Icon, { type IconName } from "../components/Icon";
-import { BAHT_PER_POINT, birthdayFrom, firstTierOf } from "../lib/perks";
+import { BAHT_PER_POINT, PENDING_POINTS_DAYS, birthdayFrom, firstTierOf } from "../lib/perks";
 import { ProblemScreen } from "../components/ProblemNotice";
 import { callApi, problemOf, redeemErrorText, SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
 import { formatDate } from "../lib/tiers";
@@ -29,15 +29,25 @@ interface Reward {
 // (บอกให้เปิดบัตรตอนสะสม / บอกว่าหักแต้มทันที) · ตอนนี้พูดภาษาเดียวกับทุกหน้า และตรงกับระบบจริง:
 //   สะสม = บอกเบอร์ที่แคชเชียร์ · แลก = กดแล้วแต้ม "ถูกจอง" · หักจริงตอนรับของ · ยกเลิกได้ที่ร้าน
 //   บิลเงินเชื่อไม่สะสมแต้ม (บอทฝั่งร้าน hero_points_watch.js ข้ามลูกค้าเครดิต)
-function rulesText(minReward: number | null): string[] {
+// มูลค่าแต้มต้องมาจากของรางวัลที่ร้านตั้งไว้จริง (17 ก.ย. 69) — เดิมพิมพ์อัตราตายตัว 1 แต้ม = 1 บาท ซึ่งร้านอาจไม่ได้ตั้งของรางวัลแบบนั้น
+function valueExample(rewards: Reward[]): string | null {
+  const cash = rewards
+    .map(r => ({ r, baht: Number((r.name.match(/ส่วนลด[^0-9]*([0-9][0-9,]*)\s*บาท/) || [])[1]?.replace(/,/g, "")) }))
+    .filter(x => x.baht > 0 && x.r.points_required > 0)
+    .sort((a, b) => a.r.points_required - b.r.points_required)[0];
+  return cash ? `ตัวอย่าง: ${cash.r.points_required.toLocaleString()} แต้ม แลก${cash.r.name}` : null;
+}
+
+function rulesText(minReward: number | null, example: string | null): string[] {
   return [
-    "แลกส่วนลดเงินสด 1 แต้ม = 1 บาท",
+    ...(example ? [example] : []),
     `ซื้อทุก ${BAHT_PER_POINT} บาท ได้ 1 แต้ม คิดต่อบิล เศษที่ไม่ครบ ${BAHT_PER_POINT} บาทปัดทิ้ง · ซื้อทุกครั้งบอกเบอร์โทรที่แคชเชียร์ แต้มเข้าเองภายในวันที่ซื้อ`,
-    "สมัครแล้วต้องยืนยันตัวตนที่ร้านครั้งเดียว แต้มเริ่มเข้าหลังยืนยัน บิลที่ซื้อก่อนยืนยันไม่ได้แต้มย้อนหลัง · บิลเงินเชื่อ (เครดิต) ไม่สะสมแต้ม",
+    `สมัครแล้วต้องยืนยันตัวตนที่ร้านครั้งเดียว แต้มเริ่มเข้าหลังยืนยัน · บิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน ${PENDING_POINTS_DAYS} วัน) · บิลเงินเชื่อ (เครดิต) ไม่สะสมแต้ม`,
     "แต้มใช้ได้ 1 ปี นับจากวันที่ได้ แต้มก้อนที่ใกล้หมดอายุจะขึ้นเตือนที่หน้าบัตร",
     `ตั้งแต่ระดับ ${firstTierOf("steel")} ซื้อเหล็กหรือเมทัลชีทราคาป้าย ได้แต้มพิเศษเพิ่ม (คิดทีละรายการ รายการที่ขอลดราคาได้แต้มปกติ) และมีคูปองวันเกิดเป็นแต้มตั้งแต่ระดับ ${birthdayFrom()}`,
     "ไม่ได้ซื้อเกิน 1 ปี ระดับจะลดชั่วคราว ยอดสะสมไม่หาย ซื้อครั้งถัดไปกลับระดับเดิมทันที · ร้านเตือนที่หน้าบัตรล่วงหน้า 3 เดือน",
     `กด "แลกเลย" แล้วกดยืนยัน แต้มจะถูกจองไว้ให้ ยังไม่หัก${minReward ? ` · ของรางวัลเริ่มที่ ${minReward.toLocaleString()} แต้ม` : ""}`,
+    "ส่วนลดจากแต้มต้องกดแลกก่อนจ่าย · จำนวนคูปองหรือของรางวัลที่ใช้ต่อบิล ให้ดูเงื่อนไขของแต่ละรายการก่อนกด",
     "มารับของที่ร้าน เปิดหน้าบัตรสมาชิกในแอปให้พนักงานดู พร้อมบอกเลขคำขอ (#REQ-…) พนักงานหักแต้มตอนส่งของให้",
     "เปลี่ยนใจก่อนรับของ แจ้งพนักงานหรือโทรร้านให้ยกเลิกคำขอได้ แต้มที่จองไว้คืนครบ · รับของแล้วคืนแต้มไม่ได้ค่ะ",
     "ถ้าร้านปรับกติกา จะแจ้งไว้ในหน้านี้ค่ะ",
@@ -196,13 +206,13 @@ export default function RewardsPage() {
       {summary && summary.earns_points === false && (
         <div className="lf-note lf-note--warn" role="status">
           <b>ยังไม่ได้ยืนยันตัวตน — ซื้อของตอนนี้แต้มยังไม่เข้า</b>
-          ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า &quot;ยืนยันสมาชิก LINE&quot; พร้อมบอกเบอร์ที่สมัครไว้ หลังยืนยันแล้วแต้มจากบิลถัดไปจะเข้าเองค่ะ
+          ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า &quot;ยืนยันสมาชิก LINE&quot; พร้อมบอกเบอร์ที่สมัครไว้ หลังยืนยันแล้วบิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)
         </div>
       )}
       {summary ? (
         <div className="lf-balance">
           <div className="lf-balance-main">
-            <span>แต้มใช้ได้ตอนนี้</span><b>{available.toLocaleString()}</b>
+            <span>แต้มที่กดแลกได้ตอนนี้</span><b>{available.toLocaleString()}</b>
             {reservedPts > 0 && (
               <div className="lf-balance-split">
                 <span className="lf-nw">แต้มทั้งหมด {summary.points.toLocaleString()}</span>
@@ -257,20 +267,20 @@ export default function RewardsPage() {
           <div key={reward.id} className={`lf-reward${ok ? " can" : ""}${out ? " out" : ""}${st.kind === "mine" ? " mine" : ""}`}>
             <div className="lf-reward-img">
               {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={72} strokeWidth={1.5} />}
-              {out ? <span className="lf-badge lf-badge--out">{st.reservedFull ? "ถูกจองครบ" : "หมดชั่วคราว"}</span>
+              {out ? <span className="lf-badge lf-badge--out">{st.reservedFull ? "มีคนจองครบแล้ว" : "ของหมด รอของเข้า"}</span>
                 : st.kind === "mine" ? <span className="lf-badge lf-badge--mine">รอรับของ</span>
                 : ok ? <span className="lf-badge lf-badge--ok">แลกได้เลย</span> : null}
             </div>
             <div className="lf-reward-body">
               <div className="lf-reward-name">{reward.name}</div>
-              {reward.description && <div className="lf-reward-desc">{reward.description}</div>}
+              <div className="lf-reward-desc lf-reward-condition"><b>เงื่อนไข:</b> {reward.description || "ร้านยังไม่ได้ระบุรายละเอียดเพิ่มเติม"}</div>
               {left !== null && left > 0 && <div className="lf-reward-desc">เหลือให้แลก {left.toLocaleString()} ชิ้น</div>}
               <div className="lf-reward-row">
                 <div className={`lf-cost${ok ? " ok" : ""}`}>{reward.points_required.toLocaleString()} แต้ม</div>
                 <div className={`lf-need${ok ? " ok" : ""}`}>
                   {st.kind === "can" ? <><Icon name="check" size={18} /> แต้มพอแล้ว</>
                     : st.kind === "lack" ? <>ขาดอีก {st.lacking.toLocaleString()} แต้ม</>
-                    : st.kind === "out" ? (st.reservedFull ? "มีคนจองครบแล้ว" : "รอของเข้า")
+                    : st.kind === "out" ? (st.reservedFull ? "ของที่เหลือมีคนจองครบ" : "ของยังไม่เข้า")
                     : st.kind === "mine" ? <>คำขอ #REQ-{st.req.id}</>
                     : "สมัครก่อนจึงแลกได้"}
                 </div>
@@ -312,10 +322,12 @@ export default function RewardsPage() {
         );
       })}
 
-      <div className="lf-card lf-rules">
-        <h4>กติกาสะสมแต้มและแลกของรางวัล</h4>
-        {rulesText(rewards.length ? Math.min(...rewards.map(r => r.points_required)) : null).map((item, i) => <div key={i} className="lf-rule"><i>{i + 1}</i><div>{item}</div></div>)}
-      </div>
+      <details className="lf-card lf-rules">
+        <summary>กติกาสะสมแต้มและแลกของรางวัล</summary>
+        <div className="lf-rules-body">
+          {rulesText(rewards.length ? Math.min(...rewards.map(r => r.points_required)) : null, valueExample(rewards)).map((item, i) => <div key={i} className="lf-rule"><i>{i + 1}</i><div>{item}</div></div>)}
+        </div>
+      </details>
     </Shell>
   );
 }

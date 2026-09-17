@@ -16,9 +16,9 @@ const LABEL: Record<RuleKey, string> = {
 
 /** หัวกลุ่มของสิทธิ์แต่ละทาง — ใช้แทนการพิมพ์ "ลดให้ตอนจ่ายเงิน" ซ้ำทุกแถว */
 export const VIA_HEAD: Record<PerkVia, { title: string; note: string }> = {
-  discount: { title: "ลดทันทีตอนจ่ายเงิน", note: "" },
+  discount: { title: "ส่วนลดหน้าร้าน", note: "แคชเชียร์คิดให้เมื่อบอกเบอร์หรือยื่นหน้าบัตรสมาชิก" },
   // ผู้ตรวจ c1: กติกา "ราคาป้าย vs ต่อราคา" ตรวจเองไม่ได้ → บอกว่าคิดทีละรายการ และดูผลได้ที่ไหน
-  points: { title: "ได้แต้มพิเศษ (บวกจากแต้มปกติ)", note: "คิดทีละรายการที่จ่ายเต็มราคาป้าย · รายการที่ขอลดราคาได้แต้มปกติ · แต้มพิเศษขึ้นเป็นแถวแยกในประวัติแต้ม" },
+  points: { title: "ได้แต้มเพิ่มตามระดับ", note: "บวกเพิ่มจากแต้มยอดซื้อ · คิดทีละรายการที่จ่ายเต็มราคาป้าย · รายการที่ขอลดราคาได้เฉพาะแต้มยอดซื้อ · ดูแต้มเพิ่มเป็นแถวแยกในประวัติ" },
 };
 
 function idx(tierName: string) {
@@ -63,6 +63,10 @@ export function ladderNote(tierName: string): string {
 
 /** อัตราสะสมปกติ — ต้องตรงกับ POINTS_PER_BAHT ใน lib/points.ts (scripts/check-tiers.mjs ตรวจให้) */
 export const BAHT_PER_POINT = 100;
+
+/** แต้มย้อนหลังได้ไม่เกินกี่วัน — ต้องตรงกับเซิร์ฟเวอร์ (app/api/admin/update-member) */
+export const PENDING_POINTS_DAYS = 30;
+
 
 /** ยอดซื้อโดยประมาณที่ต้องใช้ให้ได้ n แต้ม — ใช้บอกช่างเป็น "บาท" แทนแต้มที่นึกภาพไม่ออก */
 export function bahtFor(points: number): string {

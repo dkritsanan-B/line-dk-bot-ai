@@ -55,7 +55,7 @@ export default function MemberCard({
           {member?.company && <div className="lf-mcard-meta"><i><Icon name="building" size={18} /></i>{member.company}</div>}
           <div className="lf-mcard-meta"><i><Icon name="phone" size={18} /></i><b>{formattedPhone}</b></div>
           {member?.birthday && (
-            <div className="lf-mcard-meta"><i><Icon name="cake" size={18} /></i>
+            <div className="lf-mcard-meta lf-mcard-birthday"><i><Icon name="cake" size={18} /></i>
               วันเกิด {new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
             </div>
           )}
@@ -65,17 +65,17 @@ export default function MemberCard({
       {/* 2. ยังไม่ผูก → เรื่องแรกที่ต้องรู้คือ "แต้มยังไม่เข้า" ไม่ใช่เลข 0 เฉย ๆ (บั๊กเงียบ 16 ก.ย. 69) */}
       {pendingLink ? <PendingWell link={pendingLink} /> : (
       <div className="lf-mcard-well">
-        <div className="lf-points-lbl">แต้มใช้ได้ <small>(ใช้แลกของรางวัล)</small></div>
+        <div className="lf-points-lbl">แต้มที่ใช้แลกได้</div>
         <div className="lf-points-num">{points.toLocaleString()}<span className="lf-points-unit">แต้ม</span></div>
 
         {nextTier ? (
           <div className="lf-prog">
             {/* ตัวเลขชุดที่ 2 เป็น "ข้อความรอง" เสมอ (ผู้ตรวจ r5: ตัวใหญ่แข่งกับแต้มใช้ได้ เหลือบแล้วไม่รู้ตัวไหนใช้ได้) */}
             <div className="lf-prog-head">
-              <span>ยอดสะสมเพื่อเลื่อนระดับ</span>
+              <span>แต้มสะสมเลื่อนระดับ</span>
               <b>{totalEarned.toLocaleString()} แต้ม</b>
             </div>
-            <div className="lf-prog-note">นับจากยอดซื้อ ไม่รวมแต้มของขวัญ · แลกของแล้วไม่ลด</div>
+            <div className="lf-prog-note">จากยอดซื้อ · ใช้แลกแล้วไม่ลด</div>
             {toNext > 0 ? (<>
             <div
               className="lf-prog-bar"
@@ -89,11 +89,11 @@ export default function MemberCard({
             </div>
             {/* ปลายสองข้างของแถบ = เกณฑ์จริงของระดับ → ตำแหน่งแถบกับตัวเลขคิดตามกันได้ */}
             <div className="lf-prog-txt">
-              <span><TierMark tier={tier} /> {tier.name} <b>{tier.min.toLocaleString()}</b></span>
-              <span><TierMark tier={nextTier} /> {nextTier.name} <b>{nextTier.min.toLocaleString()}</b></span>
+              <span><i><TierMark tier={tier} /> {tier.name}</i><b>{tier.min.toLocaleString()}</b></span>
+              <span><i><TierMark tier={nextTier} /> {nextTier.name}</i><b>{nextTier.min.toLocaleString()}</b></span>
             </div>
             <div className="lf-prog-msg">
-              สะสมอีก <b>{toNext.toLocaleString()}</b> แต้ม <span className="lf-nw">เลื่อนเป็น {nextTier.name}</span>
+              อีก <b>{toNext.toLocaleString()}</b> แต้ม <span className="lf-nw">เป็น {nextTier.name}</span>
             </div>
             </>) : realTier ? (
               // ระดับลดชั่วคราว: ยอดสะสมถึงระดับจริงอยู่แล้ว — อธิบายในบัตรเลยว่าทำไมป้ายกับยอดไม่ตรงกัน
@@ -115,8 +115,12 @@ export default function MemberCard({
       </div>
       )}
 
+      {!pendingLink && (
+        <div className="lf-mcard-use"><Icon name="phone" size={18} /> ยื่นบัตรนี้ หรือบอกเบอร์ก่อนคิดเงิน</div>
+      )}
+
       <div className="lf-mcard-foot">
-        <span className="lf-nw">สมาชิกตั้งแต่ {member?.created_at ? formatDate(member.created_at) : "-"}</span>
+        <span className="lf-nw lf-member-since">สมาชิกตั้งแต่ {member?.created_at ? formatDate(member.created_at) : "-"}</span>
         {member?.last_purchase_at && <span className="lf-nw">ซื้อล่าสุด {formatDate(member.last_purchase_at)}</span>}
       </div>
     </section>
@@ -139,7 +143,6 @@ function PendingWell({ link }: { link: ClientLink }) {
         <div className="lf-pendwell-do">
           <b>ทำที่เคาน์เตอร์ ไม่ถึง 1 นาที</b>
           <span>{link.action}</span>
-          <span className="lf-pendwell-tip">หลังยืนยันแล้ว บิลที่ซื้อตั้งแต่วันสมัคร (ย้อนหลังไม่เกิน 30 วัน) จะได้แต้มด้วยค่ะ</span>
         </div>
       )}
       {link.overdue && (

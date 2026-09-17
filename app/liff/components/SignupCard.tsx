@@ -7,7 +7,7 @@ import type { Profile } from "../lib/types";
 import MemberForm, { type MemberFormProps } from "./MemberForm";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
-import { bahtFor, birthdayFrom, birthdayPointsOf, firstTierOf, ladderNote, retailSummary } from "../lib/perks";
+import { BAHT_PER_POINT, PENDING_POINTS_DAYS, bahtFor, birthdayFrom, birthdayPointsOf, firstTierOf, ladderNote, retailSummary } from "../lib/perks";
 
 export default function SignupCard({ profile, form }: { profile: Profile | null; form: Omit<MemberFormProps, "isEdit"> }) {
   const disc = retailSummary();
@@ -21,14 +21,33 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
             : <div className="ph"><Icon name="user" size={28} /></div>}
           <div><b>สวัสดีค่ะ {profile?.displayName}</b><span>สมัครสมาชิกฟรี ใช้เวลาไม่ถึง 1 นาที</span></div>
         </div>
+        <div className="lf-signup-pitch" aria-label="สิทธิ์ที่ได้รับจากสมาชิก">
+          <b>สมัครฟรี แล้วสะสมแต้มทุกบิล</b>
+          <span>ทุก {BAHT_PER_POINT} บาท = 1 แต้ม · ระดับสูงขึ้นรับส่วนลดหน้าร้านสูงสุด {disc.max}%</span>
+          <small>สิทธิ์เริ่มหลังพนักงานยืนยันตัวตนที่ร้านครั้งเดียว</small>
+        </div>
+        <div className="lf-signup-steps" aria-label="ขั้นตอนสมัครสมาชิก">
+          <div className="on"><b>1</b><span>กรอกข้อมูล<small>ตอนนี้</small></span></div>
+          <i aria-hidden="true" />
+          <div><b>2</b><span>ยืนยันที่ร้าน<small>ครั้งเดียว</small></span></div>
+          <i aria-hidden="true" />
+          <div><b>3</b><span>เริ่มใช้สิทธิ์<small>ทุกครั้งที่ซื้อ</small></span></div>
+        </div>
         <MemberForm isEdit={false} {...form} />
-        <div className="lf-perks">
-          <div className="lf-perk"><i><Icon name="star" size={24} /></i><div><b>สะสมแต้ม</b><span>ทุก 100 บาท = 1 แต้ม</span></div></div>
+        <div className="lf-after-signup" aria-label="หลังสมัครสมาชิก">
+          <b>หลังสมัคร</b>
+          <span>มาซื้อครั้งแรก บอกเบอร์ให้แคชเชียร์ยืนยันครั้งเดียว ใช้เวลาไม่กี่วินาที</span>
+          <small>บิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)</small>
+        </div>
+        <details className="lf-benefit-details">
+          <summary>ดูสิทธิ์และระดับสมาชิกทั้งหมด</summary>
+          <div className="lf-perks">
+          <div className="lf-perk"><i><Icon name="star" size={24} /></i><div><b>สะสมแต้ม</b><span>ทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span></div></div>
           <div className="lf-perk"><i><Icon name="tag" size={24} /></i><div><b>ส่วนลดหน้าร้าน สูงสุด {disc.max}%</b><span>ฮาร์ดแวร์ เครื่องมือ สี · เริ่มระดับ {disc.from}</span></div></div>
           <div className="lf-perk"><i><Icon name="star" size={24} /></i><div><b>เหล็ก เมทัลชีท ได้แต้มพิเศษ</b><span>ซื้อราคาป้าย · เริ่มระดับ {firstTierOf("steel")}</span></div></div>
           <div className="lf-perk"><i><Icon name="cake" size={24} /></i><div><b>คูปองวันเกิดทุกปี</b><span>เริ่ม {birthdayPointsOf(birthdayFrom()).toLocaleString()} แต้ม ตั้งแต่ระดับ {birthdayFrom()}</span></div></div>
-          <div className="lf-perk"><i><Icon name="gift" size={24} /></i><div><b>แลกของรางวัล</b><span>แลกส่วนลดเงินสด 1 แต้ม = 1 บาท</span></div></div>
-        </div>
+          <div className="lf-perk"><i><Icon name="gift" size={24} /></i><div><b>แลกของรางวัล</b><span>ใช้แต้มแลกส่วนลดเงินสดหรือของใช้ช่าง</span></div></div>
+          </div>
         {/* บันไดระดับ — มี "ขั้นที่" กำกับ เพราะชื่อระดับเป็นอังกฤษ ช่างต้องรู้ว่าอะไรสูงกว่าอะไรโดยไม่ต้องเดา */}
         <div className="lf-ladder-head">ระดับสมาชิก <span>ยิ่งสะสมมาก ยิ่งลดมาก</span></div>
         <ol className="lf-ladder">
@@ -41,12 +60,11 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
             </li>
           ))}
         </ol>
+        </details>
       </div>
       <div className="lf-foot">
-        {/* ห้ามสัญญาว่า "แต้มเข้าอัตโนมัติ" ตั้งแต่สมัคร — แต้มเริ่มเข้าหลังพนักงานยืนยันตัวตนเท่านั้น */}
-        <div className="lf-foot-key">สมัครแล้ว ยืนยันตัวตนที่ร้านครั้งเดียว</div>
-        <span className="lf-nw">ครั้งหน้าที่มาร้าน แจ้งพนักงานก่อนคิดเงิน</span> <span className="lf-nw">(กันคนอื่นใช้เบอร์ของคุณ)</span><br />
-        <span className="lf-nw">จากนั้นบอกเบอร์โทรที่แคชเชียร์</span> <span className="lf-nw">แต้มเข้าเองทุกบิลค่ะ</span>
+        <div className="lf-foot-key">ซื้อครั้งต่อไป บอกเบอร์หรือยื่นหน้าบัตรสมาชิกก่อนคิดเงิน</div>
+        ไม่ได้พกมือถือหรือเน็ตไม่ดี ใช้เบอร์โทรที่สมัครไว้ได้ค่ะ
       </div>
     </Shell>
   );

@@ -14,7 +14,7 @@ import HistoryList, { type TxFilter } from "./components/HistoryList";
 import TierPerks from "./components/TierPerks";
 import { ProblemScreen } from "./components/ProblemNotice";
 import { saveCard } from "./lib/cardCache";
-import { daysToBirthday } from "./lib/perks";
+import { BAHT_PER_POINT, daysToBirthday } from "./lib/perks";
 
 // หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม
 // ไฟล์นี้เหลือแค่ state + โหลดข้อมูล + ประกอบคอมโพเนนต์ (คอมโพเนนต์ย่อยอยู่ใน components/)
@@ -275,15 +275,14 @@ export default function LiffPage() {
             // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
             <>
               <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
-              <div>ซื้อทุก 100 บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
-              <div><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์</span></div>
+              <div>ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
+              <div><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">ยื่นหน้าบัตรนี้หรือบอกเบอร์ก่อนคิดเงิน</span></div>
             </>
           ) : (
             <>
               {/* กติกา 3 ข้อ บรรทัดละข้อ */}
-              <div>ซื้อทุก 100 บาท = 1 แต้ม</div>
-              <div>แต้มใช้ได้ 1 ปี นับจากวันที่ได้</div>
-              <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">บอกเบอร์โทรที่แคชเชียร์นะคะ</span></div>
+              <div>ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
+              <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">ยื่นหน้าบัตรนี้หรือบอกเบอร์ก่อนคิดเงิน</span></div>
             </>
           )}
         </div>

@@ -116,7 +116,10 @@ export default function HistoryList({
         ))}
       </div>
       {!problem && !loading && txList.length > 0 && (
-        <p className="lf-histnote">แต้มปกติ = ยอดบิล ÷ {BAHT_PER_POINT} ปัดเศษทิ้ง · แต้มพิเศษตามระดับขึ้นเป็นแถวแยก</p>
+        <details className="lf-histhelp">
+          <summary>แต้มคิดอย่างไร</summary>
+          <p><b>แต้มจากยอดซื้อ</b> = ยอดบิล ÷ {BAHT_PER_POINT} ปัดเศษทิ้ง<br /><b>แต้มเพิ่มตามระดับ</b> = ได้เพิ่มจากสินค้าบางหมวด และแสดงแยกอีกแถว</p>
+        </details>
       )}
       {body}
     </div>

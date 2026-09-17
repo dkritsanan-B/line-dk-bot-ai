@@ -14,7 +14,7 @@ export function Brand({ sub, back }: { sub: string; back?: { label: string; href
       </div>
       {back && (
         <button type="button" className="lf-hero-back" onClick={() => (window.location.href = back.href)}>
-          <Icon name="chevron" size={18} className="lf-flip" />{back.label}
+          <Icon name="chevron" size={18} className="lf-flip" /><span>{back.label}</span>
         </button>
       )}
     </div>
