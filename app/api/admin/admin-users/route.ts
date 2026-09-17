@@ -1,84 +1,82 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { getAdminRole, hasRole } from "@/lib/admin-auth";
+import { db } from "@/lib/db";
+import { getAdminRole, hasRole, ensureAdminTable, clearAdminAuthCache } from "@/lib/admin-auth";
+import { hashPassword, MIN_ADMIN_PASSWORD } from "@/lib/admin-password";
 
-async function ensureTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS admin_users (
-      id         SERIAL PRIMARY KEY,
-      username   TEXT NOT NULL UNIQUE,
-      password   TEXT NOT NULL,
-      role       TEXT NOT NULL DEFAULT 'viewer',
-      active     BOOLEAN NOT NULL DEFAULT TRUE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
+// จัดการบัญชีแอดมิน (super เท่านั้น) · รหัสผ่านเก็บแบบเข้ารหัสเสมอ และไม่ส่งรหัส/ค่าแฮชออกไปทาง API
+const ALLOWED_ROLES = ["staff", "viewer"];
+
+async function guard(req: NextRequest) {
+  const role = await getAdminRole(req);
+  return hasRole(role, "super");
 }
 
-// GET — รายชื่อ admin ทั้งหมด (super เท่านั้น)
+// GET — รายชื่อ admin ทั้งหมด
 export async function GET(req: NextRequest) {
-  const role = await getAdminRole(req);
-  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await guard(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    await ensureTable();
-    const rows = await sql`SELECT id, username, role, active, created_at FROM admin_users ORDER BY id ASC`;
+    await ensureAdminTable();
+    const rows = await db.query(`SELECT id, username, role, active, created_at FROM admin_users ORDER BY id ASC`);
     return NextResponse.json({ users: rows });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
 
-// POST — สร้าง admin ใหม่ (super เท่านั้น)
+// POST — สร้าง admin ใหม่
 export async function POST(req: NextRequest) {
-  const role = await getAdminRole(req);
-  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await guard(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    await ensureTable();
+    await ensureAdminTable();
     const { username, password, adminRole } = await req.json();
-    if (!username || !password || !adminRole) return NextResponse.json({ error: "missing fields" }, { status: 400 });
-    if (!["staff", "viewer"].includes(adminRole)) return NextResponse.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
-    if (username === "admin") return NextResponse.json({ error: "ชื่อนี้ถูกจองไว้แล้ว" }, { status: 400 });
+    const name = String(username ?? "").trim();
+    if (!name || !password || !adminRole) return NextResponse.json({ error: "missing fields" }, { status: 400 });
+    if (!ALLOWED_ROLES.includes(adminRole)) return NextResponse.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
+    if (name === "admin") return NextResponse.json({ error: "ชื่อนี้ถูกจองไว้แล้ว" }, { status: 400 });
+    if (String(password).length < MIN_ADMIN_PASSWORD) return NextResponse.json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${MIN_ADMIN_PASSWORD} ตัว` }, { status: 400 });
 
-    await sql`INSERT INTO admin_users (username, password, role) VALUES (${username}, ${password}, ${adminRole})`;
+    await db.query(`INSERT INTO admin_users (username, password, role) VALUES ($1, $2, $3)`, [name, await hashPassword(String(password)), adminRole]);
     return NextResponse.json({ success: true });
   } catch (e) {
-    if (String(e).includes("unique")) return NextResponse.json({ error: "ชื่อผู้ใช้นี้มีแล้ว" }, { status: 400 });
+    if (String(e).toLowerCase().includes("unique")) return NextResponse.json({ error: "ชื่อผู้ใช้นี้มีแล้ว" }, { status: 400 });
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
 
-// PATCH — แก้ไข role หรือ password (super เท่านั้น)
+// PATCH — แก้ไข role / password / active
 export async function PATCH(req: NextRequest) {
-  const role = await getAdminRole(req);
-  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await guard(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id, adminRole, password, active } = await req.json();
     if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
 
     if (adminRole !== undefined) {
-      await sql`UPDATE admin_users SET role = ${adminRole} WHERE id = ${id}`;
+      if (!ALLOWED_ROLES.includes(adminRole)) return NextResponse.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
+      await db.query(`UPDATE admin_users SET role = $1 WHERE id = $2`, [adminRole, id]);
     }
     if (password) {
-      await sql`UPDATE admin_users SET password = ${password} WHERE id = ${id}`;
+      if (String(password).length < MIN_ADMIN_PASSWORD) return NextResponse.json({ error: `รหัสผ่านต้องยาวอย่างน้อย ${MIN_ADMIN_PASSWORD} ตัว` }, { status: 400 });
+      await db.query(`UPDATE admin_users SET password = $1 WHERE id = $2`, [await hashPassword(String(password)), id]);
     }
     if (active !== undefined) {
-      await sql`UPDATE admin_users SET active = ${active} WHERE id = ${id}`;
+      await db.query(`UPDATE admin_users SET active = $1 WHERE id = $2`, [Boolean(active), id]);
     }
+    clearAdminAuthCache();   // เปลี่ยนสิทธิ์/รหัส/ปิดบัญชี ต้องมีผลทันทีบนเครื่องนี้
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
 
-// DELETE — ลบ admin (super เท่านั้น)
+// DELETE — ลบ admin
 export async function DELETE(req: NextRequest) {
-  const role = await getAdminRole(req);
-  if (!hasRole(role, "super")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await guard(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await req.json();
-    await sql`DELETE FROM admin_users WHERE id = ${id}`;
+    await db.query(`DELETE FROM admin_users WHERE id = $1`, [id]);
+    clearAdminAuthCache();
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
