@@ -77,6 +77,14 @@ function exportCSV(users: User[]) {
   URL.revokeObjectURL(url);
 }
 
+function backfillStartLabel(createdAt: string | null | undefined): string {
+  const dayMs = 86400000;
+  const signup = createdAt ? new Date(createdAt).getTime() : NaN;
+  const floor = Date.now() - 30 * dayMs;
+  const start = Number.isFinite(signup) ? Math.max(signup, floor) : floor;
+  return new Date(start).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" });
+}
+
 export default function AdminPage() {
   const [username, setUsername]   = useState("");
   const [password, setPassword]   = useState("");
@@ -676,7 +684,7 @@ export default function AdminPage() {
             {waitingShown.length > 0 && <div className="ad-verify-list">
               <div className="ad-safety">🪪 <b>ก่อนกดยืนยัน:</b> ถามชื่อลูกค้า แล้วดูบัตรหรือเช็กเบอร์จากเครื่องลูกค้า ป้องกันการสวมเบอร์</div>
               {waitingShown.map(u => <article className="ad-verify-card" key={u.id}>
-                <div className="ad-verify-head"><div><span className="ad-chip ad-chip--warn">รอยืนยัน {u.waiting_days ?? 0} วัน</span><h4>{u.display_name || "ไม่ระบุชื่อ LINE"}</h4><span>ชื่อที่กรอก: <b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b> · {fmtPhone(u.phone)}</span></div><div className="ad-pending-bills"><b>{u.pending_bills?.count ?? 0}</b><span>บิลค้าง</span></div></div>
+                <div className="ad-verify-head"><div><span className="ad-chip ad-chip--warn">รอยืนยัน {u.waiting_days ?? 0} วัน</span><h4>{u.display_name || "ไม่ระบุชื่อ LINE"}</h4><span>ชื่อที่กรอก: <b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b> · {fmtPhone(u.phone)}</span></div><div className="ad-pending-bills" title="ผูกรหัสแล้ว ระบบดึงบิลของรหัสนี้ตั้งแต่วันที่นี้มาให้แต้มเอง"><span>ย้อนหลังถึง</span><b>{backfillStartLabel(u.created_at)}</b></div></div>
                 <div className="ad-match">
                   <div><small>ข้อมูลจาก LINE / สมัคร</small><strong>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</strong><span>{fmtPhone(u.phone)}{u.company ? ` · ${u.company}` : ""}</span></div>
                   <div className="ad-match-arrow">เทียบกับ →</div>
@@ -684,7 +692,7 @@ export default function AdminPage() {
                 </div>
                 <div className="ad-verify-actions">
                   {u.suggested_customer_id ? <button className="ad-btn ad-btn--ok" onClick={() => confirmSuggestedCustomer(u)}>ตรวจแล้ว · ยืนยันผูกรหัส</button> : <button className="ad-btn ad-btn--ghost" onClick={() => { setEditingId(u.id); setEditValue(""); }}>กรอกรหัส Hero เอง</button>}
-                  <span>{u.pending_bills ? `ยอดบิลค้าง ${u.pending_bills.amount.toLocaleString()} บาท` : "ยังไม่มีบิลค้าง"}</span>
+                  <span>ผูกแล้ว บิลตั้งแต่วันสมัคร (ไม่เกิน 30 วัน) จะได้แต้มเองภายใน 10 นาที</span>
                 </div>
                 {editingId === u.id && <input className="ad-code-in ad-code-in--wide" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }} placeholder="กรอกรหัสแล้วกด Enter" />}
               </article>)}
