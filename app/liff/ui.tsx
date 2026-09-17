@@ -48,7 +48,8 @@ export function Shell({ sub, back, short, layout = "plain", children }: {
   ].filter(Boolean).join(" ");
   return (
     <div className="lf-page">
-      <div className={`lf-hero${short ? " lf-hero--short" : ""}`}><Brand sub={sub} back={back} /></div>
+      {/* lf-hero--form: หัวหน้าเว็บกว้างเท่าเนื้อหาหน้าสมัคร (ดู styles/shell.css) */}
+      <div className={`lf-hero${short ? " lf-hero--short" : ""}${layout === "form" ? " lf-hero--form" : ""}`}><Brand sub={sub} back={back} /></div>
       <div className={wrap}>{children}</div>
     </div>
   );

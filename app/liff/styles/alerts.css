@@ -1,0 +1,21 @@
+/* กล่องเตือนใต้ปุ่มลัด (components/AlertNotes.tsx)
+ * ใช้สีจาก token ใน liff.css เท่านั้น (scripts/check-contrast.mjs ตรวจ)
+ * selector ขึ้นต้นด้วย .lf-note เพื่อชนะกฎเดิมของ liff.css โดยไม่พึ่งลำดับไฟล์
+ */
+
+/* ── โน้ตเงียบบรรทัดเดียว: แต้มหมดอายุจำนวนน้อย / ดูวันหมดอายุไม่ได้ ──
+ * พื้นเทาอ่อน ตัวอักษรรอง ไม่แย่งสายตาจากบัตรและสิทธิ์ · แถบซ้ายใช้ --line-strong (ผ่าน 3:1 กับพื้น) */
+.lf-note.lf-al-quiet {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border-color: var(--line);
+  border-left-color: var(--line-strong);
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+}
+.lf-note.lf-al-quiet i { color: var(--ink-3); }
+.lf-note.lf-al-quiet strong { color: var(--ink); font-weight: var(--fw-bold); }
+.lf-note.lf-al-quiet .lf-al-txt { min-width: 0; flex: 1; }
+

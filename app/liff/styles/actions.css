@@ -1,0 +1,28 @@
+/* ปุ่มลัด — สถานะ "ยังใช้ไม่ได้จนกว่าจะยืนยันตัวตน" (c4 ผู้ตรวจนักออกแบบ)
+ * ใช้ตัวแปรจาก liff.css เท่านั้น · คลาสใหม่ขึ้นต้น lf-ac-
+ * selector ".lf-actions .lf-action.lf-ac-locked" หนักกว่ากฎ .lf-actions .lf-cd-act ใน styles/card.css → ไม่พึ่งลำดับไฟล์ */
+
+/* ปุ่มปิด: พื้นเทาอ่อน + ขอบประ (ยังผ่าน 3:1) → ดูต่างจากปุ่มกดได้ชัด ไม่ใช่แค่จางลง
+ * ตัวอักษร --ink-2 บน --surface-2 ≈ 9.7:1 · ไอคอน --ink-3 บน --surface-2 ≈ 5.7:1 · ขอบ --line-strong ≈ 3.8:1 */
+.lf-actions .lf-action.lf-ac-locked {
+  background: var(--surface-2); border-style: dashed; border-color: var(--line-strong);
+  box-shadow: none; cursor: not-allowed;
+}
+.lf-actions .lf-action.lf-ac-locked:active { transform: none; }
+.lf-actions .lf-action.lf-ac-locked i { color: var(--ink-3); }
+.lf-actions .lf-action.lf-ac-locked b { color: var(--ink-2); }
+
+/* ป้าย "หลังยืนยัน" — 13px หนา ตัวเข้มบนขาว (≈ 16:1) ขอบเทาเข้ม */
+.lf-actions .lf-ac-tag {
+  display: inline-block; padding: 1px var(--sp-2);
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ปุ่มแถวนี้มีป้ายเพิ่ม 1 บรรทัด → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง (ยังสูงเกิน --h-tap) */
+.lf-actions--locked .lf-action { gap: var(--sp-1); }
+@media (max-width: 359px) {
+  .lf-actions .lf-ac-tag { padding: 0 var(--sp-1); }
+}

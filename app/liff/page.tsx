@@ -258,7 +258,7 @@ export default function LiffPage() {
           realTier={isInactive ? baseTier : null}
         />
         <QuickActions
-          txLoading={txLoading} txOpen={txOpen}
+          txLoading={txLoading} txOpen={txOpen} locked={!!pendingLink}
           onToggleHistory={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } else setTxOpen(false); }}
           onEdit={() => {
             setFirstName(member?.first_name ?? ""); setLastName(member?.last_name ?? ""); setPhone(member?.phone ?? "");
@@ -282,7 +282,7 @@ export default function LiffPage() {
           />
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
-        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} />
+        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
       </div>
 
       {/* ท้ายหน้าอยู่นอกคอลัมน์ → เดสก์ท็อปจัดกลางใต้ทั้งสองคอลัมน์ (styles/content.css) · มือถือยังอยู่ท้ายสุดด้วย order */}

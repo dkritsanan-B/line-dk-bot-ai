@@ -11,6 +11,10 @@
 //   - "ยื่นบัตร/บอกเบอร์ก่อนคิดเงิน" อยู่บนบัตรที่เดียว — การ์ดนี้ไม่พูดซ้ำ
 //   - กติกาละเอียดรวมไว้ในหัวข้อพับได้ "แต้มคิดอย่างไร" (PointsHowTo) ที่เดียว
 //     แสดงท้ายการ์ดนี้เมื่อปิดประวัติ / ท้ายรายการประวัติเมื่อเปิด — หน้าจอมีได้ครั้งละอันเดียว
+// c4 (ผู้ตรวจนักออกแบบ):
+//   - "เหล็กเส้น" ไม่ใช่สิทธิ์ → ย้ายออกจากแถวสิทธิ์ เป็นบรรทัดหมายเหตุเบา ๆ ใต้กลุ่มแต้มเพิ่ม
+//   - pending (สมัครแล้ว ยังไม่ยืนยันที่ร้าน) → หัวการ์ดไม่สัญญาสิทธิ์ก่อนยืนยัน
+//     และไม่ขึ้น "ตอนนี้คุณได้แล้ว" (ยังไม่ได้แต้มจนกว่าจะยืนยัน)
 import { TIERS, type Tier } from "../lib/tiers";
 import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, VIA_HEAD, type PerkVia } from "../lib/perks";
 import { BONUS_BAHT_PER_POINT, RULES, tierIndex, type RuleKey } from "@/lib/tierRules";
@@ -47,7 +51,11 @@ export function PointsHowTo() {
   );
 }
 
-export default function TierPerks({ tier, restore, hideOnMobile, showHow }: { tier: Tier; restore?: boolean; hideOnMobile?: boolean; showHow?: boolean }) {
+export default function TierPerks({ tier, restore, hideOnMobile, showHow, pending }: {
+  tier: Tier; restore?: boolean; hideOnMobile?: boolean; showHow?: boolean;
+  /** true = สมัครแล้วแต่ยังไม่ยืนยันตัวตนที่ร้าน */
+  pending?: boolean;
+}) {
   const mine = perksOf(tier.name);
   const myBirthday = birthdayPointsOf(tier.name);
   // ระดับแรกที่สูงกว่าเราและมีสิทธิ์ (TIERS เรียงสูง→ต่ำ)
@@ -62,7 +70,19 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow }: { ti
   const bdShown = mine.length ? myBirthday : target ? birthdayPointsOf(target.name) : 0;
   return (
     <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}`}>
-      {restore && mine.length ? (
+      {pending ? (
+        <>
+          <h3><Icon name="tag" size={22} /> หลังยืนยันตัวตน ได้สิทธิ์เหล่านี้</h3>
+          {mine.length ? (
+            <p>ระดับ <TierMark tier={tier} /> <b>{tier.name}</b></p>
+          ) : (
+            <p>
+              เมื่อถึงระดับ <TierMark tier={target!} /> <b>{target!.name}</b> <span className="lf-nw">· สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม</span>
+              {" "}<span className="lf-nw">(ซื้อรวมราว {bahtFor(target!.min)} บาท)</span>
+            </p>
+          )}
+        </>
+      ) : restore && mine.length ? (
         <>
           <h3><Icon name="tag" size={22} /> ซื้อครั้งถัดไป ได้สิทธิ์นี้คืน</h3>
           <p>ระดับจริงของคุณ <TierMark tier={tier} /> <b>{tier.name}</b></p>
@@ -103,14 +123,11 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow }: { ti
               </div>
             </div>
           ))}
+          {/* เหล็กเส้นไม่ใช่สิทธิ์ — หมายเหตุเบา ๆ ใต้กลุ่ม ไม่ใช้ตัวหนาสีน้ำเงินแบบแถวสิทธิ์ */}
           {g.rows.some(l => l.key === "steel") && (
-            <div className="lf-perkrow">
-              <span>เหล็กเส้น</span>
-              <div className="lf-ct-valbox">
-                <b className="lf-ct-val">{NORMAL_PER_100} แต้ม<small>/100 บาท</small></b>
-                <em className="lf-ct-sub">แต้มปกติ ไม่มีแต้มเพิ่ม</em>
-              </div>
-            </div>
+            <p className="lf-ct-note">
+              <span className="lf-nw">เหล็กเส้น: ได้แต้มปกติ</span> <span className="lf-nw">({NORMAL_PER_100} แต้ม/100 บาท)</span> <span className="lf-nw">ไม่มีแต้มเพิ่ม</span>
+            </p>
           )}
         </div>
       ))}

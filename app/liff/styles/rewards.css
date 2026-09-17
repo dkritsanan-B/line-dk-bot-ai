@@ -22,6 +22,14 @@
   min-width: 0;
 }
 
+/* วางตำแหน่งในการ์ด (17 ก.ย. 69) — แถวล่าง (.lf-rw-foot) ย้ายออกมาเป็นลูกของการ์ดโดยตรง
+ * มือถือ: รูปกินสองแถวซ้าย · ชื่อ+เงื่อนไข / แถวล่าง / บรรทัดเสริม ซ้อนกันในคอลัมน์ขวา → หน้าตาเหมือนเดิม */
+.lf-rw-thumb { grid-column: 1; grid-row: 1 / span 2; }
+.lf-rw-body  { grid-column: 2; grid-row: 1; }
+.lf-rw-foot  { grid-column: 2; grid-row: 2; }
+.lf-rw-note  { grid-column: 2; grid-row: 3; }
+.lf-rw-extra { grid-row: 4; }
+
 /* ช่องรูป/ไอคอน */
 .lf-rw-thumb {
   width: var(--lf-rw-thumb); height: var(--lf-rw-thumb);
@@ -122,11 +130,69 @@
 .lf-wrap .lf-rules summary { font-size: var(--fs-body); }
 .lf-wrap .lf-rules summary::after { font-size: var(--fs-h2); line-height: 1; }
 
-/* เดสก์ท็อป: ยังเป็นตารางการ์ด (2–3 ใบต่อแถว) การ์ดสูงเท่ากันในแถว รูปใหญ่ขึ้น */
+/* ชิปกรองของรางวัล (17 ก.ย. 69) — สูง 44px · มือถือเลื่อนแนวนอนชนขอบจอ · เดสก์ท็อปตัดบรรทัดได้
+ * ปกติ: --ink-2 บน --surface ขอบ --line-strong (≥ 3:1) · เลือกอยู่: ขาวบน --dk-blue (ภาษาเดียวกับ .lf-tab.on) */
+.lf-rw-chips {
+  --lf-rw-h-chip: 44px;
+  display: flex; gap: var(--sp-2);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  /* ยื่นออกชนขอบจอเท่าระยะขอบของ .lf-wrap พอดี (liff.css: 16px · จอ < 420px เหลือ 12px) — ไม่ให้หน้าเลื่อนข้าง */
+  --lf-rw-bleed: var(--sp-4);
+  margin: 0 calc(var(--lf-rw-bleed) * -1);
+  padding: 2px var(--lf-rw-bleed);
+}
+@media (max-width: 419px) { .lf-rw-chips { --lf-rw-bleed: var(--sp-3); } }
+.lf-rw-chips::-webkit-scrollbar { display: none; }
+.lf-rw-chip {
+  flex-shrink: 0;
+  min-height: var(--lf-rw-h-chip);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink-2);
+  font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  cursor: pointer;
+}
+.lf-rw-chip.on { background: var(--dk-blue); border-color: var(--dk-blue); color: var(--on-brand); font-weight: var(--fw-black); }
+.lf-rw-chip:focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
+/* ตัวเลขจำนวนในชิป */
+.lf-rw-chip-n {
+  min-width: 24px; padding: 0 var(--sp-1);
+  border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2);
+  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.6; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.lf-rw-chip.on .lf-rw-chip-n { background: var(--surface); color: var(--dk-blue-strong); }
+
+/* ชิปที่ไม่มีของ — ข้อความเป็นมิตร + ทางกลับไปดูทั้งหมด */
+.lf-rw-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
+.lf-rw-empty > i { font-style: normal; display: flex; color: var(--dk-blue-strong); }
+.lf-rw-empty > b { font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ink); }
+.lf-rw-empty > span { font-size: var(--fs-body); color: var(--ink-2); }
+.lf-rw-empty > span b { color: var(--ink); }
+.lf-rw-empty .lf-btn { width: auto; margin-top: var(--sp-1); }
+
+/* เดสก์ท็อป: ยังเป็นตารางการ์ด (2–3 ใบต่อแถว) การ์ดสูงเท่ากันในแถว รูปใหญ่ขึ้น
+ * แถวล่าง (แต้ม + ปุ่ม) กินเต็มความกว้างการ์ดและติดขอบล่างเสมอ — แถวที่ 2 (1fr) รับความสูงส่วนเกิน
+ * บรรทัดเสริมอยู่ในแถว 1fr ชิดล่าง ติดเหนือแถวล่างพอดี → ปุ่มทุกใบในแถวยังตรงกัน */
 @media (min-width: 900px) {
   .lf-wrap--catalog > .lf-rw-card { align-self: stretch; }
-  .lf-rw-card { --lf-rw-thumb: 88px; padding: var(--sp-4); column-gap: var(--sp-4); }
+  .lf-wrap--catalog > .lf-rw-chips,
+  .lf-wrap--catalog > .lf-rw-empty,
+  .lf-wrap--catalog > .lf-note { grid-column: 1 / -1; }
+  .lf-rw-chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .lf-rw-card {
+    --lf-rw-thumb: 88px; padding: var(--sp-4); column-gap: var(--sp-4);
+    grid-template-rows: auto 1fr auto auto;
+  }
+  .lf-rw-thumb { grid-row: 1; }
+  .lf-rw-note  { grid-column: 1 / -1; grid-row: 2; align-self: end; }
+  .lf-rw-foot  {
+    grid-column: 1 / -1; grid-row: 3;
+    margin-top: var(--sp-3); padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+  }
+  .lf-rw-extra { grid-row: 4; }
   .lf-rw-cond { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .lf-rw-card { align-items: stretch; }
-  .lf-rw-foot { margin-top: auto; padding-top: var(--sp-3); }
 }

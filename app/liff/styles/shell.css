@@ -23,3 +23,15 @@
   .lf-hero--short .lf-brand--back .lf-hero-back { width: var(--h-tap); min-width: var(--h-tap); padding: 0; }
   .lf-hero--short .lf-brand--back .lf-brand-sub { display: block; }
 }
+
+/* หน้าสมัคร/แก้ไข (layout="form") บนเดสก์ท็อป (17 ก.ย. 69 ผู้ตรวจนักออกแบบ)
+ * เดิมฟอร์มยืดกว้างจนช่องกรอกยาวเกินสายตา → ล็อกเนื้อหาไว้ ~560px กลางจอ อ่านเป็นคอลัมน์เดียวแบบมือถือ
+ * บันไดระดับกลับเป็น 2 ช่อง / สิทธิ์ 1 ช่อง (3 ช่องในความกว้างนี้แคบจนตัดคำ) · มือถือไม่โดนกฎนี้ */
+@media (min-width: 900px) {
+  .lf-page { --lf-w-form: 560px; }
+  .lf-wrap.lf-wrap--form { max-width: var(--lf-w-form); }
+  /* โลโก้/ชื่อร้านชิดซ้ายตรงกับขอบการ์ดฟอร์ม ไม่ลอยไปซ้ายสุดของหน้า 980px */
+  .lf-hero--form .lf-brand { max-width: var(--lf-w-form); }
+  .lf-wrap.lf-wrap--form .lf-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lf-wrap.lf-wrap--form .lf-perks { grid-template-columns: minmax(0, 1fr); }
+}

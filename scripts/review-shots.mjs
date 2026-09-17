@@ -66,7 +66,8 @@ for (const view of VIEWS) {
 
         // ภาพเพิ่มเติม: กดดูประวัติแต้มในหน้าบัตรสมาชิก (สถานะที่ต้องกดถึงจะเห็น)
         if (pg.key === "liff" && scenario !== "new") {
-          const btn = page.getByRole("button", { name: /ประวัติแต้ม/ });
+          // ปุ่มที่ล็อกไว้ (ยังไม่ยืนยันตัวตน) กดไม่ได้โดยตั้งใจ → ข้าม
+          const btn = page.getByRole("button", { name: /ประวัติแต้ม/ }).and(page.locator(':not([aria-disabled="true"])'));
           if (await btn.count()) {
             await btn.first().click();
             await page.waitForTimeout(900);

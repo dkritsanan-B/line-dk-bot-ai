@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isReview, reviewQS } from "../review";
 import { Shell, Loading } from "../ui";
 import Icon, { type IconName } from "../components/Icon";
@@ -84,6 +84,30 @@ function cardState(r: Reward, summary: RedeemSummary | null, available: number):
   return { kind: "can" };
 }
 
+/** ลำดับการ์ด (17 ก.ย. 69 ผู้ตรวจนักออกแบบ): แลกได้ตอนนี้ → รอรับของ → แต้มยังไม่พอ (ใกล้ครบก่อน) → ของหมด/จองครบ ท้ายสุด
+ *  เรียงครั้งเดียวตอนโหลด ไม่เรียงใหม่ตอนกดแลกสำเร็จ — การ์ดที่เพิ่งกดต้องอยู่ที่เดิมพร้อมข้อความยืนยัน ไม่กระโดดหนี */
+function rankOf(st: CardState): number {
+  return st.kind === "can" ? 0 : st.kind === "mine" ? 1 : st.kind === "out" ? 3 : 2;
+}
+function sortRewards(list: Reward[], summary: RedeemSummary | null): Reward[] {
+  const available = Math.max(0, summary?.available_points ?? 0);
+  return list
+    .map(r => ({ r, st: cardState(r, summary, available) }))
+    .sort((a, b) =>
+      rankOf(a.st) - rankOf(b.st)
+      || (a.st.kind === "lack" && b.st.kind === "lack" ? a.st.lacking - b.st.lacking : 0)
+      || a.r.points_required - b.r.points_required)
+    .map(x => x.r);
+}
+
+// หมวดของรางวัล — เดาจากชื่อ (ตารางของรางวัลไม่มีช่องหมวด) · ชิปหมวดขึ้นเฉพาะเมื่อมีของทั้งสองหมวด
+type RewardCat = "cash" | "tool";
+const CAT_LABEL: Record<RewardCat, string> = { cash: "ส่วนลดและบัตร", tool: "ของใช้ช่าง" };
+function rewardCat(name: string): RewardCat {
+  return /ส่วนลด|คูปอง|เงินสด|บัตรเติม|บัตรกำนัล|บัตรของขวัญ/.test(name) ? "cash" : "tool";
+}
+type Filter = "all" | "can" | RewardCat;
+
 export default function RewardsPage() {
   const [token, setToken]     = useState("");
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -96,6 +120,9 @@ export default function RewardsPage() {
   // กดแลกครั้งแรก = เปิดกล่องยืนยัน (ผู้ตรวจ c1: กดครั้งเดียวแต้มโดนจองทันที ไม่มีจังหวะให้คิด)
   const [confirmId, setConfirmId]     = useState<number | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  // id ที่แลกได้ ณ ตอนโหลด — ชิป "แลกได้ตอนนี้" ใช้ชุดนี้ กดแลกแล้วการ์ดยังอยู่ในชิปเดิม (ข้อความยืนยันไม่หายไปต่อหน้า)
+  const [canIds, setCanIds] = useState<Set<number>>(() => new Set());
 
   /** โหลดของรางวัล + แต้มที่ใช้ได้พร้อมกัน — ถ้าอย่างใดอย่างหนึ่งล้ม ขึ้นจอแจ้งปัญหา (ไม่โชว์ตัวเลขที่ไม่จริง) */
   const loadAll = useCallback(async (tok: string): Promise<boolean> => {
@@ -114,7 +141,9 @@ export default function RewardsPage() {
     else if (typeof s.points === "number" && Array.isArray(s.pending)) nextSummary = { ...s, reserved_by_reward: s.reserved_by_reward ?? {} };
     else { setProblem(problemOf("SERVER_ERROR")); return false; }
     setProblem(null);
-    setRewards(rw.data.rewards);
+    const avail = Math.max(0, nextSummary?.available_points ?? 0);
+    setRewards(sortRewards(rw.data.rewards, nextSummary));
+    setCanIds(new Set(rw.data.rewards.filter(r => cardState(r, nextSummary, avail).kind === "can").map(r => r.id)));
     setSummary(nextSummary);
     return true;
   }, []);
@@ -192,6 +221,18 @@ export default function RewardsPage() {
     }
   }
 
+  // ชิปกรอง — "ทั้งหมด" · "แลกได้ตอนนี้" (เฉพาะสมาชิก) · หมวด (เฉพาะเมื่อมีของทั้งสองหมวด)
+  const chips = useMemo(() => {
+    const list: { key: Filter; label: string; count: number }[] = [{ key: "all", label: "ทั้งหมด", count: rewards.length }];
+    if (summary) list.push({ key: "can", label: "แลกได้ตอนนี้", count: rewards.filter(r => canIds.has(r.id)).length });
+    const cats = (Object.keys(CAT_LABEL) as RewardCat[]).map(c => ({ key: c, label: CAT_LABEL[c], count: rewards.filter(r => rewardCat(r.name) === c).length }));
+    if (cats.every(c => c.count > 0)) list.push(...cats);
+    return list;
+  }, [rewards, summary, canIds]);
+  const activeFilter: Filter = chips.some(c => c.key === filter) ? filter : "all";
+  const shown = rewards.filter(r =>
+    activeFilter === "all" ? true : activeFilter === "can" ? canIds.has(r.id) : rewardCat(r.name) === activeFilter);
+
   if (loading) return <Loading />;
 
   const back = { label: "บัตรสมาชิก", href: "/liff" + reviewQS() };
@@ -221,7 +262,7 @@ export default function RewardsPage() {
               </div>
             )}
           </div>
-          <i><Icon name="star" size={32} /></i>
+          {/* ไอคอนดาวตกแต่งเดิมตัดทิ้ง (17 ก.ย. 69) — กดแล้วไม่ไปไหน และหน้าบัตรยังไม่มีลิงก์เปิดประวัติการแลกโดยตรง */}
         </div>
       ) : (
         <div className="lf-balance lf-balance--signup">
@@ -257,7 +298,34 @@ export default function RewardsPage() {
       {rewards.length === 0 ? (
         // ลิสต์ว่างจริง (API ตอบสำเร็จ) — ไม่ใช่ระบบล่ม
         <div className="lf-card lf-center"><i><Icon name="gift" size={40} /></i>ยังไม่มีของรางวัลในขณะนี้</div>
-      ) : rewards.map(reward => {
+      ) : <>
+      {chips.length > 1 && (
+        <div className="lf-rw-chips" role="group" aria-label="กรองของรางวัล">
+          {chips.map(c => (
+            <button key={c.key} type="button" className={`lf-rw-chip${activeFilter === c.key ? " on" : ""}`}
+              aria-pressed={activeFilter === c.key} onClick={() => setFilter(c.key)}>
+              {c.label}<span className="lf-rw-chip-n">{c.count.toLocaleString()}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {shown.length === 0 && (() => {
+        // ชิปว่าง — บอกว่าอีกนิดเดียวจะแลกอะไรได้ แทนหน้าโล่ง
+        const next = rewards
+          .map(r => ({ r, st: cardState(r, summary, available) }))
+          .find((x): x is { r: Reward; st: { kind: "lack"; lacking: number } } => x.st.kind === "lack");
+        return (
+          <div className="lf-card lf-rw-empty" role="status">
+            <i><Icon name="gift" size={36} /></i>
+            <b>{activeFilter === "can" ? "ตอนนี้ยังไม่มีของที่แลกได้" : "หมวดนี้ยังไม่มีของรางวัล"}</b>
+            {activeFilter === "can" && next && (
+              <span>สะสมอีก <b className="lf-nw">{next.st.lacking.toLocaleString()} แต้ม</b> แลก{next.r.name}ได้ค่ะ</span>
+            )}
+            <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setFilter("all")}>ดูของรางวัลทั้งหมด</button>
+          </div>
+        );
+      })()}
+      {shown.map(reward => {
         const st = cardState(reward, summary, available);
         const ok = st.kind === "can";
         const msg = redeemMsg?.id === reward.id ? redeemMsg : null;
@@ -281,29 +349,31 @@ export default function RewardsPage() {
             <div className="lf-rw-body">
               <div className="lf-rw-name">{reward.name}</div>
               <div className="lf-rw-cond" title={cond}>เงื่อนไข: {cond}</div>
-              <div className="lf-rw-foot">
-                <div className="lf-rw-pts">
-                  <b>{reward.points_required.toLocaleString()}<small>แต้ม</small></b>
-                  {left !== null && left > 0 && left <= 20 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
-                </div>
-                {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด บนปุ่มเทาที่กดไม่ได้ ตำแหน่งเดียวกับปุ่มแลก */}
-                {ok ? (!confirming && (
-                  <button type="button" className="lf-rw-btn" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
-                    แลก
-                  </button>
-                )) : (
-                  <button type="button" disabled
-                    className={`lf-rw-btn lf-rw-btn--off${st.kind === "mine" ? " lf-rw-btn--mine" : ""}`}
-                    title={st.kind === "mine" ? `คำขอ #REQ-${st.req.id}` : undefined}
-                    aria-label={`${reward.name}: แลกไม่ได้ ${offText}`}>
-                    {st.kind === "mine" && <Icon name="hourglass" size={16} />}{offText}
-                  </button>
-                )}
+            </div>
+            {/* แถวล่างอยู่นอก .lf-rw-body (17 ก.ย. 69) — มือถือยังอยู่คอลัมน์ขวาเหมือนเดิม
+                เดสก์ท็อปกินเต็มความกว้างการ์ดและติดขอบล่าง → แต้ม/ปุ่มตรงกันทุกใบในแถว */}
+            <div className="lf-rw-foot">
+              <div className="lf-rw-pts">
+                <b>{reward.points_required.toLocaleString()}<small>แต้ม</small></b>
+                {left !== null && left > 0 && left <= 20 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
               </div>
-              {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
-                <div className="lf-rw-note">แต้มส่วนหนึ่งถูกจองไว้กับคำขอที่รอรับของ</div>
+              {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด บนปุ่มเทาที่กดไม่ได้ ตำแหน่งเดียวกับปุ่มแลก */}
+              {ok ? (!confirming && (
+                <button type="button" className="lf-rw-btn" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
+                  แลก
+                </button>
+              )) : (
+                <button type="button" disabled
+                  className={`lf-rw-btn lf-rw-btn--off${st.kind === "mine" ? " lf-rw-btn--mine" : ""}`}
+                  title={st.kind === "mine" ? `คำขอ #REQ-${st.req.id}` : undefined}
+                  aria-label={`${reward.name}: แลกไม่ได้ ${offText}`}>
+                  {st.kind === "mine" && <Icon name="hourglass" size={16} />}{offText}
+                </button>
               )}
             </div>
+            {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
+              <div className="lf-rw-note">แต้มส่วนหนึ่งถูกจองไว้กับคำขอที่รอรับของ</div>
+            )}
             {(confirming || msg) && <div className="lf-rw-extra">
               {confirming && (
                 <div className="lf-confirm" role="group" aria-label={`ยืนยันแลก ${reward.name}`}>
@@ -326,6 +396,7 @@ export default function RewardsPage() {
           </div>
         );
       })}
+      </>}
 
       <details className="lf-card lf-rules">
         <summary>กติกาสะสมแต้มและแลกของรางวัล</summary>

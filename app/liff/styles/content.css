@@ -9,9 +9,11 @@
 /* หัวกลุ่มแต้มเพิ่ม: บอกครั้งเดียวว่าเป็นแต้มที่บวกจากแต้มปกติ (--ink บน --dk-sky ≈ 14:1) */
 .lf-perkhead .lf-ct-headnote { display: block; margin-top: 2px; font-size: 15px; font-weight: 400; color: var(--ink); line-height: 1.4; }
 .lf-perkhead .lf-ct-headnote .lf-nw { display: inline; }
-/* ค่าสิทธิ์ + บรรทัดเล็กใต้ค่า ชิดขวา · ทุกแถว (รวมเหล็กเส้น) ใช้ตัวอักษรชุดเดียวกัน */
+/* ค่าสิทธิ์ + บรรทัดเล็กใต้ค่า ชิดขวา · ทุกแถวใช้ตัวอักษรชุดเดียวกัน */
 .lf-perkrow .lf-ct-valbox { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
 .lf-perkrow .lf-ct-sub { display: block; margin-top: 2px; font-style: normal; font-size: 14px; font-weight: 400; color: var(--ink-2); line-height: 1.35; white-space: nowrap; text-align: right; }
+/* หมายเหตุใต้กลุ่มแต้มเพิ่ม (เหล็กเส้น) — ไม่ใช่สิทธิ์ จึงเป็นตัวปกติ สีรอง (--ink-2 บนขาว ≈ 10:1) คั่นด้วยเส้นบาง */
+.lf-perkcard .lf-perkgroup .lf-ct-note { margin: 0; padding: var(--sp-2) var(--sp-3) 0; border-top: 1px solid var(--line); font-size: 15px; font-weight: 400; color: var(--ink-2); line-height: 1.45; }
 
 /* ══ แต้มคิดอย่างไร (ที่เดียวทั้งหน้า) ═══════════════════════════ */
 .lf-ct-how { margin-top: var(--sp-4); border-top: 1px solid var(--line); }
@@ -87,4 +89,9 @@
 /* ท้ายหน้าบัตรสมาชิกบนเดสก์ท็อป: กลางใต้ทั้งสองคอลัมน์ */
 @media (min-width: 900px) {
   .lf-wrap--split > .lf-foot { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 720px; }
+}
+
+/* เดสก์ท็อป: จอสูงพอเห็นทั้งฟอร์ม ไม่ต้องให้ปุ่มสมัครลอย */
+@media (min-width: 900px) {
+  .lf-form .lf-ct-sticky { position: static; box-shadow: var(--sh-2); }
 }

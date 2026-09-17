@@ -100,7 +100,6 @@
 .lf-actions .lf-cd-act--on b { color: var(--dk-blue-strong); }
 
 /* ── เก็บตก ── */
-.lf-mcard .lf-tier-temp { font-size: 14px; font-weight: var(--fw-bold); }
 .lf-mcard .lf-cd-pend-call { display: block; }
 .lf-mcard .lf-cd-foot { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .lf-mcard .lf-cd-foot > span { display: inline; }
@@ -108,4 +107,54 @@
   .lf-mcard .lf-cd-pend { padding-left: var(--sp-3); padding-right: var(--sp-3); }
   .lf-mcard .lf-cd-pend-why { letter-spacing: -.1px; }
 }
-.lf-mcard .lf-cd-prog .lf-prog-real { margin-top: var(--sp-2); padding-top: 0; border-top: none; }
+
+/* ── บรรทัดจิ๋วใต้ยอดสะสม: บอกว่ายอดสะสมต่างจากแต้มที่แลกได้ยังไง (ไม่แข่งกับตัวเลข) ── */
+.lf-mcard .lf-cd-prog-hint {
+  margin: calc(var(--sp-1) * -1) 0 var(--sp-2); font-size: 14px; font-weight: 400; line-height: 1.4;
+  color: var(--card-ink-2);
+}
+
+/* ── พักระดับ (ไม่ได้ซื้อเกิน 1 ปี): สีของระดับจริง แต่ซีด ──────────────
+ * ไล่สีย้ายไปชั้น ::before แล้วลดความอิ่มสีอย่างเดียว — saturate() คงความสว่างเดิมไว้
+ * คอนทราสต์ตัวอักษร (คิดจากไล่สีเต็มใน check-contrast.mjs) จึงไม่เปลี่ยน · ไม่ใช้ opacity เพราะพื้นข้างหลังจะโผล่ */
+.lf-mcard.lf-cd-card--rest::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--cd-grad); filter: saturate(.3);
+}
+/* ป้าย "พักระดับ" ติดในป้ายระดับ: กลับสีป้าย (คู่สีเดียวกับป้าย จึงผ่านคอนทราสต์เท่ากัน) */
+.lf-mcard .lf-cd-rest-tag {
+  margin-left: var(--sp-1); padding: 0 var(--sp-2); border-radius: var(--r-pill);
+  background: var(--card-badge-ink); color: var(--card-badge-bg);
+  font-size: 14px; font-weight: var(--fw-bold); line-height: 1.6;
+}
+.lf-mcard .lf-cd-rest { margin-top: var(--sp-2); padding-top: var(--sp-2); }
+.lf-mcard .lf-cd-rest-msg { font-size: var(--fs-body); font-weight: var(--fw-bold); line-height: 1.4; color: var(--card-ink); }
+.lf-mcard .lf-cd-rest-msg .lf-nw { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.lf-mcard .lf-cd-rest-sub { margin-top: 2px; font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--card-ink-2); }
+
+/* ── รอยืนยัน: พื้นขาว ขอบเทา ไม่ใช่ไล่สีระดับ (น้ำเงินเดิมอ่านเป็น Diamond) ──
+ * ใช้ชุดสีตัวอักษรของหน้าเว็บปกติแทนชุดของบัตร · selector มี [data-ink] เพื่อชนะ .lf-mcard[data-ink="…"] ใน liff.css
+ * จุดเด่นจุดเดียวคือกล่อง "บอกพนักงาน" (พื้นฟ้าอ่อน + ราวน้ำเงินซ้าย) */
+.lf-mcard.lf-cd-card--pend[data-ink] {
+  --card-ink: var(--ink);
+  --card-ink-2: var(--ink-2);
+  --card-badge-bg: var(--dk-sky);
+  --card-badge-ink: var(--dk-blue-strong);
+  --card-well: var(--dk-sky);
+  --card-well-line: var(--dk-sky-line);
+  --card-track: var(--surface-2);
+  --card-track-line: var(--line-strong);
+  --card-fill: var(--dk-blue);
+  --card-sheen: transparent;
+  background: var(--surface);
+  box-shadow: var(--sh-2), inset 0 0 0 var(--bw) var(--line-strong);
+}
+.lf-mcard.lf-cd-card--pend .lf-mcard-label { color: var(--ink-2); }
+.lf-mcard.lf-cd-card--pend .lf-mcard-who img,
+.lf-mcard.lf-cd-card--pend .lf-mcard-who .ph { border-color: var(--line); }
+.lf-mcard.lf-cd-card--pend .lf-cd-pend {
+  background: var(--dk-sky); border-left: var(--bw-rail) solid var(--dk-blue);
+}
+.lf-mcard.lf-cd-card--pend .lf-cd-pend-kicker { color: var(--ink-2); }
+.lf-mcard.lf-cd-card--pend .lf-cd-pend-say { color: var(--dk-navy); }
+.lf-mcard.lf-cd-card--pend .lf-cd-pend-phone b { color: var(--ink); }

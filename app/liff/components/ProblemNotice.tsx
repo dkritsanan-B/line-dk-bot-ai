@@ -18,6 +18,21 @@ import { loadCard, type CardSnapshot } from "../lib/cardCache";
 import { formatDate } from "../lib/tiers";
 import Icon from "./Icon";
 
+// รหัสอ้างอิงที่ลูกค้าเห็น (17 ก.ย. 69 ผู้ตรวจนักออกแบบ) — เดิมโชว์รหัสดิบ "DB_UNAVAILABLE" ซึ่งลูกค้าอ่านไม่ออก
+// ลูกค้าเห็นเลขสั้น E-xxx ไว้บอกพนักงานทางโทรศัพท์ · รหัสดิบยังอยู่ที่ data-code / title / console ให้ทีมร้านดู
+//   E-1xx ฐานข้อมูล · E-2xx ตัวตน/ล็อกอิน · E-3xx LINE · E-4xx เน็ตฝั่งลูกค้า · E-5xx เซิร์ฟเวอร์ · E-900 ไม่รู้จัก
+const PROBLEM_REF: Record<string, string> = {
+  DB_UNAVAILABLE:   "E-101",
+  AUTH_REQUIRED:    "E-201",
+  LIFF_INIT:        "E-202",
+  LINE_UNAVAILABLE: "E-301",
+  OFFLINE:          "E-401",
+  SERVER_ERROR:     "E-501",
+};
+export function problemRef(code: string): string {
+  return PROBLEM_REF[code] ?? "E-900";
+}
+
 function copyOf(p: Problem, what: string, compact?: boolean): { title: string; body: string; showPhone: boolean } {
   if (p.kind === "auth") {
     return {
@@ -58,6 +73,9 @@ export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, r
   compact?: boolean;
 }) {
   const c = copyOf(problem, what, compact);
+  const ref = problemRef(problem.code);
+  // รหัสดิบสำหรับทีมร้าน (เปิด DevTools ดูได้) — ไม่ขึ้นบนจอ
+  useEffect(() => { console.warn(`[DK member] ${ref} = ${problem.code}${problem.serverMessage ? ` · ${problem.serverMessage}` : ""}`); }, [ref, problem.code, problem.serverMessage]);
   return (
     <div className={`lf-problem${compact ? " lf-problem--compact" : ""}${problem.kind === "auth" ? " lf-problem--auth" : ""}`} role="alert">
       <div className="lf-problem-head">
@@ -76,7 +94,7 @@ export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, r
         )}
       </div>
       {!compact && problem.kind !== "auth" && (
-        <div className="lf-problem-code">ถ้าโทรหาร้าน แจ้งรหัสนี้ได้ค่ะ: {problem.code}</div>
+        <div className="lf-problem-code" data-code={problem.code} title={problem.code}>ถ้าโทรหาร้าน แจ้งรหัสนี้ได้ค่ะ: <span className="lf-nw">{ref}</span></div>
       )}
     </div>
   );

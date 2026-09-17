@@ -10,17 +10,25 @@
 //   "แต้มที่ใช้แลกได้" = points      → ตัวใหญ่
 //   "ยอดสะสม X / Y แต้ม" = totalEarned → บรรทัด 14px น้ำหนักปกติ (คำอธิบายว่าคิดอย่างไรอยู่ในหัวข้อ "แต้มคิดอย่างไร")
 //
+// สามสภาพของบัตร (ผู้ตรวจรอบ 7.5/10)
+//   ปกติ      → สีระดับเต็ม · แต้มตัวใหญ่ + ยอดสะสม (ข้อความรอง) + บรรทัดจิ๋วบอกว่ายอดสะสมต่างจากแต้มยังไง
+//   พักระดับ   → สีของ "ระดับจริง" แต่ซีด (lf-cd-card--rest) + ป้ายระดับจริงติดป้าย "พักระดับ" + ประโยคเดียวบอกทางกลับ
+//               บัตรเป็นที่เดียวที่อธิบายเรื่องนี้ (AlertNotes ไม่พูดซ้ำแล้ว)
+//   รอยืนยัน   → พื้นขาวขอบเทา (lf-cd-card--pend) ไม่ใช้ไล่สีน้ำเงินที่ชนกับ Diamond · คำสั่ง "บอกพนักงาน" เป็นจุดเด่นจุดเดียว
+//
 // data-ink ต้องมีเสมอ — เป็นตัวเลือกชุดสีตัวอักษรของบัตร (light/dark) ใน liff.css
 // ถ้าลืมใส่ ตัวอักษรบนบัตรจะไม่มีสีเลย (ตกทอดเป็นสีเข้มบนพื้นเข้ม) → scripts/check-tiers.mjs จะ fail
+import type { CSSProperties } from "react";
 import { formatDate, type Tier } from "../lib/tiers";
 import { SHOP_PHONE, SHOP_TEL } from "../lib/api";
 import type { ClientLink, Member, Profile } from "../lib/types";
+import { bahtFor } from "../lib/perks";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
 import "../styles/card.css";
 
 export default function MemberCard({
-  tier, nextTier, totalEarned, points, progress, name, formattedPhone, member, profile, pendingLink, realTier,
+  tier: effTier, nextTier, totalEarned, points, progress, name, formattedPhone, member, profile, pendingLink, realTier,
 }: {
   tier: Tier;
   nextTier: Tier | null;
@@ -37,6 +45,10 @@ export default function MemberCard({
    *  ผู้ตรวจ c1: บัตรสี Bronze แต่ยอดสะสม 2,600 = ดูเหมือนระบบคิดผิด → ต้องบอกบนบัตรเลยว่าทำไม */
   realTier?: Tier | null;
 }) {
+  // หน้าตาบัตร (สี/ชุดตัวอักษร/ป้าย) ใช้ระดับจริงเสมอ — ตอนพักระดับ ป้าย Bronze บนบัตรที่ยอดสะสมถึง Gold ดูเหมือนระบบคิดผิด
+  // ส่วนความคืบหน้า (nextTier/progress จาก page.tsx) คิดจากระดับที่ใช้อยู่ แต่ตอนพักระดับไม่แสดงแถบอยู่แล้ว
+  const tier = realTier ?? effTier;
+  const resting = !pendingLink && !!realTier;
   const toNext = nextTier ? Math.max(0, nextTier.min - totalEarned) : 0;
   // ตำแหน่งขีดเกณฑ์ระดับปัจจุบันบนแถบ (0–100) — แถบเริ่มที่ 0 ไม่ใช่ที่เกณฑ์ระดับปัจจุบัน
   const tierPct = nextTier && nextTier.min > 0 ? Math.min(100, Math.max(0, (tier.min / nextTier.min) * 100)) : 0;
@@ -44,14 +56,22 @@ export default function MemberCard({
     ? new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })
     : null;
   return (
-    <section className="lf-mcard lf-cd-card" data-ink={tier.ink} style={{ background: tier.cardGrad }}>
+    <section
+      className={`lf-mcard lf-cd-card${pendingLink ? " lf-cd-card--pend" : resting ? " lf-cd-card--rest" : ""}`}
+      data-ink={tier.ink}
+      // รอยืนยัน: พื้นมาจาก card.css (ขาว) · พักระดับ: ไล่สีไปอยู่ชั้นล่าง (::before) เพื่อทำให้ซีดโดยไม่แตะตัวอักษร
+      style={pendingLink ? undefined : resting ? ({ "--cd-grad": tier.cardGrad } as CSSProperties) : { background: tier.cardGrad }}
+    >
       <div className="lf-mcard-top">
         <div className="lf-mcard-label">บัตรสมาชิก DK</div>
         {pendingLink ? (
           // ยังไม่ผูก: ป้าย "Welcome" ชวนเข้าใจว่าเริ่มเก็บแต้มแล้ว → ป้ายอำพัน "รอยืนยัน" แทน
           <div className="lf-tier lf-cd-tier-wait"><Icon name="hourglass" size={18} /> รอยืนยัน</div>
         ) : (
-          <div className="lf-tier"><TierMark tier={tier} /> {tier.name}{realTier && <small className="lf-tier-temp">ชั่วคราว</small>}</div>
+          <div className="lf-tier">
+            <TierMark tier={tier} /> {tier.name}
+            {resting && <small className="lf-cd-rest-tag">พักระดับ</small>}
+          </div>
         )}
       </div>
 
@@ -75,7 +95,17 @@ export default function MemberCard({
         <div className="lf-points-lbl">แต้มที่ใช้แลกได้</div>
         <div className="lf-points-num">{points.toLocaleString()}<span className="lf-points-unit">แต้ม</span></div>
 
-        {nextTier ? (
+        {resting && realTier ? (
+          // พักระดับ: ไม่มีตัวเลขชุดที่ 2 ไม่มีแถบ — บอกทางกลับประโยคเดียว
+          // จริงตามกติกา: บิลที่ได้แต้ม (lib/points.ts addPoints) ตั้ง last_purchase_at = ตอนนี้ → getEffectiveTier คิดจากยอดสะสมทันที
+          // บิลต่ำกว่า 1 แต้มไม่นับเป็นการซื้อ จึงต้องบอกยอดขั้นต่ำด้วย
+          <div className="lf-prog lf-cd-rest">
+            <div className="lf-cd-rest-msg">
+              ซื้อครั้งถัดไป <span className="lf-nw">กลับเป็น <TierMark tier={realTier} /> {realTier.name} ทันที</span>
+            </div>
+            <div className="lf-cd-rest-sub">บิลตั้งแต่ {bahtFor(1)} บาท <span className="lf-nw">· ไม่ได้ซื้อเกิน 1 ปีจึงพักไว้</span></div>
+          </div>
+        ) : nextTier ? (
           <div className="lf-prog lf-cd-prog">
             {toNext > 0 ? (<>
             {/* ตัวเลขชุดที่ 2 เป็นข้อมูลรอง (ไม่หนา) — ห้ามแข่งกับแต้มที่ใช้แลกได้
@@ -83,6 +113,8 @@ export default function MemberCard({
             <div className="lf-cd-prog-head">
               ยอดสะสม <b>{totalEarned.toLocaleString()} / {nextTier.min.toLocaleString()}</b> แต้ม
             </div>
+            {/* ผู้ตรวจ: "แต้มที่ใช้แลกได้" กับ "ยอดสะสม" อยู่ใกล้กันแต่ไม่บอกว่าต่างกันยังไง → บรรทัดจิ๋วบรรทัดเดียว */}
+            <div className="lf-cd-prog-hint">ยอดสะสมใช้คิดระดับ <span className="lf-nw">ไม่ลดเมื่อแลกของ</span></div>
             {/* แถบ = ยอดสะสม ÷ เกณฑ์ระดับถัดไป (เริ่มที่ 0) ให้ตรงกับตัวเลขด้านบน
                 ขีดบนแถบ = เกณฑ์ของระดับปัจจุบัน วางตามสัดส่วนจริง */}
             <div
@@ -110,16 +142,7 @@ export default function MemberCard({
             <div className="lf-cd-prog-msg">
               อีก <b>{toNext.toLocaleString()}</b> แต้ม <span className="lf-nw">เป็น {nextTier.name}</span>
             </div>
-            </>) : realTier ? (
-              // ระดับลดชั่วคราว: ยอดสะสมถึงระดับจริงอยู่แล้ว — อธิบายในบัตรเลยว่าทำไมป้ายกับยอดไม่ตรงกัน
-              <>
-                <div className="lf-cd-prog-head">ยอดสะสม <b>{totalEarned.toLocaleString()} แต้ม</b></div>
-                <div className="lf-prog-real">
-                  <div>ระดับจริงของคุณ <b className="lf-nw"><TierMark tier={realTier} /> {realTier.name}</b></div>
-                  <span><b className="lf-nw">ซื้อครั้งถัดไป กลับเป็น {realTier.name} ทันที</b></span>
-                </div>
-              </>
-            ) : (
+            </>) : (
               <>
                 <div className="lf-cd-prog-head">ยอดสะสม <b>{totalEarned.toLocaleString()} แต้ม</b></div>
                 <div className="lf-cd-prog-msg">
