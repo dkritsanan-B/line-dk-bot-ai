@@ -8,7 +8,7 @@
 //
 // ตัวเลขแต้มใหญ่มีตัวเดียวบนบัตร (ผู้ตรวจ P: สองตัวเลขชวนงง + ดันกล่องแต้มหมดอายุลงใต้จอแรก)
 //   "แต้มที่ใช้แลกได้" = points      → ตัวใหญ่
-//   "เลื่อนระดับ X / Y" = totalEarned → บรรทัด 14px (คำอธิบายว่าคิดอย่างไรอยู่ในหัวข้อ "แต้มคิดอย่างไร")
+//   "ยอดสะสม X / Y แต้ม" = totalEarned → บรรทัด 14px น้ำหนักปกติ (คำอธิบายว่าคิดอย่างไรอยู่ในหัวข้อ "แต้มคิดอย่างไร")
 //
 // data-ink ต้องมีเสมอ — เป็นตัวเลือกชุดสีตัวอักษรของบัตร (light/dark) ใน liff.css
 // ถ้าลืมใส่ ตัวอักษรบนบัตรจะไม่มีสีเลย (ตกทอดเป็นสีเข้มบนพื้นเข้ม) → scripts/check-tiers.mjs จะ fail
@@ -38,6 +38,8 @@ export default function MemberCard({
   realTier?: Tier | null;
 }) {
   const toNext = nextTier ? Math.max(0, nextTier.min - totalEarned) : 0;
+  // ตำแหน่งขีดเกณฑ์ระดับปัจจุบันบนแถบ (0–100) — แถบเริ่มที่ 0 ไม่ใช่ที่เกณฑ์ระดับปัจจุบัน
+  const tierPct = nextTier && nextTier.min > 0 ? Math.min(100, Math.max(0, (tier.min / nextTier.min) * 100)) : 0;
   const birthday = member?.birthday
     ? new Date(member.birthday).toLocaleDateString("th-TH", { day: "numeric", month: "short" })
     : null;
@@ -76,24 +78,34 @@ export default function MemberCard({
         {nextTier ? (
           <div className="lf-prog lf-cd-prog">
             {toNext > 0 ? (<>
-            {/* ตัวเลขชุดที่ 2 เป็นบรรทัดเล็กบรรทัดเดียว — ห้ามแข่งกับแต้มที่ใช้แลกได้ */}
+            {/* ตัวเลขชุดที่ 2 เป็นข้อมูลรอง (ไม่หนา) — ห้ามแข่งกับแต้มที่ใช้แลกได้
+                ยอดสะสมนับรวมตั้งแต่สมัคร ไม่รีเซ็ตรายปี (lib/points.ts getEffectiveTier) → ห้ามเขียน "ปีนี้" */}
             <div className="lf-cd-prog-head">
-              เลื่อนระดับ <b>{totalEarned.toLocaleString()} / {nextTier.min.toLocaleString()}</b>
+              ยอดสะสม <b>{totalEarned.toLocaleString()} / {nextTier.min.toLocaleString()}</b> แต้ม
             </div>
+            {/* แถบ = ยอดสะสม ÷ เกณฑ์ระดับถัดไป (เริ่มที่ 0) ให้ตรงกับตัวเลขด้านบน
+                ขีดบนแถบ = เกณฑ์ของระดับปัจจุบัน วางตามสัดส่วนจริง */}
             <div
-              className="lf-prog-bar"
+              className="lf-prog-bar lf-cd-bar"
               role="progressbar"
-              aria-valuenow={Math.round(progress)}
+              aria-valuenow={totalEarned}
               aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`ความคืบหน้าไประดับ ${nextTier.name}`}
+              aria-valuemax={nextTier.min}
+              aria-valuetext={`${totalEarned.toLocaleString()} จาก ${nextTier.min.toLocaleString()} แต้ม`}
+              aria-label={`ยอดสะสมไประดับ ${nextTier.name}`}
             >
               <i style={{ width: `${progress}%` }} />
+              {tierPct > 0 && <s className="lf-cd-tick" style={{ left: `${tierPct}%` }} aria-hidden="true" />}
             </div>
-            {/* ปลายสองข้างของแถบ = เกณฑ์จริงของระดับ บรรทัดเดียว */}
+            {/* ป้ายใต้แถบ: ระดับปัจจุบันอยู่ใต้ขีดของมัน · ระดับถัดไปอยู่ปลายขวา */}
             <div className="lf-cd-prog-ends">
-              <span><TierMark tier={tier} /> {tier.name} <b>{tier.min.toLocaleString()}</b></span>
-              <span><TierMark tier={nextTier} /> {nextTier.name} <b>{nextTier.min.toLocaleString()}</b></span>
+              <span
+                className={`lf-cd-mark${tierPct >= 30 ? " lf-cd-mark--end" : ""}`}
+                style={tierPct > 0 ? (tierPct >= 30 ? { right: `${100 - tierPct}%` } : { left: `${tierPct}%` }) : { left: 0 }}
+              >
+                <TierMark tier={tier} /> {tier.name}{tier.min > 0 && <b>{tier.min.toLocaleString()}</b>}
+              </span>
+              <span className="lf-cd-mark lf-cd-mark--next"><TierMark tier={nextTier} /> {nextTier.name} <b>{nextTier.min.toLocaleString()}</b></span>
             </div>
             <div className="lf-cd-prog-msg">
               อีก <b>{toNext.toLocaleString()}</b> แต้ม <span className="lf-nw">เป็น {nextTier.name}</span>

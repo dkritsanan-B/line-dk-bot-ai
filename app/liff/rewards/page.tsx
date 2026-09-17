@@ -265,11 +265,18 @@ export default function RewardsPage() {
         const left = reward.stock === null ? null : Math.max(0, reward.stock - reserved);
         const confirming = ok && (confirmId === reward.id || redeemingId === reward.id);
         const cond = reward.description || "ร้านยังไม่ได้ระบุรายละเอียดเพิ่มเติม";
-        // การ์ดแถวแนวนอน (17 ก.ย. 69) — สถานะบอกที่เดียว: แลกได้ = ปุ่ม "แลก" · แลกไม่ได้ = ข้อความแทนที่ปุ่ม
+        // การ์ดแถวแนวนอน (17 ก.ย. 69) — แลกได้ = ปุ่มกรมท่า "แลก" · แลกไม่ได้ = การ์ดหม่น + ปุ่มเทากดไม่ได้บอกเหตุผล
+        // (ปุ่มเทาอยู่ตำแหน่งเดียวกับปุ่มแลก สูงเท่ากัน → แถวตรงกันทุกการ์ด) · ของหมด/จองครบ มีป้ายที่มุมรูปด้วย
+        const offText = st.kind === "mine" ? "รอรับของ"
+          : st.kind === "lack" ? `ขาดอีก ${st.lacking.toLocaleString()} แต้ม`
+          : st.kind === "out" ? (st.reservedFull ? "จองครบ" : "ของหมด")
+          : st.kind === "signup" ? "สมัครก่อน" : "";
+        const badge = st.kind === "out" ? (st.reservedFull ? "จองครบ" : "หมด") : null;
         return (
-          <div key={reward.id} className={`lf-rw-card${ok || st.kind === "mine" ? "" : " is-off"}`}>
-            <div className="lf-rw-thumb" aria-hidden={reward.image_url ? undefined : true}>
+          <div key={reward.id} className={`lf-rw-card${ok ? "" : st.kind === "mine" ? " is-mine" : " is-off"}`}>
+            <div className="lf-rw-thumb">
               {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={34} strokeWidth={1.75} />}
+              {badge && <span className="lf-rw-badge" aria-hidden="true">{badge}</span>}
             </div>
             <div className="lf-rw-body">
               <div className="lf-rw-name">{reward.name}</div>
@@ -279,19 +286,18 @@ export default function RewardsPage() {
                   <b>{reward.points_required.toLocaleString()}<small>แต้ม</small></b>
                   {left !== null && left > 0 && left <= 20 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
                 </div>
-                {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด แทนที่ปุ่ม */}
+                {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด บนปุ่มเทาที่กดไม่ได้ ตำแหน่งเดียวกับปุ่มแลก */}
                 {ok ? (!confirming && (
                   <button type="button" className="lf-rw-btn" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
                     แลก
                   </button>
-                )) : st.kind === "mine" ? (
-                  <span className="lf-rw-state lf-rw-state--mine" title={`คำขอ #REQ-${st.req.id}`}><Icon name="hourglass" size={16} />รอรับของ</span>
-                ) : st.kind === "lack" ? (
-                  <span className="lf-rw-state lf-rw-state--lack"><span>ขาดอีก <b>{st.lacking.toLocaleString()}</b> แต้ม</span></span>
-                ) : st.kind === "out" ? (
-                  <span className="lf-rw-state">{st.reservedFull ? "มีคนจองครบแล้ว" : "ของหมด รอของเข้า"}</span>
-                ) : (
-                  <span className="lf-rw-state">สมัครก่อนจึงแลกได้</span>
+                )) : (
+                  <button type="button" disabled
+                    className={`lf-rw-btn lf-rw-btn--off${st.kind === "mine" ? " lf-rw-btn--mine" : ""}`}
+                    title={st.kind === "mine" ? `คำขอ #REQ-${st.req.id}` : undefined}
+                    aria-label={`${reward.name}: แลกไม่ได้ ${offText}`}>
+                    {st.kind === "mine" && <Icon name="hourglass" size={16} />}{offText}
+                  </button>
                 )}
               </div>
               {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (

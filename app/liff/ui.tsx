@@ -1,22 +1,26 @@
 "use client";
 // ชิ้นส่วน UI ร่วมของหน้าสมาชิก LINE (LIFF) — ใช้ทั้ง /liff และ /liff/rewards ให้หน้าตาเป็นชุดเดียวกัน · สไตล์อยู่ liff.css
 import "./liff.css";
+import "./styles/shell.css";
 import Icon from "./components/Icon";
 
 export function Brand({ sub, back }: { sub: string; back?: { label: string; href: string } }) {
   return (
-    <div className="lf-brand">
+    <div className={`lf-brand${back ? " lf-brand--back" : ""}`}>
+      {/* ปุ่มย้อนกลับอยู่ซ้ายสุดตามความเคยชิน Android (17 ก.ย. 69) · สไตล์ styles/shell.css
+          หน้าที่ไม่มีปุ่มย้อน หน้าตาเหมือนเดิม */}
+      {back && (
+        <button type="button" className="lf-hero-back" aria-label={`กลับไป${back.label}`} title={`กลับไป${back.label}`}
+          onClick={() => (window.location.href = back.href)}>
+          <Icon name="chevron" size={26} strokeWidth={2.5} className="lf-flip" />
+        </button>
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/dk-logo.jpg" alt="DK" />
-      <div>
+      <div className="lf-brand-text">
         <div className="lf-brand-name">DK STEEL AND TOOLS</div>
         <div className="lf-brand-sub">{sub}</div>
       </div>
-      {back && (
-        <button type="button" className="lf-hero-back" onClick={() => (window.location.href = back.href)}>
-          <Icon name="chevron" size={18} className="lf-flip" /><span>{back.label}</span>
-        </button>
-      )}
     </div>
   );
 }

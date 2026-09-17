@@ -1,5 +1,6 @@
 "use client";
 // ฟอร์มข้อมูลสมาชิก — ใช้ทั้งตอนสมัครและตอนแก้ไข (JSX เดิมจาก page.tsx ไม่เปลี่ยนข้อความ/คลาส)
+import { useEffect, useRef } from "react";
 import { Field } from "../ui";
 import Icon from "./Icon";
 import BirthdayField from "./BirthdayField";
@@ -27,6 +28,11 @@ export default function MemberForm({
   onFirstName, onLastName, onPhone, onBirthday, onCompany,
   error, submitting, onSubmit, onCancel,
 }: MemberFormProps) {
+  // ปุ่มสมัครติดขอบล่างจอ กดได้ตั้งแต่ยังเลื่อนไม่ถึงท้ายฟอร์ม → ข้อความผิดพลาดต้องเลื่อนมาให้เห็นเสมอ
+  const errRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errRef.current?.scrollIntoView({ block: "center" });
+  }, [error]);
   return (
     <div className="lf-form">
       <div className="lf-row">
@@ -47,8 +53,8 @@ export default function MemberForm({
       <Field label="บริษัท / ร้านค้า" optional>
         <input className="lf-input" type="text" value={company} onChange={e => onCompany(e.target.value)} placeholder="เช่น หจก. ก่อสร้างดี" autoComplete="organization" />
       </Field>
-      {error && <div className="lf-alert lf-alert--err"><i><Icon name="alert" size={20} /></i><span>{error}</span></div>}
-      <button className="lf-btn lf-btn--primary" onClick={onSubmit} disabled={submitting}>
+      {error && <div ref={errRef} role="alert" className="lf-alert lf-alert--err"><i><Icon name="alert" size={20} /></i><span>{error}</span></div>}
+      <button className={`lf-btn lf-btn--primary${isEdit ? "" : " lf-ct-sticky"}`} onClick={onSubmit} disabled={submitting}>
         {submitting ? "กำลังบันทึก…" : isEdit ? "บันทึกข้อมูล" : "สมัครสมาชิกฟรี"}
       </button>
       {isEdit && <button className="lf-btn lf-btn--ghost" onClick={onCancel}>ยกเลิก</button>}

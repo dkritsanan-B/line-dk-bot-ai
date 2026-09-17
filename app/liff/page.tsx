@@ -238,7 +238,8 @@ export default function LiffPage() {
   // เตือนล่วงหน้า 3 เดือนก่อนครบ 1 ปี (ผู้ตรวจ c1: ระดับลดโดยไม่ได้บอกล่วงหน้า) — กติกา 1 ปีเองไม่ได้เปลี่ยน
   const isNearDrop = months !== null && months >= 9 && months < 12;
   const nextTier = getNextTier(tier);
-  const progress = nextTier ? Math.min(100, ((totalEarned - tier.min) / (nextTier.min - tier.min)) * 100) : 100;
+  // แถบ = ยอดสะสม ÷ เกณฑ์ระดับถัดไป (0 ถึงเกณฑ์ถัดไป) ให้ตรงกับตัวเลข "X / Y" บนบัตร
+  const progress = nextTier && nextTier.min > 0 ? Math.max(0, Math.min(100, (totalEarned / nextTier.min) * 100)) : 100;
   const name = member?.first_name ? `${member.first_name} ${member.last_name}` : (profile?.displayName ?? member?.display_name ?? "");
   const formattedPhone = member?.phone?.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") ?? "";
   const pendingLink = link?.status === "pending" ? link : null;
@@ -282,18 +283,20 @@ export default function LiffPage() {
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
         <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} />
-        <div className="lf-foot">
-          {pendingLink ? (
-            // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
-            <>
-              <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
-              <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
-            </>
-          ) : (
-            // c3: "ยื่นบัตร/บอกเบอร์ก่อนคิดเงิน" อยู่บนบัตรที่เดียว — ท้ายหน้าไม่พูดซ้ำ
+      </div>
+
+      {/* ท้ายหน้าอยู่นอกคอลัมน์ → เดสก์ท็อปจัดกลางใต้ทั้งสองคอลัมน์ (styles/content.css) · มือถือยังอยู่ท้ายสุดด้วย order */}
+      <div className="lf-foot">
+        {pendingLink ? (
+          // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
+          <>
+            <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
             <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
-          )}
-        </div>
+          </>
+        ) : (
+          // c3: "ยื่นบัตร/บอกเบอร์ก่อนคิดเงิน" อยู่บนบัตรที่เดียว — ท้ายหน้าไม่พูดซ้ำ
+          <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
+        )}
       </div>
     </Shell>
   );

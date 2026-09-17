@@ -6,8 +6,12 @@
 .lf-ct-head b { font-size: var(--fs-body); font-weight: var(--fw-black); }
 /* หน่วย "/100 บาท" "/เมตร" หนาเท่าตัวเลข สีเดียวกัน — อ่านเป็นก้อนเดียว */
 .lf-perkrow .lf-ct-val small { font-size: var(--fs-body); font-weight: var(--fw-black); color: inherit; margin-left: 1px; }
-/* แถว "เหล็กเส้น — แต้มปกติ" : ไม่มีสิทธิ์เพิ่ม ใช้สีเทาเข้ม ไม่เด่นเท่าแถวที่ได้สิทธิ์ */
-.lf-perkrow .lf-ct-plain { font-size: 15px; font-weight: var(--fw-bold); color: var(--ink-2); }
+/* หัวกลุ่มแต้มเพิ่ม: บอกครั้งเดียวว่าเป็นแต้มที่บวกจากแต้มปกติ (--ink บน --dk-sky ≈ 14:1) */
+.lf-perkhead .lf-ct-headnote { display: block; margin-top: 2px; font-size: 15px; font-weight: 400; color: var(--ink); line-height: 1.4; }
+.lf-perkhead .lf-ct-headnote .lf-nw { display: inline; }
+/* ค่าสิทธิ์ + บรรทัดเล็กใต้ค่า ชิดขวา · ทุกแถว (รวมเหล็กเส้น) ใช้ตัวอักษรชุดเดียวกัน */
+.lf-perkrow .lf-ct-valbox { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.lf-perkrow .lf-ct-sub { display: block; margin-top: 2px; font-style: normal; font-size: 14px; font-weight: 400; color: var(--ink-2); line-height: 1.35; white-space: nowrap; text-align: right; }
 
 /* ══ แต้มคิดอย่างไร (ที่เดียวทั้งหน้า) ═══════════════════════════ */
 .lf-ct-how { margin-top: var(--sp-4); border-top: 1px solid var(--line); }
@@ -68,3 +72,19 @@
 
 /* วลีห้ามตัดในกล่อง "หลังสมัคร" — liff.css ตั้ง span ในกล่องนี้เป็น block ต้องคืนเป็น inline */
 .lf-after-signup .lf-nw { display: inline; }
+
+/* ปุ่มสมัครติดขอบล่างจอ (เฉพาะหน้าสมัคร)
+ * sticky อยู่ในกรอบของฟอร์มเท่านั้น → โผล่ตั้งแต่ฟอร์มเริ่มเข้าจอ และกลับเข้าที่เดิมเมื่อเลื่อนถึงท้ายฟอร์ม
+ * ระหว่างพิมพ์ (มีช่องกรอก/ตัวเลือกในฟอร์มถูกโฟกัส) ปุ่มกลับไปอยู่ที่เดิม ไม่ลอยทับช่องกรอกตอนแป้นพิมพ์ขึ้น */
+.lf-form .lf-ct-sticky {
+  position: sticky; z-index: 2;
+  bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 0 0 4px var(--surface), var(--sh-3);
+}
+/* :has กับเฉพาะช่องกรอก — ถ้าใช้ :focus-within ตอนแตะปุ่มเอง ปุ่มจะกระโดดกลับที่เดิมระหว่างกด แล้วการกดหลุด */
+.lf-form:has(input:focus, select:focus) .lf-ct-sticky { position: static; box-shadow: var(--sh-2); }
+
+/* ท้ายหน้าบัตรสมาชิกบนเดสก์ท็อป: กลางใต้ทั้งสองคอลัมน์ */
+@media (min-width: 900px) {
+  .lf-wrap--split > .lf-foot { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 720px; }
+}

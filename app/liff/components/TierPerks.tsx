@@ -13,8 +13,22 @@
 //     แสดงท้ายการ์ดนี้เมื่อปิดประวัติ / ท้ายรายการประวัติเมื่อเปิด — หน้าจอมีได้ครั้งละอันเดียว
 import { TIERS, type Tier } from "../lib/tiers";
 import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, VIA_HEAD, type PerkVia } from "../lib/perks";
+import { BONUS_BAHT_PER_POINT, RULES, tierIndex, type RuleKey } from "@/lib/tierRules";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
+
+/** แต้มปกติต่อยอดซื้อ 100 บาท (หน่วย "/100 บาท" ของแถวสิทธิ์) */
+const NORMAL_PER_100 = 100 / BAHT_PER_POINT;
+const fmtN = (n: number) => n.toLocaleString("th-TH", { maximumFractionDigits: 2 });
+
+/** บรรทัดเล็กใต้ค่าแต้มเพิ่ม: หมวดคิดเป็น % → บอกยอดรวมต่อ 100 บาท · หมวดคิดต่อเมตร → บอกว่าได้เพิ่มจากแต้มปกติ */
+function totalNote(key: RuleKey, tierName: string): string {
+  if (RULES[key].mode === "pct") {
+    const extra = (RULES[key].byTier[tierIndex(tierName)] ?? 0) / BONUS_BAHT_PER_POINT;
+    return `รวมเป็น ${fmtN(NORMAL_PER_100 + extra)} แต้ม/100 บาท`;
+  }
+  return "เพิ่มจากแต้มปกติ";
+}
 
 /** กติกาการคิดแต้มทั้งหมด — พับไว้ เปิดดูเมื่อสงสัย */
 export function PointsHowTo() {
@@ -44,6 +58,7 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow }: { ti
   const groups = (["discount", "points"] as PerkVia[])
     .map(via => ({ via, rows: lines.filter(l => l.via === via) }))
     .filter(g => g.rows.length);
+  const shownTier = mine.length ? tier.name : target!.name;
   const bdShown = mine.length ? myBirthday : target ? birthdayPointsOf(target.name) : 0;
   return (
     <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}`}>
@@ -74,17 +89,27 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow }: { ti
       )}
       {groups.map(g => (
         <div key={g.via} className="lf-perkgroup">
-          <div className="lf-perkhead lf-ct-head"><b>{VIA_HEAD[g.via].title}</b></div>
+          <div className="lf-perkhead lf-ct-head">
+            <b>{VIA_HEAD[g.via].title}</b>
+            {/* แต้มกลุ่มนี้เป็นแต้ม "เพิ่ม" แยกจากแต้มยอดซื้อ (lib/tierRules.ts computeBonus → รายการแยกในประวัติ) */}
+            {g.via === "points" && <span className="lf-ct-headnote"><span className="lf-nw">บวกเพิ่มจากแต้มปกติ</span> <span className="lf-nw">(ทุก {BAHT_PER_POINT} บาท = 1 แต้ม)</span></span>}
+          </div>
           {g.rows.map(l => (
             <div key={l.key} className="lf-perkrow">
               <span>{l.label}</span>
-              <b className="lf-ct-val">{l.value}{l.per && <small>{l.per}</small>}</b>
+              <div className="lf-ct-valbox">
+                <b className="lf-ct-val">{l.value}{l.per && <small>{l.per}</small>}</b>
+                {l.via === "points" && <em className="lf-ct-sub">{totalNote(l.key, shownTier)}</em>}
+              </div>
             </div>
           ))}
           {g.rows.some(l => l.key === "steel") && (
             <div className="lf-perkrow">
               <span>เหล็กเส้น</span>
-              <b className="lf-ct-plain">แต้มปกติ</b>
+              <div className="lf-ct-valbox">
+                <b className="lf-ct-val">{NORMAL_PER_100} แต้ม<small>/100 บาท</small></b>
+                <em className="lf-ct-sub">แต้มปกติ ไม่มีแต้มเพิ่ม</em>
+              </div>
             </div>
           )}
         </div>

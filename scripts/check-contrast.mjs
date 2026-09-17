@@ -206,6 +206,29 @@ addW("ระดับลดชั่วคราว · กล่องฟ้า 
 addW("ไอคอนเค้กในสิทธิ์", "--accent-strong", "--surface", 3, "ส่วนประกอบ");
 addW("หัวข้อ 'ซื้อของได้ตามปกติ' (lf-meanwhile)", "--ok", "--surface");
 
+/* ── ไฟล์สไตล์แยก app/liff/styles/*.css ──────────────────────────
+ * สีดิบ (#hex / rgb()) ต้องประกาศเป็นตัวแปร --lf-* เท่านั้น และตัวแปรที่เป็นพื้นต้องมีคู่ตรวจด้านล่าง
+ * ใช้ตัวอื่นที่ไม่รู้จัก → ตก (กันเพิ่มสีใหม่โดยไม่มีใครวัดคอนทราสต์) */
+const STYLE_DIR = path.join(ROOT, "app/liff/styles");
+const STYLE_VARS = {};
+const rawColorFails = [];
+for (const f of fs.existsSync(STYLE_DIR) ? fs.readdirSync(STYLE_DIR).filter(n => n.endsWith(".css")) : []) {
+  const text = fs.readFileSync(path.join(STYLE_DIR, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const line of text.split(/\r?\n/)) {
+    if (!/#[0-9a-f]{3,8}\b|rgba?\(/i.test(line)) continue;
+    const m = line.match(/^\s*(--lf-[\w-]+)\s*:\s*([^;]+);/);
+    if (m) STYLE_VARS[m[1]] = m[2].trim();
+    else rawColorFails.push(f + ": " + line.trim());
+  }
+}
+const KNOWN_STYLE_COLORS = new Set(["--lf-rw-off-bg"]);
+for (const k of Object.keys(STYLE_VARS)) if (!KNOWN_STYLE_COLORS.has(k)) rawColorFails.push("ตัวแปรสีใหม่ยังไม่มีคู่ตรวจ: " + k);
+if (STYLE_VARS["--lf-rw-off-bg"]) {
+  const offBg = parseColor(STYLE_VARS["--lf-rw-off-bg"]);
+  const ink2 = W("--ink-2");
+  if (ink2) add("ของรางวัลแลกไม่ได้ · ตัวอักษรปุ่ม (lf-rw-off-bg)", ink2, offBg);
+}
+
 /* ── สรุป ─────────────────────────────────────────────────────── */
 const rows = checks.map(c => ({ ...c, r: ratio(c.fg, c.bg) }));
 // ยุบให้เหลือค่าแย่สุดของแต่ละจุด (บัตรมีหลายจุดสี)
@@ -224,4 +247,5 @@ for (const r of list) {
   console.log(`${ok ? "✅" : "❌"} ${pad(r.where, 54)} ${pad(fmt(r.r), 9)} ต้อง ≥ ${r.min}:1 ${r.note}`);
 }
 console.log(`\nตรวจ ${list.length} จุด · ผ่าน ${list.length - fails.length} · ตก ${fails.length}`);
-if (!BEFORE && fails.length) process.exit(1);
+for (const r of rawColorFails) console.log("❌ สีดิบในไฟล์สไตล์: " + r);
+if (!BEFORE && (fails.length || rawColorFails.length)) process.exit(1);

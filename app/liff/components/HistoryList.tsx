@@ -27,12 +27,12 @@ const KIND: Record<string, { key: string; icon: IconName; label: string; sign: s
   expire: { key: "expire", icon: "hourglass", label: "แต้มหมดอายุ",   sign: "−" },
 };
 
-/** "14 ก.ย." — ปีแสดงเฉพาะเมื่อไม่ใช่ปีนี้ ("14 ก.ย. 68") */
+/** "14 ก.ย." — ปีแสดงเฉพาะเมื่อไม่ใช่ปีนี้ เป็น พ.ศ. 4 หลักแบบเดียวกับ formatDate ทั้งระบบ ("8 ต.ค. 2568") */
 function shortDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString("th-TH", sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "2-digit" });
+  return d.toLocaleDateString("th-TH", sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
 }
 
 // "บิล IV-690402 · เมทัลชีท 120 เมตร" → หัว = สินค้า, อ้างอิง = เลขบิล (ย้ายไปบรรทัดรอง)

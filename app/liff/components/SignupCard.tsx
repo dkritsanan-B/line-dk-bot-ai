@@ -7,10 +7,14 @@ import type { Profile } from "../lib/types";
 import MemberForm, { type MemberFormProps } from "./MemberForm";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
+import { RULES } from "@/lib/tierRules";
 import { BAHT_PER_POINT, PENDING_POINTS_DAYS, bahtFor, birthdayFrom, birthdayPointsOf, firstTierOf, ladderNote, retailSummary } from "../lib/perks";
 
 export default function SignupCard({ profile, form }: { profile: Profile | null; form: Omit<MemberFormProps, "isEdit"> }) {
   const disc = retailSummary();
+  // ช่วงส่วนลดหน้าร้าน (หมวดปลีก) ต่ำสุด–สูงสุดของระดับที่มีส่วนลด — อ่านจากกติกา ไม่พิมพ์ตัวเลขเอง
+  const discMin = Math.min(...RULES.retail.byTier.filter(n => n > 0));
+  const discRange = discMin === disc.max ? `${disc.max}%` : `${discMin}–${disc.max}%`;
   return (
     <Shell sub="สมัครสมาชิก · สะสมแต้ม · รับส่วนลด" layout="form">
       <div className="lf-card">
@@ -24,7 +28,7 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
         {/* c3: กล่องชวนสมัครเหลือ 2 บรรทัด · "สิทธิ์เริ่มหลังยืนยัน" ตัดทิ้ง เพราะขั้นตอนที่ 2 บอกอยู่แล้ว */}
         <ul className="lf-ct-pitch" aria-label="สิทธิ์ที่ได้รับจากสมาชิก">
           <li><Icon name="star" size={22} /><span><span className="lf-nw">ทุก {BAHT_PER_POINT} บาท</span> <span className="lf-nw">= 1 แต้ม</span></span></li>
-          <li><Icon name="tag" size={22} /><span><span className="lf-nw">ส่วนลดหน้าร้าน</span> <span className="lf-nw">สูงสุด {disc.max}%</span></span></li>
+          <li><Icon name="tag" size={22} /><span><span className="lf-nw">ส่วนลดหน้าร้าน</span> <span className="lf-nw">{discRange} ตามระดับ</span></span></li>
         </ul>
         {/* ขั้นตอน: เส้นเชื่อมทึบ 2px เต็มช่อง · คำในแต่ละขั้นห้ามตัดกลางคำ */}
         <ol className="lf-ct-steps" aria-label="ขั้นตอนสมัครสมาชิก">
@@ -42,7 +46,7 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
           <summary>ดูสิทธิ์และระดับสมาชิกทั้งหมด</summary>
           <div className="lf-perks">
           <div className="lf-perk"><i><Icon name="star" size={24} /></i><div><b>สะสมแต้ม</b><span>ทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span></div></div>
-          <div className="lf-perk"><i><Icon name="tag" size={24} /></i><div><b>ส่วนลดหน้าร้าน สูงสุด {disc.max}%</b><span>ฮาร์ดแวร์ เครื่องมือ สี · เริ่มระดับ {disc.from}</span></div></div>
+          <div className="lf-perk"><i><Icon name="tag" size={24} /></i><div><b>ส่วนลดหน้าร้าน {discRange} ตามระดับ</b><span>ฮาร์ดแวร์ เครื่องมือ สี · เริ่มระดับ {disc.from}</span></div></div>
           <div className="lf-perk"><i><Icon name="star" size={24} /></i><div><b>เหล็ก เมทัลชีท ได้แต้มพิเศษ</b><span>ซื้อราคาป้าย · เริ่มระดับ {firstTierOf("steel")}</span></div></div>
           <div className="lf-perk"><i><Icon name="cake" size={24} /></i><div><b>คูปองวันเกิดทุกปี</b><span>เริ่ม {birthdayPointsOf(birthdayFrom()).toLocaleString()} แต้ม ตั้งแต่ระดับ {birthdayFrom()}</span></div></div>
           <div className="lf-perk"><i><Icon name="gift" size={24} /></i><div><b>แลกของรางวัล</b><span>ใช้แต้มแลกส่วนลดเงินสดหรือของใช้ช่าง</span></div></div>

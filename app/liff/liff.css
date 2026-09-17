@@ -220,8 +220,8 @@
 .lf-field label small { font-size: var(--fs-body); font-weight: var(--fw-med); color: var(--ink-3); }
 .lf-input {
   width: 100%; box-sizing: border-box; height: var(--h-input); padding: 0 var(--sp-4);
-  font: inherit; font-size: var(--fs-lead); color: var(--ink); background: var(--surface-2);
-  border: var(--bw) solid var(--line-strong); border-radius: var(--r-sm); outline: none;
+  font: inherit; font-size: var(--fs-lead); color: var(--ink); background: var(--surface);
+  border: var(--bw) solid var(--ink-3); border-radius: var(--r-sm); outline: none;
   transition: border-color .15s, box-shadow .15s, background .15s; -webkit-appearance: none; appearance: none;
 }
 .lf-input:focus { border-color: var(--dk-blue); background: var(--surface); box-shadow: var(--focus); }
@@ -500,8 +500,9 @@
 
 /* ช่องวันเกิด วัน/เดือน/ปี พ.ศ. */
 .lf-date { display: grid; grid-template-columns: 1fr 1.4fr 1.2fr; gap: var(--sp-2); }
-.lf-select { padding: 0 var(--sp-2); font-size: var(--fs-body); -webkit-appearance: menulist; appearance: auto; }
-.lf-input::placeholder { color: var(--ink-3); opacity: .75; font-weight: 400; }
+.lf-select { padding: 0 var(--sp-2); font-size: var(--fs-lead); -webkit-appearance: menulist; appearance: auto; }
+/* ช่องกรอกพื้นขาว ขอบ --ink-3 (≈6:1) · placeholder --ink-3 ทึบเต็ม (≈6:1 บนขาว — เดิมจาง .75 บนเทาอ่อนไม่ถึง 4.5:1) */
+.lf-input::placeholder { color: var(--ink-3); opacity: 1; font-weight: 400; }
 
 /* ══ เบ็ดเตล็ด ════════════════════════════════════════════════════ */
 /* กติกาท้ายหน้า — เป็นข้อมูลสำคัญ ใช้ตัวอักษรเข้ม (ink-2) บนแผ่นขาวมีขอบ ไม่ใช่เทาอ่อนบนเทาอ่อน */
@@ -764,7 +765,7 @@
   .lf-tab { min-height: 48px; padding: 2px; font-size: 14px; }
   .lf-tab { white-space: nowrap; word-break: keep-all; }
   .lf-date { grid-template-columns: .85fr 1.35fr 1.05fr; gap: var(--sp-1); }
-  .lf-select { padding: 0 var(--sp-1); font-size: 14px; }
+  .lf-select { padding: 0 var(--sp-1); font-size: var(--fs-lead); }
   .lf-signup-steps { gap: var(--sp-1); }
   .lf-signup-steps > i { width: 8px; }
   .lf-signup-steps > div > span { font-size: 13px; }

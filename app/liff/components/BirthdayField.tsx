@@ -34,7 +34,7 @@ export default function BirthdayField({ value, onChange }: { value: string; onCh
   return (
     <div className="lf-date">
       <select className="lf-input lf-select" aria-label="วันที่เกิด" value={parts.d} onChange={e => update({ d: e.target.value })}>
-        <option value="">วันที่</option>
+        <option value="">วัน</option>
         {Array.from({ length: daysIn }, (_, i) => i + 1).map(d => <option key={d} value={String(d)}>{d}</option>)}
       </select>
       <select className="lf-input lf-select" aria-label="เดือนเกิด" value={parts.mo} onChange={e => update({ mo: e.target.value })}>

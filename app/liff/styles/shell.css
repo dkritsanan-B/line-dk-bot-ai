@@ -1,0 +1,25 @@
+/* หัวหน้า (Shell/Brand) — ปุ่มย้อนกลับ (17 ก.ย. 69 ผู้ตรวจนักออกแบบ)
+ * เดิมปุ่ม "‹ บัตรสมาชิก" อยู่มุมขวาบน ผิดความเคยชิน Android → ย้ายไปซ้ายสุด ก่อนโลโก้
+ * ปุ่มกลมขาว 48px ลูกศรกรมท่า (≈ 11:1 บนขาว) · ชื่อปุ่มสำหรับโปรแกรมอ่านจออยู่ที่ aria-label
+ * ทุกกฎผูกกับ .lf-brand--back → หน้าที่ไม่มีปุ่มย้อน หน้าตาเหมือนเดิม
+ * ต้องชนะกฎเดิมใน ../liff.css (.lf-hero-back / .lf-hero--short .lf-hero-back) จึงใช้ตัวเลือก 2–3 ชั้น */
+
+.lf-brand--back .lf-hero-back {
+  order: -1;
+  margin: 0;
+  width: var(--h-tap); min-width: var(--h-tap); height: var(--h-tap);
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+  background: var(--surface); color: var(--dk-blue-strong);
+  box-shadow: var(--sh-1);
+  flex-shrink: 0;
+}
+.lf-brand--back .lf-hero-back:active { transform: scale(.94); }
+.lf-brand--back .lf-hero-back:focus-visible { outline: 3px solid var(--surface); outline-offset: 2px; }
+
+/* จอแคบ: ปุ่มย้อนไม่มีข้อความแล้ว จึงมีที่พอให้โชว์ชื่อหน้าใต้ชื่อร้าน (บอกว่าอยู่หน้าไหน) */
+@media (max-width: 419px) {
+  .lf-hero--short .lf-brand--back .lf-hero-back { width: var(--h-tap); min-width: var(--h-tap); padding: 0; }
+  .lf-hero--short .lf-brand--back .lf-brand-sub { display: block; }
+}

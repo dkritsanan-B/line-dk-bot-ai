@@ -1,7 +1,7 @@
 /* หน้าของรางวัล — การ์ดแถวแนวนอน (17 ก.ย. 69 ผู้ตรวจนักออกแบบ)
  * เดิม: กรอบรูปสูง 180px + ป้าย "แลกได้เลย" + "✓ แต้มพอแล้ว" + ปุ่ม "แลกเลย" บอกเรื่องเดียวกัน 3 ครั้ง → จอแรกเห็นชิ้นเดียว
  * ตอนนี้: รูป 64×64 ซ้าย · ชื่อ + เงื่อนไข 1 บรรทัด · แถวล่าง แต้มซ้าย ปุ่ม "แลก" ขวา
- *         แลกไม่ได้ → ข้อความสถานะอยู่ที่เดียวกับปุ่ม (ไม่มีป้ายซ้ำ)
+ *         แลกไม่ได้ → การ์ดหม่น + ปุ่มเทากดไม่ได้บอกเหตุผล ที่เดียวกับปุ่ม · ของหมด/จองครบ มีป้ายมุมรูป
  * คลาสทั้งหมดขึ้นต้น lf-rw- · ใช้ตัวแปรจาก ../liff.css */
 
 .lf-rw-card {
@@ -10,6 +10,7 @@
   --lf-rw-fs-cond: 14px;
   --lf-rw-h-btn: 44px;
   --lf-rw-btn-w: 96px;
+  --lf-rw-off-bg: #E4E9F0;   /* พื้นปุ่ม/รูปของที่แลกไม่ได้ · ตัวอักษร --ink-2 บนพื้นนี้ ≈ 8.4:1 */
   display: grid;
   grid-template-columns: var(--lf-rw-thumb) minmax(0, 1fr);
   column-gap: var(--sp-3);
@@ -32,8 +33,25 @@
   align-self: start;
 }
 .lf-rw-thumb img { width: 100%; height: 100%; object-fit: contain; }
-.lf-rw-card.is-off .lf-rw-thumb { background: var(--surface-2); color: var(--ink-3); }
-.lf-rw-card.is-off .lf-rw-thumb img { opacity: .6; }
+/* ป้ายมุมรูป (หมด / จองครบ) — แถบทึบขอบล่างของรูป ตัวขาวบนเทาเข้ม ≈ 10:1 */
+.lf-rw-thumb { position: relative; }
+.lf-rw-badge {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 1px 2px;
+  background: var(--ink-2); color: var(--on-brand);
+  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.35;
+  text-align: center; white-space: nowrap;
+}
+
+/* การ์ดที่แลกไม่ได้ — ถอยลงไปเป็นพื้นหลัง: ไม่มีเงา พื้นเทาอ่อน รูปขาวดำจาง
+ * ตัวหนังสือไม่ลดความทึบ (ยังผ่าน AA): ชื่อ --ink-2 ≈ 9.6:1 · เงื่อนไข/แต้ม --ink-3 ≈ 5.7:1 บน --surface-2 */
+.lf-rw-card.is-off { background: var(--surface-2); box-shadow: none; border: 1px solid var(--line); }
+.lf-rw-card.is-off .lf-rw-thumb { background: var(--lf-rw-off-bg); color: var(--ink-3); }
+.lf-rw-card.is-off .lf-rw-thumb img { opacity: .55; filter: grayscale(1); }
+.lf-rw-card.is-off .lf-rw-name { color: var(--ink-2); }
+.lf-rw-card.is-off .lf-rw-cond { color: var(--ink-3); }
+.lf-rw-card.is-off .lf-rw-pts b,
+.lf-rw-card.is-off .lf-rw-pts b small { color: var(--ink-3); }
 
 .lf-rw-body { min-width: 0; display: flex; flex-direction: column; }
 .lf-rw-name {
@@ -50,9 +68,11 @@
 .lf-rw-foot {
   margin-top: var(--sp-2);
   min-height: var(--lf-rw-h-btn);
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2);
 }
-.lf-rw-pts { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-2); }
+/* ปุ่มเหตุผลยาว (ขาดอีก 1,150 แต้ม) บนการ์ดแคบ → ปุ่มขึ้นบรรทัดใหม่ชิดขวา แทนการทับตัวเลขแต้ม */
+.lf-rw-foot > .lf-rw-btn { margin-left: auto; }
+.lf-rw-pts { flex-shrink: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-2); }
 .lf-rw-pts b { font-size: var(--fs-lead); font-weight: var(--fw-heavy); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lf-rw-pts b small { font-size: var(--lf-rw-fs-cond); font-weight: var(--fw-bold); color: var(--ink-2); margin-left: 2px; }
 /* คงเหลือน้อย (≤ 20) — สีอำพัน */
@@ -74,16 +94,20 @@
 .lf-rw-btn:disabled { opacity: .6; cursor: default; }
 .lf-rw-btn:focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
 
-/* สถานะแทนที่ปุ่ม (แลกไม่ได้) */
-.lf-rw-state {
-  flex-shrink: 0; max-width: 60%;
-  display: inline-flex; align-items: center; gap: var(--sp-1);
-  font-size: var(--lf-rw-fs-cond); font-weight: var(--fw-bold); line-height: var(--lh-tight);
-  color: var(--ink-2); text-align: right; white-space: nowrap;
+/* ปุ่มเทากดไม่ได้ (แลกไม่ได้) — ตำแหน่ง/ความสูงเดียวกับปุ่มแลก ข้อความบอกเหตุผล
+ * ไม่ใช้ opacity (ตัวอักษรต้องคม): --ink-2 บน --lf-rw-off-bg ≈ 8.4:1 · รอรับของ: --warn บน --warn-tint ≈ 6:1 */
+.lf-rw-btn.lf-rw-btn--off,
+.lf-rw-btn.lf-rw-btn--off:hover {
+  opacity: 1; cursor: not-allowed;
+  padding: 0 var(--sp-3);
+  background: var(--lf-rw-off-bg); color: var(--ink-2);
+  font-weight: var(--fw-bold); white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--line);
 }
-.lf-rw-state svg { flex-shrink: 0; }
-.lf-rw-state--mine { color: var(--warn); }
-.lf-rw-state--lack b { color: var(--ink); font-weight: var(--fw-black); }
+.lf-rw-btn.lf-rw-btn--off:active { transform: none; }
+.lf-rw-btn.lf-rw-btn--mine,
+.lf-rw-btn.lf-rw-btn--mine:hover { background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn-line); }
+.lf-rw-btn--off svg { flex-shrink: 0; }
 
 /* บรรทัดเล็กเสริม (แต้มส่วนหนึ่งถูกจองไว้) */
 .lf-rw-note { margin-top: var(--sp-1); font-size: var(--lf-rw-fs-cond); line-height: 1.45; color: var(--ink-2); }
@@ -93,6 +117,10 @@
 .lf-rw-card .lf-confirm { border-color: var(--dk-blue); background: var(--dk-sky); }
 .lf-rw-card .lf-confirm .lf-rw-btn { width: 100%; min-height: var(--h-btn-sm); }
 .lf-rw-card .lf-confirm-acts .lf-btn { min-height: var(--h-btn-sm); }
+
+/* หัวข้อพับเปิดกติกา — เท่าหัวข้อพับเปิดในหน้าบัตร (16px หนา) ไม่ให้ใหญ่กว่าชื่อของรางวัล */
+.lf-wrap .lf-rules summary { font-size: var(--fs-body); }
+.lf-wrap .lf-rules summary::after { font-size: var(--fs-h2); line-height: 1; }
 
 /* เดสก์ท็อป: ยังเป็นตารางการ์ด (2–3 ใบต่อแถว) การ์ดสูงเท่ากันในแถว รูปใหญ่ขึ้น */
 @media (min-width: 900px) {
