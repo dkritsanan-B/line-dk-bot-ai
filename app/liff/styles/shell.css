@@ -33,7 +33,8 @@
   .lf-hero--short { padding-bottom: var(--sp-5); }
   .lf-wrap--lift { margin-top: calc(var(--lift) * -1); }
   /* หน้าสั้น (ของรางวัล/แจ้งปัญหา) เนื้อหากว้าง 720px — โลโก้ชิดซ้ายตรงกับขอบการ์ด ไม่ลอยไปซ้ายสุด */
-  .lf-hero--short .lf-brand { max-width: calc(720px - var(--sp-6) * 2); }
+  /* r5: ขอบซ้าย/ขวาของหัวตรงกับการ์ด — .lf-wrap--short กว้าง 720px (ไม่รวมขอบใน) หัวจึงกว้าง 720px เท่ากัน */
+  .lf-hero--short .lf-brand { max-width: 720px; }
 
   .lf-page { --lf-w-form: 560px; }
   .lf-wrap.lf-wrap--form { max-width: var(--lf-w-form); }

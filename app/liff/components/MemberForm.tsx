@@ -1,6 +1,6 @@
 "use client";
 // ฟอร์มข้อมูลสมาชิก — ใช้ทั้งตอนสมัครและตอนแก้ไข (JSX เดิมจาก page.tsx ไม่เปลี่ยนข้อความ/คลาส)
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Field } from "../ui";
 import Icon from "./Icon";
 import BirthdayField from "./BirthdayField";
@@ -33,18 +33,30 @@ export default function MemberForm({
   useEffect(() => {
     if (error) errRef.current?.scrollIntoView({ block: "center" });
   }, [error]);
+  // r5: ตรวจเบอร์ทันทีที่ออกจากช่อง (ไม่ต้องรอกดสมัคร) · กติกาเดียวกับ handleRegister ใน page.tsx
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const phoneBad = !isEdit && phoneTouched && phone.length > 0 && !/^0\d{9}$/.test(phone);
   return (
     <div className="lf-form">
-      <Field label="เบอร์มือถือ" hint={isEdit ? "เปลี่ยนเบอร์ได้ที่ร้าน — พนักงานจะแก้ให้ค่ะ" : "ใช้ยืนยันตัวตนและรับแต้มจากบิลที่ร้าน"}>
-        <input className="lf-input lf-input--num" type="tel" inputMode="numeric" maxLength={10} value={phone} readOnly={isEdit}
+      {/* r5: บอกครั้งเดียวว่าช่องไหนบังคับ — ช่องที่ไม่บังคับมีคำว่า (ถ้ามี) กำกับ */}
+      {!isEdit && <p className="lf-form-req"><span className="lf-nw">กรอกทุกช่อง</span> <span className="lf-nw">ยกเว้นช่องที่เขียนว่า (ถ้ามี)</span></p>}
+      <Field label="เบอร์มือถือ" hint={phoneBad ? undefined : isEdit ? "เปลี่ยนเบอร์ได้ที่ร้าน — พนักงานจะแก้ให้ค่ะ" : "ใช้ยืนยันตัวตนและรับแต้มจากบิลที่ร้าน"}>
+        <input className={`lf-input lf-input--num${phoneBad ? " lf-input--bad" : ""}`} type="tel" inputMode="numeric" maxLength={10} value={phone} readOnly={isEdit}
+          aria-invalid={phoneBad || undefined} aria-describedby={phoneBad ? "lf-phone-err" : undefined}
+          onBlur={() => setPhoneTouched(true)}
           onChange={e => onPhone(e.target.value.replace(/\D/g, ""))} placeholder="08X XXX XXXX" autoComplete="tel" />
+        {phoneBad && (
+          <div id="lf-phone-err" className="lf-field-err">
+            <Icon name="alert" size={18} /><span><span className="lf-nw">เบอร์มือถือต้องมี 10 หลัก</span> <span className="lf-nw">ขึ้นต้นด้วย 0</span></span>
+          </div>
+        )}
       </Field>
       <div className="lf-row">
         <Field label="ชื่อ">
-          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="สมชาย" autoComplete="given-name" />
+          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="เช่น สมชาย" autoComplete="given-name" />
         </Field>
         <Field label="นามสกุล">
-          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="ใจดี" autoComplete="family-name" />
+          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="เช่น ใจดี" autoComplete="family-name" />
         </Field>
       </div>
       <Field label="วันเกิด" hint="รับของขวัญวันเกิดทุกปี">

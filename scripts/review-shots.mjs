@@ -117,11 +117,24 @@ for (const view of VIEWS) {
     // เน็ตหลุด (fetch ล้มเอง) → จอเดียวกับระบบล่ม แต่บอกให้เช็คอินเทอร์เน็ต
     { key: "x_offline", scenario: "bronze120", path: "/liff", route: /\/api\/member\?/, abort: true },
     { key: "x_offline", scenario: "bronze120", path: "/liff/rewards", route: "**/api/liff/redeem**", abort: true },
+    // r5: token หมดอายุระหว่างกดยืนยันแลก → กล่องยืนยันต้องค้างไว้ บอกว่าแต้มยังไม่ถูกหัก และมีปุ่มโหลดหน้าใหม่
+    //     ดักเฉพาะ POST (GET สรุปแต้มยังตอบปกติ บัตรขึ้นครบ) · ถ่ายเฉพาะ viewport เพราะเป็น bottom sheet
+    {
+      key: "x_redeem_expired", scenario: "gold2300", path: "/liff/rewards", route: "**/api/liff/redeem**", postOnly: true,
+      fulfill: { status: 401, contentType: "application/json", body: JSON.stringify({ ok: false, code: "AUTH_REQUIRED", error: "หมดเวลาใช้งาน" }) },
+      viewportOnly: true,
+      after: async page => {
+        await page.getByRole("button", { name: /^แลก$/ }).first().click();
+        await page.getByRole("button", { name: /ยืนยันแลก/ }).click({ timeout: 5000 });
+        await page.getByRole("button", { name: /โหลดหน้าใหม่/ }).waitFor({ timeout: 5000 });
+      },
+    },
     // หลังกดสมัครเสร็จ ต้องพาไปจอ "รอพนักงานยืนยันตัวตน" ทันที
     {
       key: "x_after_signup", scenario: "new", path: "/liff",
       after: async page => {
         // คนเดียวกับสถานการณ์ pending/linkedNew (ช่างสมชาย) — ผู้ตรวจเดินทั้งเส้นทาง ชื่อต้องต่อกัน
+        // ช่องชื่อมีตัวอย่าง "เช่น สมชาย" (r5) — getByPlaceholder จับแบบมีคำนี้อยู่ในข้อความ
         await page.getByPlaceholder("สมชาย").fill("สมชาย");
         await page.getByPlaceholder("ใจดี").fill("ใจดี");
         await page.getByPlaceholder("08X XXX XXXX").fill("0812345678");
@@ -160,12 +173,15 @@ for (const view of VIEWS) {
     if (ONLY && pgKey !== ONLY) continue;
     const page = await ctx.newPage();
     try {
-      if (x.route) await page.route(x.route, r => (x.abort ? r.abort("internetdisconnected") : r.fulfill(x.fulfill)));
+      if (x.route) await page.route(x.route, r => {
+        if (x.postOnly && r.request().method() !== "POST") return r.continue();
+        return x.abort ? r.abort("internetdisconnected") : r.fulfill(x.fulfill);
+      });
       await page.goto(url(x.path, x.scenario), { waitUntil: "networkidle", timeout: 45000 });
       await page.waitForTimeout(700);
       if (x.after) await x.after(page);
       const dest = path.join(OUT, x.key, `${pgKey}-${view.key}.png`);
-      await shoot(ctx, page, dest);
+      await shoot(ctx, page, dest, { full: !x.viewportOnly });
       const bodyText = (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 400);
       index.shots.push({ scenario: x.key, page: pgKey, view: view.key, file: path.relative(process.cwd(), dest), text: bodyText, consoleErrors: [] });
     } catch (e) {

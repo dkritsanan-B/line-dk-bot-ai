@@ -22,7 +22,7 @@ import { useState, type CSSProperties } from "react";
 import { formatDate, type Tier } from "../lib/tiers";
 import { SHOP_PHONE, SHOP_TEL } from "../lib/api";
 import type { ClientLink, Member, Profile } from "../lib/types";
-import { bahtFor, PENDING_POINTS_DAYS } from "../lib/perks";
+import { PENDING_POINTS_DAYS, reactivateText } from "../lib/perks";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
 import "../styles/card.css";
@@ -59,23 +59,21 @@ export default function MemberCard({
     : null;
   return (
     <section
-      className={`lf-mcard lf-cd-card${pendingLink ? " lf-cd-card--pend" : resting ? " lf-cd-card--rest" : ""}`}
+      className={`lf-mcard lf-cd-card${pendingLink ? " lf-cd-card--pend lf-cd-card--pend-row" : resting ? " lf-cd-card--rest" : ""}`}
       data-ink={tier.ink}
       data-tier={tier.name}
-      // รอยืนยัน: พื้นมาจาก card.css (ขาว) · พักระดับ: ไล่สีไปอยู่ชั้นล่าง (::before) เพื่อทำให้ซีดโดยไม่แตะตัวอักษร
-      style={pendingLink ? undefined : resting ? ({ "--cd-grad": tier.cardGrad } as CSSProperties) : { background: tier.cardGrad }}
+      // รอยืนยัน: พื้นมาจาก card.css (ขาว) · พักระดับ (r5): สีระดับเต็มเหมือนเดิม + ขอบเส้นประ (card.css) ให้ยังจำได้ว่าเป็นบัตรระดับไหน
+      style={pendingLink ? undefined : ({ background: tier.cardGrad } as CSSProperties)}
     >
-      <div className="lf-mcard-top">
-        {pendingLink ? (
-          // ยังไม่ผูก: ป้าย "Welcome" ชวนเข้าใจว่าเริ่มเก็บแต้มแล้ว → ป้ายอำพัน "รอยืนยัน" แทน
-          <div className="lf-tier lf-cd-tier-wait"><Icon name="hourglass" size={18} /> รอยืนยัน</div>
-        ) : (
+      {/* รอยืนยัน: ป้ายอยู่แถวเดียวกับชื่อ (r5 ผู้ตรวจ: ป้ายลอยแถวเดียวทิ้งที่ว่างเหนือชื่อ) */}
+      {!pendingLink && (
+        <div className="lf-mcard-top">
           <div className="lf-cd-tier-group">
             <div className="lf-tier"><TierMark tier={tier} /> {tier.name}</div>
             {resting && <small className="lf-cd-rest-tag">พักระดับ</small>}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 1. ใครคือเรา */}
       <div className="lf-mcard-who">
@@ -89,6 +87,10 @@ export default function MemberCard({
           {/* รอยืนยัน: เบอร์ย้ายไปตัวใหญ่ในกล่องด้านล่าง (ให้พนักงานอ่านจากจอ) ไม่แสดงซ้ำ */}
           {!pendingLink && <div className="lf-mcard-meta"><i><Icon name="phone" size={18} /></i><b>{formattedPhone}</b></div>}
         </div>
+        {pendingLink && (
+          // ยังไม่ผูก: ป้าย "Welcome" ชวนเข้าใจว่าเริ่มเก็บแต้มแล้ว → ป้ายอำพัน "รอยืนยัน" แทน
+          <div className="lf-tier lf-cd-tier-wait"><Icon name="hourglass" size={18} /> รอยืนยัน</div>
+        )}
       </div>
 
       {/* 2. ยังไม่ผูก → เรื่องแรกที่ต้องรู้คือ "แต้มยังไม่เข้า" ไม่ใช่เลข 0 เฉย ๆ (บั๊กเงียบ 16 ก.ย. 69) */}
@@ -105,12 +107,12 @@ export default function MemberCard({
         {resting && realTier ? (
           // พักระดับ: ไม่มีตัวเลขชุดที่ 2 ไม่มีแถบ — บอกทางกลับประโยคเดียว
           // จริงตามกติกา: บิลที่ได้แต้ม (lib/points.ts addPoints) ตั้ง last_purchase_at = ตอนนี้ → getEffectiveTier คิดจากยอดสะสมทันที
-          // บิลต่ำกว่า 1 แต้มไม่นับเป็นการซื้อ จึงต้องบอกยอดขั้นต่ำด้วย
+          // บิลต่ำกว่า 1 แต้มไม่นับเป็นการซื้อ → ประโยคกติกาใช้ REACTIVATE_TEXT ชุดเดียวกับกล่องใกล้ลดระดับ (lib/perks.ts)
           <div className="lf-prog lf-cd-rest">
             <div className="lf-cd-rest-msg">
-              ซื้อครั้งถัดไป <span className="lf-nw">กลับเป็น <TierMark tier={realTier} /> {realTier.name} ทันที</span>
+              <ReactivateRule /> <span className="lf-nw">กลับเป็น <TierMark tier={realTier} /> {realTier.name} ทันที</span>
             </div>
-            <div className="lf-cd-rest-sub">บิลตั้งแต่ {bahtFor(1)} บาท <span className="lf-nw">· ไม่ได้ซื้อเกิน 1 ปีจึงพักไว้</span></div>
+            <div className="lf-cd-rest-sub">ไม่มีบิลเกิน 1 ปี ระดับจึงพักไว้ <span className="lf-nw">· ยอดสะสมไม่หาย</span></div>
             {member?.last_purchase_at && <div className="lf-cd-rest-sub">ซื้อล่าสุด {formatDate(member.last_purchase_at)}</div>}
           </div>
         ) : nextTier ? (
@@ -153,7 +155,7 @@ export default function MemberCard({
               <>
                 <div className="lf-cd-prog-head">ยอดสะสม <b>{totalEarned.toLocaleString()} แต้ม</b></div>
                 <div className="lf-cd-prog-msg">
-                  ยอดสะสมถึงระดับเดิมแล้ว <span className="lf-nw">ซื้อครั้งถัดไป ระดับกลับมาทันที</span>
+                  ยอดสะสมถึงระดับเดิมแล้ว <ReactivateRule /> <span className="lf-nw">ระดับกลับมาทันที</span>
                 </div>
               </>
             )}
@@ -205,13 +207,20 @@ function PendingWell({ link, phone, createdAt }: { link: ClientLink; phone: stri
           : <><span className="lf-nw">บิลตั้งแต่วันสมัคร</span> <span className="lf-nw">(ไม่เกิน {PENDING_POINTS_DAYS} วัน)</span> <span className="lf-nw">ได้แต้มย้อนหลัง</span></>}
       </p>
       {link.overdue && (
+        // r5: ปุ่มโทรกว้างเต็มกล่อง ชิดขอบซ้ายเดียวกับข้อความ (เดิมเยื้องเข้าไปหลังไอคอน)
         <div className="lf-cd-pend-late">
-          <Icon name="alertCircle" size={18} />
-          <span>ถ้าต้องการให้ร้านช่วยตรวจสอบ<br /><a className="lf-note-tel lf-cd-tel" href={SHOP_TEL}><Icon name="phone" size={18} /> โทร {SHOP_PHONE}</a></span>
+          <span className="lf-cd-pend-late-txt">ถ้าต้องการให้ร้านช่วยตรวจสอบ</span>
+          <a className="lf-btn lf-btn--ghost lf-btn--sm lf-cd-pend-call-btn" href={SHOP_TEL}><Icon name="phone" size={20} /> โทรร้าน <span className="lf-nw">{SHOP_PHONE}</span></a>
         </div>
       )}
     </div>
   );
+}
+
+/** กติกาคืนระดับ (lib/perks.ts reactivateText) ห่อเป็นวลีห้ามตัด */
+export function ReactivateRule() {
+  const [a, b] = reactivateText();
+  return <><span className="lf-nw">{a}</span> <span className="lf-nw">{b}</span></>;
 }
 
 // อักษรย่อแทนรูปโปรไฟล์ · ชื่อไทยที่ขึ้นต้นด้วยสระนำใช้อักษรถัดไป เพื่อให้อ่านเป็นชื่อเจ้าของบัตร

@@ -2,12 +2,9 @@
  * ใช้ตัวแปรจาก liff.css เท่านั้น · คลาสใหม่ขึ้นต้น lf-ac-
  * selector ".lf-actions .lf-action.lf-ac-locked" หนักกว่ากฎ .lf-actions .lf-cd-act ใน styles/card.css → ไม่พึ่งลำดับไฟล์ */
 
-/* ปุ่มปิด: พื้นเทาอ่อน + ขอบทึบจาง → ดูต่างจากปุ่มกดได้ชัด
- * ตัวอักษร --ink-2 บน --surface-2 ≈ 9.7:1 · ไอคอน --ink-3 บน --surface-2 ≈ 5.7:1 · ขอบ --line-strong ≈ 3.8:1 */
-.lf-actions .lf-action.lf-ac-locked {
-  background: var(--surface-2); border-style: solid; border-color: var(--line);
-  box-shadow: none; cursor: not-allowed;
-}
+/* ตัวอักษร --ink-2 บนขาว ≈ 10:1 · ไอคอน --ink-3 บนขาว ≈ 6:1
+ * r5 (ผู้ตรวจ): กรอบ/พื้นเหมือนปุ่มอื่นทุกอย่าง (ไม่ดูเป็นปุ่มเสีย) — บอกสถานะด้วยไอคอนเทา + ข้อความรองใต้ชื่อ */
+.lf-actions .lf-action.lf-ac-locked { cursor: not-allowed; }
 .lf-actions .lf-action.lf-ac-locked:active { transform: none; }
 .lf-actions .lf-action.lf-ac-locked i { color: var(--ink-3); }
 .lf-actions .lf-action.lf-ac-locked b { color: var(--ink-2); }
@@ -22,13 +19,16 @@
 }
 
 /* ปุ่มแถวนี้มีป้ายเพิ่ม 1 บรรทัด → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง (ยังสูงเกิน --h-tap) */
-.lf-actions--locked .lf-action { gap: var(--sp-1); }
+.lf-actions--locked .lf-action { gap: var(--sp-1); justify-content: flex-start; }
 @media (max-width: 359px) {
   .lf-actions .lf-ac-tag { padding: 0 var(--sp-1); }
 }
 
-/* ป้ายยาว "ดูได้ แลกหลังยืนยัน" (ของรางวัล — ปุ่มยังกดเข้าไปดูได้) → ข้อความรองไม่มีกรอบ ตัดบรรทัดตรงช่องว่างเท่านั้น */
+/* ข้อความรองใต้ชื่อปุ่ม (ของรางวัล/ประวัติแต้ม ตอนรอยืนยัน) — ไม่มีกรอบ บรรทัดเดียว (--ink-2 บนขาว ≈ 10:1) */
 .lf-actions .lf-ac-tag.lf-ac-tag--text {
   padding: 0; border: 0; background: transparent; color: var(--ink-2);
-  font-size: 14px; font-weight: var(--fw-bold); text-align: center;
+  font-size: 14px; font-weight: var(--fw-bold); text-align: center; white-space: nowrap;
+}
+@media (max-width: 359px) {
+  .lf-actions .lf-ac-tag.lf-ac-tag--text { font-size: var(--fs-label); letter-spacing: -.2px; }
 }

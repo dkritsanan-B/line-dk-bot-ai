@@ -73,6 +73,14 @@ export function bahtFor(points: number): string {
   return (points * BAHT_PER_POINT).toLocaleString("th-TH");
 }
 
+/** กติกาการรักษา/คืนระดับ — ประโยคเดียวใช้ทุกที่ (บัตรพักระดับ · กล่องใกล้ลดระดับ · สิทธิ์ · กติกาหน้าของรางวัล)
+ *  จริงตาม lib/points.ts addPoints: เฉพาะบิลที่ได้แต้ม (≥ 1 แต้ม = ≥ BAHT_PER_POINT บาท) ที่ตั้ง last_purchase_at ใหม่
+ *  การแลกของ / คูปองวันเกิด ไม่นับ */
+export function reactivateText(): [string, string] {
+  // คืนเป็น 2 วลี ให้หน้าเว็บห่อ lf-nw ทีละวลี (ตัดบรรทัดได้เฉพาะระหว่างวลี)
+  return ["ซื้อ 1 บิล", `ตั้งแต่ ${bahtFor(1)} บาท`];
+}
+
 /** คูปองวันเกิด (แต้ม) ต่อระดับ เรียงตาม TIER_ORDER — ต้องตรงกับ BIRTHDAY_POINTS ใน app/api/cron/birthday/route.ts
  *  (scripts/check-tiers.mjs ตรวจให้) · ระบบให้อัตโนมัติ 08:00 ของวันเกิด ไม่ดันระดับ */
 export const BIRTHDAY_POINTS = [0, 100, 200, 500, 800, 1000];

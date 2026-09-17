@@ -20,6 +20,7 @@ import type { ClientLink, Expiry } from "../lib/types";
 import { birthdayFrom, birthdayPointsOf } from "../lib/perks";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
+import { ReactivateRule } from "./MemberCard";
 import "../styles/alerts.css";
 
 const YEAR_MS = 365 * 86400000;
@@ -84,7 +85,8 @@ function NearDrop({ tier, lastPurchaseAt }: { tier: Tier; lastPurchaseAt: string
   return (
     <div className="lf-note lf-note--warn">
       <b><i><Icon name="alert" size={20} /></i> รักษาระดับ {tier.name} ไว้</b>
-      ซื้ออะไรก็ได้ 1 ครั้ง <strong className="lf-nw">ก่อน {dropDate}</strong> ระดับ <TierMark tier={tier} /> <strong>{tier.name}</strong> อยู่ต่ออีก 1 ปี · ถ้าเลยวันนั้น ระดับจะลดชั่วคราวจนกว่าจะกลับมาซื้อค่ะ
+      {/* r5: กติกาประโยคเดียวกับบัตรพักระดับ (lib/perks.ts reactivateText) */}
+      <ReactivateRule /> <strong className="lf-nw">ก่อน {dropDate}</strong> <span className="lf-nw">ระดับ <TierMark tier={tier} /> <strong>{tier.name}</strong> อยู่ต่ออีก 1 ปี</span> · <span className="lf-nw">ถ้าเลยวันนั้น ระดับจะพักไว้</span> <span className="lf-nw">จนกว่าจะมีบิลถัดไปค่ะ</span>
     </div>
   );
 }

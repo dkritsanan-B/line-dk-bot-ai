@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     const row = result.row;
     if (result.action === "confirmed") {
       if (row.line_user_id) {
-        await pushMessage(row.line_user_id, redemptionConfirmedFlex({ rewardName: row.reward_name, points: row.points_required, balance: result.pointsLeft }));
+        await pushMessage(row.line_user_id, redemptionConfirmedFlex({ rewardName: row.reward_name, points: row.points_required, balance: result.pointsLeft, requestId: Number(row.id) }));
       }
       return NextResponse.json({ success: true, action: "confirmed", points_left: result.pointsLeft, stock_left: result.stockLeft });
     }

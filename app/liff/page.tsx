@@ -265,7 +265,7 @@ export default function LiffPage() {
   return (
     <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
       {/* มือถือ: คอลัมน์เดียว เรียงตาม order ใน liff.css → บัตร · ปุ่มลัด · คำเตือน · ประวัติ · สิทธิ์ · กติกา
-          เดสก์ท็อป: ซ้าย = บัตร+ปุ่มลัด+คำเตือน (ของที่ต้องเห็นก่อน) · ขวา = ประวัติ+สิทธิ์+กติกา */}
+          เดสก์ท็อป (r5 ผู้ตรวจ: คอลัมน์ขวาจบก่อนซ้ายราว 500px): ซ้าย = บัตร+ปุ่มลัด · ขวา = คำเตือน+ประวัติ+สิทธิ์+กติกา */}
       <div className="lf-col lf-col--main">
         <MemberCard
           tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
@@ -281,15 +281,15 @@ export default function LiffPage() {
             setCompany(member?.company ?? ""); setBirthday(member?.birthday ? member.birthday.substring(0, 10) : ""); setError(""); setEditing(true);
           }}
         />
+      </div>
+
+      <div className="lf-col lf-col--side">
         <AlertNotes
           isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry}
           totalEarned={totalEarned} lastPurchaseAt={lastPurchaseAt}
           expiryUnavailable={expiryUnavailable} justLinked={justLinked} birthdayIn={pendingLink ? null : birthdayIn}
           onViewExpiring={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } setTxFilter("expire"); }}
         />
-      </div>
-
-      <div className="lf-col lf-col--side">
         {txOpen && (
           <HistoryList
             id={HISTORY_ID}
@@ -299,12 +299,11 @@ export default function LiffPage() {
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
         <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
-      </div>
-
-      {/* ท้ายหน้าอยู่นอกคอลัมน์ → เดสก์ท็อปจัดกลางใต้ทั้งสองคอลัมน์ (styles/content.css) · มือถือยังอยู่ท้ายสุดด้วย order */}
-      <div className="lf-foot">
-        {/* บรรทัดกติกาบรรทัดเดียว — "ยื่นบัตร/บอกเบอร์" อยู่บนบัตรที่เดียว · ตอนรอยืนยันก็ไม่บอกว่าแต้มเข้าเอง */}
-        <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
+        {/* ท้ายหน้าอยู่ท้ายคอลัมน์ขวา → เดสก์ท็อปตรงแนวคอลัมน์ (r5) · มือถือยังอยู่ท้ายสุดด้วย order */}
+        <div className="lf-foot">
+          {/* บรรทัดกติกาบรรทัดเดียว — "ยื่นบัตร/บอกเบอร์" อยู่บนบัตรที่เดียว · ตอนรอยืนยันก็ไม่บอกว่าแต้มเข้าเอง */}
+          <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
+        </div>
       </div>
     </Shell>
   );

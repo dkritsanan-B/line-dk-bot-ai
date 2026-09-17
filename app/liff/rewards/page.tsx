@@ -3,11 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isReview, reviewQS } from "../review";
 import { Shell, Loading } from "../ui";
 import Icon, { type IconName } from "../components/Icon";
-import { BAHT_PER_POINT, PENDING_POINTS_DAYS, birthdayFrom, firstTierOf } from "../lib/perks";
+import { BAHT_PER_POINT, PENDING_POINTS_DAYS, birthdayFrom, firstTierOf, reactivateText } from "../lib/perks";
 import { ProblemScreen } from "../components/ProblemNotice";
 import { callApi, problemOf, redeemErrorText, SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
-import { formatDate } from "../lib/tiers";
-import type { PendingRedemption, RedeemSummary } from "../lib/types";
+import { formatDate, getEffectiveTier, getTierFromPoints, type Tier } from "../lib/tiers";
+import type { MemberResponse, PendingRedemption, RedeemSummary } from "../lib/types";
+import TierMark from "../components/TierMark";
+import { ReactivateRule } from "../components/MemberCard";
 import "../styles/rewards.css";
 
 // หน้าของรางวัล — ตัวตน = LIFF access token · สไตล์อยู่ ../liff.css
@@ -94,7 +96,7 @@ function rulesText(minReward: number | null, example: string | null): string[] {
     `สมัครแล้วต้องยืนยันตัวตนที่ร้านครั้งเดียว แต้มเริ่มเข้าหลังยืนยัน · บิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน ${PENDING_POINTS_DAYS} วัน) · บิลเงินเชื่อ (เครดิต) ไม่สะสมแต้ม`,
     "แต้มใช้ได้ 1 ปี นับจากวันที่ได้ แต้มก้อนที่ใกล้หมดอายุจะขึ้นเตือนที่หน้าบัตร",
     `ตั้งแต่ระดับ ${firstTierOf("steel")} ซื้อเหล็กหรือเมทัลชีทราคาป้าย ได้แต้มพิเศษเพิ่ม (คิดทีละรายการ รายการที่ขอลดราคาได้แต้มปกติ) และมีคูปองวันเกิดเป็นแต้มตั้งแต่ระดับ ${birthdayFrom()}`,
-    "ไม่ได้ซื้อเกิน 1 ปี ระดับจะลดชั่วคราว ยอดสะสมไม่หาย ซื้อครั้งถัดไปกลับระดับเดิมทันที · ร้านเตือนที่หน้าบัตรล่วงหน้า 3 เดือน",
+    `ไม่มีบิลเกิน 1 ปี ระดับจะพักไว้ ยอดสะสมไม่หาย ${reactivateText().join(" ")} กลับระดับเดิมทันที · ร้านเตือนที่หน้าบัตรล่วงหน้า 3 เดือน`,
     `กด "แลก" แล้วกดยืนยัน แต้มจะถูกจองไว้ให้ ยังไม่หัก${minReward ? ` · ของรางวัลเริ่มที่ ${minReward.toLocaleString()} แต้ม` : ""}`,
     "ส่วนลดจากแต้มต้องกดแลกก่อนจ่าย · จำนวนคูปองหรือของรางวัลที่ใช้ต่อบิล ให้ดูเงื่อนไขของแต่ละรายการก่อนกด",
     "มารับของที่ร้าน เปิดหน้าบัตรสมาชิกในแอปให้พนักงานดู พร้อมบอกเลขคำขอ (#REQ-…) พนักงานหักแต้มตอนส่งของให้",
@@ -173,6 +175,11 @@ export default function RewardsPage() {
   // id ที่แลกได้ ณ ตอนโหลด — ชิป "แลกได้ตอนนี้" ใช้ชุดนี้ กดแลกแล้วการ์ดยังอยู่ในชิปเดิม (ข้อความยืนยันไม่หายไปต่อหน้า)
   const [canIds, setCanIds] = useState<Set<number>>(() => new Set());
   const requestsRef = useRef<HTMLElement | null>(null);
+  // r5: ระดับที่พักไว้ (ไม่มีบิลเกิน 1 ปี) — ตัวสรุปแต้มไม่มีข้อมูลระดับ จึงอ่านจาก /api/member แยก
+  //     ข้อมูลเสริมเท่านั้น: โหลดไม่ได้ = ไม่ขึ้นแถบ ไม่ขึ้นจอแจ้งปัญหา
+  const [paused, setPaused] = useState<Tier | null>(null);
+  // r5: กดยืนยันแลกแล้วไม่ผ่านเพราะหมดเวลา/เน็ตหลุด/ระบบขัดข้อง → บอกในกล่องยืนยันเลย (แต้มยังไม่ถูกหัก)
+  const [sheetError, setSheetError] = useState<{ id: number; problem: Problem } | null>(null);
 
   /** โหลดของรางวัล + แต้มที่ใช้ได้พร้อมกัน — ถ้าอย่างใดอย่างหนึ่งล้ม ขึ้นจอแจ้งปัญหา (ไม่โชว์ตัวเลขที่ไม่จริง) */
   const loadAll = useCallback(async (tok: string): Promise<boolean> => {
@@ -198,6 +205,17 @@ export default function RewardsPage() {
     return true;
   }, []);
 
+  const loadPaused = useCallback(async (tok: string) => {
+    const r = await callApi<MemberResponse>("/api/member" + reviewQS(), { headers: { Authorization: `Bearer ${tok}` } });
+    if (!r.ok || r.data.registered !== true || !r.data.user) return;
+    const u = r.data.user;
+    // รอยืนยันตัวตน = ยังไม่มีระดับให้พัก
+    if (r.data.link?.status === "pending") return;
+    const eff = getEffectiveTier(u.total_earned ?? 0, u.points ?? 0, u.last_purchase_at ?? null);
+    const real = getTierFromPoints(u.total_earned ?? 0);
+    setPaused(eff.name !== real.name ? real : null);
+  }, []);
+
   const boot = useCallback(async () => {
     let tok = tokenRef.current;
     if (tok === null) {
@@ -216,8 +234,9 @@ export default function RewardsPage() {
       setToken(tok);
     }
     if (!tok) { setProblem({ kind: "auth", code: "AUTH_REQUIRED", serverMessage: null }); return; }
+    void loadPaused(tok);
     await loadAll(tok);
-  }, [loadAll]);
+  }, [loadAll, loadPaused]);
 
   useEffect(() => {
     boot().finally(() => setLoading(false));
@@ -237,6 +256,7 @@ export default function RewardsPage() {
     }
     setRedeemingId(reward.id);
     setRedeemMsg(null);
+    setSheetError(null);
     try {
       const r = await callApi<{ success?: boolean; requestId?: number; available_points?: number }>("/api/liff/redeem" + reviewQS(), {
         method: "POST",
@@ -245,6 +265,11 @@ export default function RewardsPage() {
       });
       if (!r.ok || !r.data.success || typeof r.data.requestId !== "number") {
         const p = r.ok ? problemOf("SERVER_ERROR") : r.problem;
+        // ปัญหาที่ไม่เกี่ยวกับของชิ้นนี้ (หมดเวลา/เน็ต/ระบบ) → ค้างกล่องยืนยันไว้ บอกในกล่อง ให้ลองใหม่ได้ทันที
+        if (p.kind === "auth" || p.kind === "offline" || p.code === "SERVER_ERROR" || p.code === "DB_UNAVAILABLE") {
+          setSheetError({ id: reward.id, problem: p });
+          return;
+        }
         setConfirmId(null);
         setRedeemMsg({ id: reward.id, ok: false, text: redeemErrorText(p) });
         // สถานะบนจออาจเก่าแล้ว (มีคนจองตัดหน้า / ขอไว้จากอีกเครื่อง) → ดึงตัวเลขจริงมาใหม่เงียบ ๆ
@@ -300,6 +325,7 @@ export default function RewardsPage() {
 
   const confirmReward = confirmId === null ? null : rewards.find(reward => reward.id === confirmId) ?? null;
   const confirmCopy = confirmReward ? rewardCopy(confirmReward.description) : null;
+  const sheetErr = sheetError && sheetError.id === confirmId ? sheetError.problem : null;
 
   function closeSuccess() {
     setRedeemSuccess(null);
@@ -336,6 +362,13 @@ export default function RewardsPage() {
         <div className="lf-note lf-note--warn" role="status">
           <b>ยังไม่ได้ยืนยันตัวตน</b>
           ซื้อของตอนนี้แต้มยังไม่เข้า ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า &quot;ยืนยันสมาชิก LINE&quot; พร้อมบอกเบอร์ที่สมัครไว้ หลังยืนยันแล้วบิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)
+        </div>
+      )}
+
+      {summary && paused && (
+        <div className="lf-rw-paused" role="status">
+          <TierMark tier={paused} />
+          <span><b className="lf-nw">ระดับ {paused.name} พักไว้</b> <ReactivateRule /> <span className="lf-nw">กลับมาทันที</span></span>
         </div>
       )}
 
@@ -399,15 +432,13 @@ export default function RewardsPage() {
         const left = reward.stock === null ? null : Math.max(0, reward.stock - reserved);
         const copy = rewardCopy(reward.description);
         const showPassiveStatus = Boolean(summary && summary.earns_points !== false);
-        // จองครบ + มีสถานะด้านขวาอยู่แล้ว → ไม่ต้องมีป้ายบนรูปพูดซ้ำ
-        const badge = st.kind === "out" ? (st.reservedFull ? (showPassiveStatus ? null : "หมดชั่วคราว") : "หมด") : null;
+        // r5: ของหมดมีรูปแบบเดียว — ข้อความด้านขวาของแถวล่าง (ไม่มีป้ายบนรูปแล้ว) · เป็นข้อเท็จจริงของร้าน แสดงกับทุกคน
         const progress = st.kind === "lack" && reward.points_required > 0
           ? Math.min(100, Math.max(0, available / reward.points_required * 100)) : 0;
         return (
           <div key={reward.id} className={`lf-rw-card${ok ? "" : st.kind === "mine" ? " is-mine" : " is-off"}`}>
             <div className="lf-rw-thumb">
               {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={34} strokeWidth={1.75} />}
-              {badge && <span className="lf-rw-badge" aria-hidden="true">{badge}</span>}
             </div>
             <div className="lf-rw-body">
               <div className="lf-rw-name">{reward.name}</div>
@@ -436,8 +467,11 @@ export default function RewardsPage() {
                   <span>ขาดอีก {st.lacking.toLocaleString()} แต้ม</span>
                   <span className="lf-rw-progress" aria-label={`มี ${available.toLocaleString()} จาก ${reward.points_required.toLocaleString()} แต้ม`}><i style={{ width: `${progress}%` }} /></span>
                 </div>
-              ) : showPassiveStatus && st.kind === "out" && st.reservedFull ? (
-                <div className="lf-rw-status lf-rw-status--out"><b>หมดชั่วคราว</b><span>มีคนจองครบแล้ว</span></div>
+              ) : st.kind === "out" ? (
+                <div className="lf-rw-status lf-rw-status--out">
+                  <b>{st.reservedFull ? "หมดชั่วคราว" : "หมด"}</b>
+                  <span>{st.reservedFull ? "มีคนจองครบแล้ว" : "รอของเข้ารอบหน้า"}</span>
+                </div>
               ) : null}
             </div>
             {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
@@ -461,7 +495,7 @@ export default function RewardsPage() {
 
       {confirmReward && !redeemSuccess && (
         <div className="lf-rw-modal" role="presentation" onMouseDown={event => {
-          if (event.target === event.currentTarget && redeemingId === null) setConfirmId(null);
+          if (event.target === event.currentTarget && redeemingId === null) { setConfirmId(null); setSheetError(null); }
         }}>
           <section className="lf-rw-sheet" role="dialog" aria-modal="true" aria-labelledby="lf-rw-confirm-title">
             <div className="lf-rw-sheet-handle" aria-hidden="true" />
@@ -480,12 +514,32 @@ export default function RewardsPage() {
               <span>หักจากแต้มที่ใช้ได้</span><b>−{confirmReward.points_required.toLocaleString()} แต้ม</b>
               <span>คงเหลือหลังแลก</span><b>{Math.max(0, available - confirmReward.points_required).toLocaleString()} แต้ม</b>
             </div>
-            <p className="lf-rw-sheet-note">แต้มจะถูกจองไว้จนมารับของที่ร้าน เปลี่ยนใจแจ้งพนักงานให้ยกเลิกได้</p>
+            {sheetErr ? (
+              <div className="lf-msg err lf-rw-sheet-err" role="alert">
+                <i><Icon name="alert" size={20} /></i>
+                <span>
+                  <b>{sheetErr.kind === "auth" ? "หมดเวลาใช้งาน ยังไม่ได้ส่งคำขอ" : "ยังส่งคำขอไม่สำเร็จ"}</b>
+                  <span className="lf-nw">แต้มยังไม่ถูกหักหรือจอง</span>{" "}
+                  {sheetErr.kind === "auth"
+                    ? <><span className="lf-nw">กดโหลดหน้าใหม่</span> <span className="lf-nw">แล้วกดแลกอีกครั้งค่ะ</span></>
+                    : sheetErr.kind === "offline"
+                      ? <><span className="lf-nw">เช็คอินเทอร์เน็ต</span> <span className="lf-nw">แล้วกดลองใหม่ค่ะ</span></>
+                      : <><span className="lf-nw">กดลองใหม่</span> <span className="lf-nw">หรือโทร {SHOP_PHONE}</span></>}
+                </span>
+              </div>
+            ) : (
+              <p className="lf-rw-sheet-note">แต้มจะถูกจองไว้จนมารับของที่ร้าน เปลี่ยนใจแจ้งพนักงานให้ยกเลิกได้</p>
+            )}
             <div className="lf-rw-sheet-actions">
-              <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setConfirmId(null)} disabled={redeemingId !== null}>ยกเลิก</button>
-              <button type="button" className="lf-rw-btn" onClick={() => handleRedeem(confirmReward)} disabled={redeemingId !== null}>
-                {redeemingId === confirmReward.id ? "กำลังส่งคำขอ…" : "ยืนยันแลก"}
-              </button>
+              <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => { setConfirmId(null); setSheetError(null); }} disabled={redeemingId !== null}>ยกเลิก</button>
+              {sheetErr?.kind === "auth" ? (
+                // token หมดอายุ → ให้ LINE ออก token ใหม่ = โหลดหน้าใหม่ (เหมือนปุ่มลองใหม่ของจอแจ้งปัญหา)
+                <button type="button" className="lf-rw-btn" onClick={() => window.location.reload()}>โหลดหน้าใหม่</button>
+              ) : (
+                <button type="button" className="lf-rw-btn" onClick={() => handleRedeem(confirmReward)} disabled={redeemingId !== null}>
+                  {redeemingId === confirmReward.id ? "กำลังส่งคำขอ…" : sheetErr ? "ลองใหม่" : "ยืนยันแลก"}
+                </button>
+              )}
             </div>
           </section>
         </div>
@@ -498,8 +552,12 @@ export default function RewardsPage() {
             <i className="lf-rw-success-icon"><Icon name="check" size={34} strokeWidth={2.5} /></i>
             <h2 id="lf-rw-success-title">ส่งคำขอแล้ว</h2>
             <div className="lf-rw-success-no">#REQ-{redeemSuccess.requestId}</div>
-            <p>แสดงหน้านี้หรือเลขคำขอกับพนักงานที่ร้าน</p>
-            <button type="button" className="lf-rw-btn" onClick={closeSuccess}>ปิด</button>
+            {/* r5: ปิดแล้วเลขคำขอยังอยู่ในรายการ "คำขอที่รอรับของ" → ปุ่มหลักพาไปที่นั่น */}
+            <p><span className="lf-nw">บอกเลขคำขอนี้กับพนักงานที่ร้าน</span> <span className="lf-nw">ดูเลขได้อีกในรายการคำขอของคุณ</span></p>
+            <button type="button" className="lf-rw-btn" onClick={closeSuccess}>ดูคำขอของฉัน</button>
+            <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm lf-rw-success-card" onClick={() => (window.location.href = "/liff" + reviewQS())}>
+              <Icon name="user" size={20} /> ไปที่บัตรสมาชิก
+            </button>
           </section>
         </div>
       )}

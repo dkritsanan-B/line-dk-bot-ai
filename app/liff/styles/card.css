@@ -54,7 +54,10 @@
 .lf-mcard .lf-cd-foot:empty { display: none; }
 .lf-mcard .lf-cd-foot > span + span::before { content: "·"; margin: 0 var(--sp-2); }
 
-/* ── ป้าย "รอยืนยัน" (แทนป้ายระดับตอนยังไม่ผูกรหัส) — อำพันเหมือนกล่องเตือน ── */
+/* ── ป้าย "รอยืนยัน" (แทนป้ายระดับตอนยังไม่ผูกรหัส) — อำพันเหมือนกล่องเตือน ──
+ * r5: อยู่แถวเดียวกับรูป+ชื่อ (ชิดขวา) ไม่มีแถวว่างเหนือชื่อ */
+.lf-mcard.lf-cd-card--pend-row .lf-mcard-who { margin-top: 0; }
+.lf-mcard .lf-mcard-who > .lf-cd-tier-wait { flex-shrink: 0; align-self: center; }
 .lf-mcard .lf-cd-tier-wait {
   background: var(--warn-tint); color: var(--warn);
   box-shadow: inset 0 0 0 var(--bw) var(--warn-line);
@@ -79,13 +82,15 @@
 }
 .lf-mcard .lf-cd-pend-why { margin: var(--sp-2) 0 0; font-size: 15px; font-weight: var(--fw-med); line-height: 1.4; color: var(--card-ink); }
 .lf-mcard .lf-cd-pend-late {
-  margin-top: var(--sp-2); display: flex; align-items: flex-start; gap: var(--sp-2);
-  font-size: 14px; font-weight: var(--fw-med); line-height: 1.4; color: var(--card-ink);
+  margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--card-well-line);
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
+  font-size: 15px; font-weight: var(--fw-med); line-height: 1.4; color: var(--card-ink);
 }
+/* ปุ่มโทรกว้างเต็มกล่อง ชิดซ้ายเดียวกับข้อความ (ภาษาเดียวกับปุ่มโทรในจอแจ้งปัญหา) */
+.lf-mcard .lf-cd-pend-late .lf-cd-pend-call-btn { width: 100%; text-decoration: none; box-sizing: border-box; color: var(--dk-blue-strong); gap: var(--sp-2); }
 .lf-mcard .lf-cd-pend-late svg { flex-shrink: 0; margin-top: 1px; }
 .lf-mcard .lf-cd-pend-late b { font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; }
 .lf-mcard .lf-cd-pend-late .lf-note-tel { display: inline-flex; align-items: center; min-height: var(--h-tap); margin-top: var(--sp-2); box-sizing: border-box; }
-.lf-mcard .lf-cd-tel { gap: var(--sp-1); padding: 0 var(--sp-3); border: 1px solid currentColor; border-radius: var(--r-pill); text-decoration: none; }
 
 @media (min-width: 900px) {
   .lf-wrap--split .lf-mcard .lf-cd-pend-say { font-size: var(--fs-h1); }
@@ -130,12 +135,12 @@
   color: var(--card-ink-2);
 }
 
-/* ── พักระดับ (ไม่ได้ซื้อเกิน 1 ปี): สีของระดับจริง แต่ซีด ──────────────
- * ไล่สีย้ายไปชั้น ::before แล้วลดความอิ่มสีอย่างเดียว — saturate() คงความสว่างเดิมไว้
- * คอนทราสต์ตัวอักษร (คิดจากไล่สีเต็มใน check-contrast.mjs) จึงไม่เปลี่ยน · ไม่ใช้ opacity เพราะพื้นข้างหลังจะโผล่ */
+/* ── พักระดับ (ไม่ได้ซื้อเกิน 1 ปี): สีระดับจริงเต็ม + ขอบเส้นประด้านใน ──────────────
+ * r5 (ผู้ตรวจ): บัตรซีดสีเบจอ่านเป็นระดับอื่น → คงสีระดับไว้ให้จำได้ แล้วบอกสถานะด้วยเส้นประ + ป้าย "พักระดับ"
+ * เส้นประใช้สีตัวอักษรชุดเดียวกับบัตร (ผ่านคอนทราสต์กับไล่สีอยู่แล้ว) · พื้นไม่เปลี่ยน คอนทราสต์ตัวอักษรจึงเท่าบัตรปกติ */
 .lf-mcard.lf-cd-card--rest::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: var(--cd-grad); filter: saturate(.3);
+  content: ""; position: absolute; inset: 4px; z-index: 0; pointer-events: none;
+  border: 2px dashed var(--card-ink-2); border-radius: calc(var(--r-lg) - 4px);
 }
 /* ป้ายระดับและ "พักระดับ" แยกเป็นสองเม็ด */
 .lf-mcard .lf-cd-tier-group { display: flex; align-items: center; gap: var(--sp-2); }

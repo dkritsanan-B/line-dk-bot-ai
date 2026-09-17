@@ -15,8 +15,6 @@
 /* หมายเหตุใต้กลุ่มแต้มเพิ่ม (เหล็กเส้น) — ไม่ใช่สิทธิ์ จึงเป็นตัวปกติ สีรอง (--ink-2 บนขาว ≈ 10:1) คั่นด้วยเส้นบาง */
 .lf-perkcard .lf-perkgroup .lf-ct-note { margin: 0; padding: var(--sp-2) var(--sp-3) 0; border-top: 1px solid var(--line); font-size: 15px; font-weight: 400; color: var(--ink-2); line-height: 1.45; }
 .lf-perkrow-wrap + .lf-perkrow-wrap .lf-perkrow { border-top: 1px solid var(--line); }
-.lf-perk-paused { opacity: .5; }
-.lf-perk-pause-chip { display: inline-flex; align-items: center; min-height: var(--h-chip); padding: 0 var(--sp-3); border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--ink-2); font-style: normal; font-size: 14px; font-weight: var(--fw-bold); }
 .lf-perknow--current { margin-bottom: var(--sp-3); }
 .lf-perk-more {
   width: 100%; min-height: var(--h-tap); margin-top: var(--sp-3); padding: 0 var(--sp-3);
@@ -97,6 +95,17 @@
 
 /* วลีห้ามตัดในกล่อง "หลังสมัคร" — liff.css ตั้ง span ในกล่องนี้เป็น block ต้องคืนเป็น inline */
 .lf-after-signup .lf-nw { display: inline; }
+/* r5: "หลังสมัคร" เป็นข้อความเล็กใต้ปุ่มสมัคร ไม่ใช่กล่องราวซ้ายอีกใบ (กล่องชวนสมัครด้านบนมีราวอยู่แล้ว) */
+.lf-card .lf-after-signup { margin-top: var(--sp-3); padding: 0; border: 0; font-size: 15px; text-align: center; }
+.lf-card .lf-after-signup b { display: inline; margin-right: var(--sp-1); font-weight: var(--fw-bold); }
+.lf-card .lf-after-signup span { display: inline; }
+.lf-card .lf-after-signup small { font-size: 15px; font-weight: 400; }
+
+/* r5: บรรทัดบอกช่องบังคับ + ข้อความเบอร์ผิดใต้ช่อง (--danger บนขาว ผ่าน AA) */
+.lf-form .lf-form-req { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.4; }
+.lf-input.lf-input--bad { border-color: var(--danger); }
+.lf-field-err { margin-top: var(--sp-2); display: flex; align-items: flex-start; gap: var(--sp-1); color: var(--danger); font-size: 15px; font-weight: var(--fw-bold); line-height: 1.4; }
+.lf-field-err svg { flex-shrink: 0; margin-top: 1px; }
 
 /* ปุ่มสมัครติดขอบล่างจอ (เฉพาะหน้าสมัคร)
  * sticky อยู่ในกรอบของฟอร์มเท่านั้น → โผล่ตั้งแต่ฟอร์มเริ่มเข้าจอ และกลับเข้าที่เดิมเมื่อเลื่อนถึงท้ายฟอร์ม
@@ -120,11 +129,31 @@
 .lf-signup-next > small { margin-top: var(--sp-2); color: var(--ink-2); font-size: var(--fs-body); }
 .lf-signup-next strong { color: var(--ink); font-size: var(--fs-h2); font-weight: var(--fw-heavy); white-space: nowrap; }
 
+/* r5: บัตรย่อบนจอสำเร็จ — ภาษาเดียวกับบัตรรอยืนยัน (พื้นขาว ขอบเทา ป้ายอำพัน) */
+.lf-signup-mini {
+  margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4); text-align: left;
+  border-radius: var(--r-md); background: var(--surface); box-shadow: var(--sh-1), inset 0 0 0 var(--bw) var(--line-strong);
+}
+.lf-signup-mini-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
+.lf-signup-mini-tier { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--ink); font-size: 15px; font-weight: var(--fw-black); }
+.lf-signup-mini-wait {
+  display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 28px; padding: 0 var(--sp-2); border-radius: var(--r-pill);
+  background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn-line);
+  font-size: 14px; font-weight: var(--fw-black);
+}
+.lf-signup-mini-row { margin-top: var(--sp-2); display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+.lf-signup-mini-name { min-width: 0; color: var(--ink); font-size: var(--fs-lead); font-weight: var(--fw-black); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lf-signup-mini-pts { flex-shrink: 0; color: var(--ink-2); font-size: 15px; font-weight: var(--fw-bold); white-space: nowrap; }
+.lf-signup-mini-pts b { color: var(--ink); font-size: var(--fs-num); font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; }
+.lf-signup-mini small { display: block; margin-top: var(--sp-1); color: var(--ink-2); font-size: 14px; }
+.lf-signup-done .lf-signup-next { margin: var(--sp-4) 0; }
+
 /* ท้ายหน้าบัตรสมาชิกบนเดสก์ท็อป: กลางใต้ทั้งสองคอลัมน์ */
 @media (min-width: 900px) {
   .lf-wrap--split .lf-col--main { position: sticky; top: var(--sp-6); }
   .lf-wrap--short { max-width: 720px; }
-  .lf-wrap--split > .lf-foot { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 720px; }
+  /* r5: ท้ายหน้าอยู่ท้ายคอลัมน์ขวา ชิดซ้ายตามแนวการ์ด */
+  .lf-wrap--split .lf-col--side > .lf-foot { text-align: left; padding-left: 0; padding-right: 0; }
 }
 
 /* เดสก์ท็อป: จอสูงพอเห็นทั้งฟอร์ม ไม่ต้องให้ปุ่มสมัครลอย */

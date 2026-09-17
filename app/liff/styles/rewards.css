@@ -40,26 +40,16 @@
   align-self: start;
 }
 .lf-rw-thumb img { width: 100%; height: 100%; object-fit: contain; }
-/* ป้ายมุมรูป (หมด / จองครบ) — แถบทึบขอบล่างของรูป ตัวขาวบนเทาเข้ม ≈ 10:1 */
-.lf-rw-thumb { position: relative; }
-.lf-rw-badge {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 1px 2px;
-  background: var(--ink-2); color: var(--on-brand);
-  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.2;
-  /* รูป 64px แคบกว่าคำ "หมดชั่วคราว" — ให้ตัดบรรทัดตามคำ ห้ามตัดท้ายทิ้ง */
-  text-align: center; overflow-wrap: normal;
-}
 
-/* การ์ดที่แลกไม่ได้ — ถอยลงไปเป็นพื้นหลัง: ไม่มีเงา พื้นเทาอ่อน รูปขาวดำจาง
- * ตัวหนังสือไม่ลดความทึบ (ยังผ่าน AA): ชื่อ --ink-2 ≈ 9.6:1 · เงื่อนไข/แต้ม --ink-3 ≈ 5.7:1 บน --surface-2 */
-.lf-rw-card.is-off { background: var(--surface-2); box-shadow: none; border: 1px solid var(--line); }
-.lf-rw-card.is-off .lf-rw-thumb { background: var(--line); color: var(--ink-3); }
-.lf-rw-card.is-off .lf-rw-thumb img { opacity: .55; filter: grayscale(1); }
-.lf-rw-card.is-off .lf-rw-name { color: var(--ink-2); }
-.lf-rw-card.is-off .lf-rw-cond { color: var(--ink-3); }
+/* การ์ดที่ยังแลกไม่ได้ (แต้มไม่พอ/ของหมด) — r5 (ผู้ตรวจ): อ่านเป็น "เก็บแต้มไว้แลก" ไม่ใช่ "ปิดใช้งาน"
+ * ชื่อและคำอธิบายคงสีเต็ม · ถอยเฉพาะเงา รูป ตัวเลขแต้ม และแถบคืบหน้า
+ * ตัวเลขแต้ม --ink-3 บนขาว ≈ 6:1 (ผ่าน AA) */
+.lf-rw-card.is-off { box-shadow: none; border: 1px solid var(--line); }
+.lf-rw-card.is-off .lf-rw-thumb { background: var(--surface-2); color: var(--ink-3); }
+.lf-rw-card.is-off .lf-rw-thumb img { opacity: .7; filter: grayscale(1); }
 .lf-rw-card.is-off .lf-rw-pts b,
 .lf-rw-card.is-off .lf-rw-pts b small { color: var(--ink-3); }
+.lf-rw-card.is-off .lf-rw-progress i { background: var(--ink-3); }
 
 .lf-rw-body { min-width: 0; display: flex; flex-direction: column; }
 .lf-rw-name {
@@ -115,8 +105,8 @@
 .lf-rw-status--mine { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-1); color: var(--warn); }
 .lf-rw-status--mine svg { flex-shrink: 0; }
 .lf-rw-status--out b, .lf-rw-status--out span { display: block; }
-.lf-rw-status--out b { color: var(--ink-2); font-size: 14px; }
-.lf-rw-status--out span { margin-top: 1px; font-size: var(--fs-label); font-weight: var(--fw-med); }
+.lf-rw-status--out b { color: var(--ink); font-size: var(--fs-body); font-weight: var(--fw-black); }
+.lf-rw-status--out span { margin-top: 1px; color: var(--ink-2); font-size: 14px; font-weight: var(--fw-med); }
 .lf-rw-progress {
   display: block; width: 100%; height: 4px; margin-top: var(--sp-1);
   border-radius: var(--r-pill); overflow: hidden; background: var(--line);
@@ -139,26 +129,17 @@
 
 /* ชิปกรองของรางวัล (17 ก.ย. 69) — สูง 44px · มือถือเลื่อนแนวนอนชนขอบจอ · เดสก์ท็อปตัดบรรทัดได้
  * ปกติ: --ink-2 บน --surface ขอบ --line-strong (≥ 3:1) · เลือกอยู่: ขาวบน --dk-blue (ภาษาเดียวกับ .lf-tab.on) */
-.lf-rw-chips-wrap { position: relative; min-width: 0; --lf-rw-bleed: var(--sp-4); }
-@media (max-width: 419px) { .lf-rw-chips-wrap { --lf-rw-bleed: var(--sp-3); } }
-.lf-rw-chips-wrap::after {
-  content: ""; position: absolute; z-index: 1; top: 0; right: calc(var(--lf-rw-bleed) * -1); bottom: 0;
-  width: var(--sp-6); pointer-events: none;
-  background: linear-gradient(to right, transparent, var(--bg));
-}
+/* r5 (ผู้ตรวจ): ชิปสุดท้ายโดนตัดขอบโดยไม่มีสัญญาณว่าเลื่อนได้ → ตัดบรรทัดแทนการเลื่อนข้าง เห็นครบทุกชิป ทุกจอ */
+.lf-rw-chips-wrap { min-width: 0; }
 .lf-rw-chips {
   --lf-rw-h-chip: 44px;
-  display: flex; gap: var(--sp-2);
-  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
-  /* ยื่นออกชนขอบจอเท่าระยะขอบของ .lf-wrap พอดี (liff.css: 16px · จอ < 420px เหลือ 12px) — ไม่ให้หน้าเลื่อนข้าง */
-  margin: 0 calc(var(--lf-rw-bleed) * -1);
-  padding: 2px var(--lf-rw-bleed);
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
 }
 .lf-rw-chips::-webkit-scrollbar { display: none; }
 .lf-rw-chip {
   flex-shrink: 0;
   min-height: var(--lf-rw-h-chip);
-  padding: 0 var(--sp-4);
+  padding: 0 var(--sp-3);
   border: 1px solid var(--line-strong); border-radius: var(--r-pill);
   background: var(--surface); color: var(--ink-2);
   font: inherit; font-size: var(--fs-body); font-weight: var(--fw-bold); white-space: nowrap;
@@ -251,6 +232,22 @@
 }
 .lf-rw-sheet--success > p { margin: var(--sp-2) 0 var(--sp-4); color: var(--ink-2); font-size: var(--fs-body); }
 .lf-rw-sheet--success > .lf-rw-btn { width: 100%; min-height: var(--h-btn-sm); }
+.lf-rw-sheet--success > .lf-rw-success-card { margin-top: var(--sp-2); color: var(--dk-blue-strong); }
+.lf-rw-sheet--success > p .lf-nw { display: inline; }
+
+/* r5: ส่งคำขอไม่ผ่าน (หมดเวลา/เน็ต/ระบบ) — บอกในกล่องยืนยัน ไม่ปิดกล่อง */
+.lf-rw-sheet .lf-rw-sheet-err { margin: var(--sp-3) 0; }
+.lf-rw-sheet-err > span > b { display: block; margin-bottom: 2px; font-weight: var(--fw-black); }
+
+/* r5: แถบบอกว่าระดับพักไว้ (หน้าของรางวัล) — บางบรรทัดเดียว ภาษาเดียวกับป้ายพักระดับ */
+.lf-rw-paused {
+  display: flex; align-items: center; gap: var(--sp-2); min-height: var(--h-tap); box-sizing: border-box;
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm);
+  background: var(--surface); border: 2px dashed var(--line-strong);
+  color: var(--ink-2); font-size: 15px; line-height: 1.4;
+}
+.lf-rw-paused b { color: var(--ink); font-weight: var(--fw-black); }
+.lf-rw-paused .lf-tmark { flex-shrink: 0; }
 
 /* เดสก์ท็อป: ยังเป็นตารางการ์ด (2–3 ใบต่อแถว) การ์ดสูงเท่ากันในแถว รูปใหญ่ขึ้น
  * แถวล่าง (แต้ม + ปุ่ม) กินเต็มความกว้างการ์ดและติดขอบล่างเสมอ — แถวที่ 2 (1fr) รับความสูงส่วนเกิน
@@ -259,12 +256,13 @@
   .lf-wrap--catalog > .lf-rw-chips-wrap,
   .lf-wrap--catalog > .lf-rw-grid,
   .lf-wrap--catalog > .lf-rw-empty,
-  .lf-wrap--catalog > .lf-note { grid-column: 1 / -1; }
-  .lf-wrap--catalog > .lf-balance { width: min(100%, 560px); justify-self: start; }
-  .lf-rw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: var(--sp-4); }
+  .lf-wrap--catalog > .lf-note,
+  .lf-wrap--catalog > .lf-rw-paused { grid-column: 1 / -1; }
+  /* r5: หัว แถบแต้ม ชิป และตาราง ใช้ความกว้างเดียวกัน (เดิมแถบแต้มหยุดที่ 560px) */
+  .lf-wrap--catalog > .lf-balance { width: auto; justify-self: stretch; }
+  /* r5: ความสูงเท่ากันเฉพาะในแถวเดียวกัน (เดิม 1fr ทุกแถว → ใบที่ไม่มีรูปมีช่องว่างกลางการ์ด) */
+  .lf-rw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; gap: var(--sp-4); }
   .lf-rw-grid > .lf-rw-empty { grid-column: 1 / -1; }
-  .lf-rw-chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
-  .lf-rw-chips-wrap::after { display: none; }
   .lf-rw-card {
     --lf-rw-thumb: 88px; padding: var(--sp-4); column-gap: var(--sp-4);
     grid-template-rows: auto minmax(0, 1fr) auto auto;

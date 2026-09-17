@@ -21,6 +21,7 @@ import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, VIA_HEAD, type Perk
 import { BONUS_BAHT_PER_POINT, RULES, tierIndex, type RuleKey } from "@/lib/tierRules";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
+import { ReactivateRule } from "./MemberCard";
 
 /** แต้มปกติต่อยอดซื้อ 100 บาท (หน่วย "/100 บาท" ของแถวสิทธิ์) */
 const NORMAL_PER_100 = 100 / BAHT_PER_POINT;
@@ -73,13 +74,13 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
   // นับเป็นจำนวนแถวสิทธิ์ที่ซ่อนอยู่ (กลุ่มที่ 2 เป็นต้นไป + คูปองวันเกิด)
   const hiddenCount = groups.slice(1).reduce((n, g) => n + g.rows.length, 0) + (bdShown > 0 ? 1 : 0);
   const visibleGroups = expanded ? groups : groups.slice(0, 1);
-  const pausedClass = restore ? " lf-perk-paused" : "";
   const activeBirthday = currentTier ? birthdayPointsOf(currentTier.name) : 0;
   return (
     <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}`}>
       {pending ? (
         <>
-          <h3><Icon name="tag" size={22} /> หลังยืนยันตัวตน ได้สิทธิ์เหล่านี้</h3>
+          {/* r5: หัวการ์ดไม่พูด "หลังยืนยัน" ซ้ำกับกล่องเขียวข้างล่าง */}
+          <h3><Icon name="tag" size={22} /> สิทธิ์ของคุณ</h3>
           <div className="lf-perknow">
             <b>หลังยืนยัน ได้ทันที</b>
             <span>สะสมแต้มทุกบิล · แลกของรางวัล</span>
@@ -99,8 +100,9 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
             <b>ตอนนี้ได้</b>
             <span>สะสมแต้มทุกบิล{activeBirthday > 0 ? <> · คูปองวันเกิด <strong>{activeBirthday.toLocaleString()} แต้ม</strong></> : ""}</span>
           </div>
-          <h3><Icon name="tag" size={22} /> สิทธิ์ระดับ <TierMark tier={tier} /> {tier.name} <em className="lf-perk-pause-chip">พักไว้</em></h3>
-          <p>ซื้อครั้งถัดไป สิทธิ์เหล่านี้กลับมาใช้ได้ทันที</p>
+          {/* r5: ป้าย "พักระดับ" มีบนบัตรที่เดียว · แถวสิทธิ์ตัวเต็มคอนทราสต์ บอกสถานะด้วยประโยคใต้หัวข้อ */}
+          <h3><Icon name="tag" size={22} /> สิทธิ์ระดับ <TierMark tier={tier} /> {tier.name}</h3>
+          <p><span className="lf-nw">ตอนนี้พักไว้</span> <ReactivateRule /> <span className="lf-nw">สิทธิ์เหล่านี้กลับมาทันที</span></p>
         </>
       ) : mine.length ? (
         <>
@@ -123,7 +125,7 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
         </>
       )}
       {visibleGroups.map(g => (
-        <div key={g.via} className={`lf-perkgroup${pausedClass}`}>
+        <div key={g.via} className={`lf-perkgroup`}>
           <div className="lf-perkhead lf-ct-head">
             <b>{VIA_HEAD[g.via].title}</b>
             {/* แต้มกลุ่มนี้เป็นแต้ม "เพิ่ม" แยกจากแต้มยอดซื้อ (lib/tierRules.ts computeBonus → รายการแยกในประวัติ) */}
@@ -146,7 +148,7 @@ export default function TierPerks({ tier, currentTier, restore, hideOnMobile, sh
         </div>
       ))}
       {bdShown > 0 && expanded && (
-        <div className={`lf-perkgroup${pausedClass}`}>
+        <div className={`lf-perkgroup`}>
           <div className="lf-perkhead lf-ct-head"><b>ของขวัญวันเกิด</b></div>
           <div className="lf-perkrow">
             <span><Icon name="cake" size={18} /> คูปองวันเกิด</span>

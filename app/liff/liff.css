@@ -580,7 +580,6 @@
 .lf-problem-acts { display: grid; gap: var(--sp-2); }
 .lf-problem-tel { text-decoration: none; color: var(--dk-blue-strong); box-sizing: border-box; }
 .lf-problem-open-line { text-decoration: none; box-sizing: border-box; }
-.lf-problem-retry-link { min-height: var(--h-tap); border: 0; background: transparent; color: var(--dk-blue-strong); font: inherit; font-weight: var(--fw-black); text-decoration: underline; cursor: pointer; }
 .lf-problem-code { margin-top: var(--sp-3); font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); text-align: center; letter-spacing: .3px; }
 .lf-problem--compact { padding: var(--sp-4) 0 var(--sp-1); }
 .lf-problem--compact .lf-problem-head b { font-size: var(--fs-lead); }
@@ -636,7 +635,8 @@
 .lf-balance--signup { flex-wrap: wrap; }
 .lf-balance--signup .lf-balance-main > span { color: var(--ink); font-size: var(--fs-lead); font-weight: var(--fw-black); }
 .lf-balance-cta { width: auto; flex-shrink: 0; }
-.lf-reqs { border-left: var(--bw-rail) solid var(--warn-line); }
+/* r5: คำขอรอรับของ = สถานะ "รอ" สีอำพันเต็ม (เดิมราวสีจางดูเป็นกล่องปิดใช้งาน) */
+.lf-reqs { border-left: var(--bw-rail) solid var(--warn); }
 .lf-reqs h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ink); }
 .lf-reqs h3 svg { color: var(--warn); flex-shrink: 0; }
 .lf-reqs p { margin: var(--sp-1) 0 var(--sp-2); font-size: var(--fs-body); color: var(--ink-2); }
@@ -733,6 +733,19 @@
 .lf-snap.lf-snap-card .lf-snap-name { margin-top: var(--sp-3); font-size: var(--fs-lead); font-weight: var(--fw-black); }
 .lf-snap.lf-snap-card .lf-snap-phone { font-size: 28px; font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); white-space: nowrap; }
 .lf-snap.lf-snap-card .lf-snap-row { margin-top: var(--sp-2); border-top-color: var(--card-well-line); }
+/* r5: บัตรที่จำไว้ (ไม่ใช่ข้อมูลสด) — ป้ายขาวตัวเข้ม + ขอบเส้นประด้านในสีตัวอักษรรองของบัตร */
+.lf-snap.lf-snap-card--cached::before {
+  content: ""; position: absolute; inset: var(--sp-1); z-index: 0; pointer-events: none;
+  border: 2px dashed var(--card-ink-2); border-radius: calc(var(--r-md) - var(--sp-1));
+}
+.lf-snap.lf-snap-card .lf-snap-head .lf-snap-badge {
+  display: inline-flex; align-items: center; gap: var(--sp-1); margin-bottom: var(--sp-2); padding: 2px var(--sp-2);
+  border-radius: var(--r-pill); background: var(--surface); color: var(--ink);
+  font-size: 14px; font-weight: var(--fw-black);
+}
+.lf-snap.lf-snap-card .lf-snap-head span .lf-nw { display: inline; color: inherit; margin: 0; }
+/* ปุ่มลองใหม่แบบรอง (จอหมดเวลา/เปิดจาก LINE) — กรอบเทาเข้ม ตัวน้ำเงินเข้ม */
+.lf-problem-acts .lf-problem-retry { color: var(--dk-blue-strong); }
 
 /* จอแคบจริง 320–390px: เก็บข้อมูลสำคัญครบโดยไม่เบียดหรือตัดกลางคำ */
 @media (max-width: 419px) {

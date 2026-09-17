@@ -61,7 +61,8 @@ function copyOf(p: Problem, what: string, compact?: boolean): { title: string; b
     return {
       title: "ไม่มีอินเทอร์เน็ต",
       body: `ตอนนี้โหลด${what}ไม่ได้ ระบบจะลองใหม่อัตโนมัติ เมื่ออินเทอร์เน็ตกลับมา · แต้มของคุณไม่หายค่ะ`,
-      showPhone: false,
+      // r5: จอบอกให้แจ้งรหัสกับร้าน → ต้องมีปุ่มโทรด้วย (โทรออกไม่ต้องใช้อินเทอร์เน็ต)
+      showPhone: true,
     };
   }
   return {
@@ -109,19 +110,24 @@ export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, r
         {problem.kind === "auth" ? (
           <>
             <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={closeWindow}>ปิดหน้านี้</button>
-            <button type="button" className="lf-problem-retry-link" onClick={onRetry} disabled={retrying}>{retrying ? "กำลังลองใหม่…" : "ลองใหม่"}</button>
+            {/* r5: ปุ่มรองแบบมีกรอบ (เดิมเป็นลิงก์ขีดเส้นใต้ กดยาก) — หน้าตาเดียวกับปุ่มโทรร้านในจอระบบขัดข้อง */}
+            <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm lf-problem-retry" onClick={onRetry} disabled={retrying}>
+              {retrying ? "กำลังลองใหม่…" : <><Icon name="refresh" size={20} /> ลองใหม่</>}
+            </button>
           </>
         ) : problem.code === "LINE_UNAVAILABLE" && lineUrl ? (
           <>
             <a className="lf-btn lf-btn--primary lf-btn--sm lf-problem-open-line" href={lineUrl}>เปิดใน LINE</a>
-            <button type="button" className="lf-problem-retry-link" onClick={onRetry} disabled={retrying}>{retrying ? "กำลังลองใหม่…" : "ลองใหม่"}</button>
+            <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm lf-problem-retry" onClick={onRetry} disabled={retrying}>
+              {retrying ? "กำลังลองใหม่…" : <><Icon name="refresh" size={20} /> ลองใหม่</>}
+            </button>
           </>
         ) : (
           <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={onRetry} disabled={retrying}>
             {retrying ? "กำลังลองใหม่…" : <><Icon name="refresh" size={20} /> ลองใหม่</>}
           </button>
         )}
-        {c.showPhone && problem.kind !== "offline" && (
+        {c.showPhone && (
           <a className="lf-btn lf-btn--ghost lf-btn--sm lf-problem-tel" href={SHOP_TEL}>
             <Icon name="phone" size={20} /> โทรร้าน <span className="lf-nw">{SHOP_PHONE}</span>
           </a>
@@ -143,10 +149,12 @@ function MeanwhileCard({ snap }: { snap: CardSnapshot | null }) {
       <h3><Icon name="check" size={22} /> วันนี้ซื้อของได้ตามปกติ</h3>
       <p>บอกเบอร์โทรที่แคชเชียร์เหมือนเดิม แต้มคิดจากบิลในระบบร้าน <b>บิลวันนี้ยังได้แต้ม</b> ระบบจะเติมให้เอง<span className="lf-nw">เมื่อกลับมาใช้ได้ค่ะ</span></p>
       {snap && (
-        <div className="lf-snap lf-snap-card lf-mcard" data-ink={tier.ink} data-tier={tier.name} style={{ background: tier.cardGrad } as CSSProperties}>
+        // r5: บัตรที่จำไว้ต้องดูออกว่าไม่ใช่ข้อมูลสด — ป้าย "ข้อมูลล่าสุดที่บันทึกไว้" + ขอบเส้นประ (ภาษาเดียวกับบัตรพักระดับ)
+        <div className="lf-snap lf-snap-card lf-snap-card--cached lf-mcard" data-ink={tier.ink} data-tier={tier.name} style={{ background: tier.cardGrad } as CSSProperties}>
           <div className="lf-snap-head">
+            <span className="lf-snap-badge"><Icon name="history" size={16} /> ข้อมูลล่าสุดที่บันทึกไว้</span>
             <b>บัตรของคุณ · {snap.tier}</b>
-            <span>ข้อมูล ณ {savedAt}</span>
+            <span>บันทึกเมื่อ {savedAt} <span className="lf-nw">· ไม่ใช่ยอดสด</span></span>
           </div>
           <div className="lf-snap-name">{snap.name || "-"}</div>
           <div className="lf-snap-phone">{snap.phone}</div>
