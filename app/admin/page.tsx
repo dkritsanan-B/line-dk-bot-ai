@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { Fragment, useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import "./admin.css";
 
@@ -50,7 +50,29 @@ function formatBirthday(iso: string | null) {
   return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 }
 const fmtPhone = (p: string) => p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
-const initials = (u: User) => (u.first_name?.[0] ?? u.phone.slice(-2)).toUpperCase();
+// สระนำภาษาไทยไม่ควรกลายเป็นอักษรย่อ เช่น เอกชัย ต้องแสดง อ ไม่ใช่ เ
+function initialFromName(name: string | null | undefined, fallback = "-") {
+  const clean = name?.trim() ?? "";
+  if (!clean) return fallback.toUpperCase();
+  return (/^[เแโใไ]/.test(clean) ? clean[1] : clean[0])?.toUpperCase() || fallback.toUpperCase();
+}
+const initials = (u: User) => initialFromName(u.first_name, u.phone.slice(-2));
+
+function redemptionAge(createdAt: string) {
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 3_600_000));
+  if (hours >= 72) return { label: `รอ ${Math.floor(hours / 24)} วัน`, overdue: true };
+  if (hours >= 24) return { label: `รอ ${Math.floor(hours / 24)} วัน`, overdue: false };
+  return { label: `รอ ${Math.max(1, hours)} ชม.`, overdue: false };
+}
+
+function memberMatches(u: User, query: string) {
+  const q = query.trim().toLocaleLowerCase("th");
+  if (!q) return true;
+  const digits = q.replace(/\D/g, "");
+  if (digits.length >= 3 && u.phone.endsWith(digits)) return true;
+  return [u.display_name, u.first_name, u.last_name, u.company, u.customer_id, u.suggested_customer_id]
+    .filter(Boolean).join(" ").toLocaleLowerCase("th").includes(q);
+}
 
 function exportCSV(users: User[]) {
   const header = ["ลำดับ", "รหัสลูกค้า", "ชื่อ", "นามสกุล", "เบอร์", "บริษัท", "วันเกิด", "แต้ม", "สมัครเมื่อ"];
@@ -134,6 +156,15 @@ export default function AdminPage() {
   // inline edit customer_id
   const [editingId, setEditingId]   = useState<number | null>(null);
   const [editValue, setEditValue]   = useState("");
+  const [editError, setEditError]   = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [expandedMemberId, setExpandedMemberId] = useState<number | null>(null);
+  const [memberMenuId, setMemberMenuId] = useState<number | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [linkTarget, setLinkTarget] = useState<User | null>(null);
+  const [linkChecked, setLinkChecked] = useState(false);
+  const [toast, setToast] = useState("");
+  const primaryActionRef = useRef<HTMLButtonElement>(null);
 
   // audit log
   interface AuditRow { id: number; action: string; detail: string; created_at: string; first_name: string | null; last_name: string | null; phone: string | null; }
@@ -153,6 +184,9 @@ export default function AdminPage() {
   const [redeemLoading, setRedeemLoading]   = useState(false);
   const [redeemError, setRedeemError]       = useState("");
   const [redeemAction, setRedeemAction]     = useState<Record<number, boolean>>({});
+  const [redeemModal, setRedeemModal] = useState<{ row: RedemptionRow; action: "confirm" | "cancel" } | null>(null);
+  const [handoffChecked, setHandoffChecked] = useState(false);
+  const [cancelReason, setCancelReason] = useState<"ลูกค้าไม่มารับ" | "ของหมด" | "กดผิด">("ลูกค้าไม่มารับ");
 
   const [auditOpen, setAuditOpen]       = useState(false);
   const [auditLogs, setAuditLogs]       = useState<AuditRow[]>([]);
@@ -172,7 +206,6 @@ export default function AdminPage() {
   }
 
   async function handleRedeemAction(id: number, action: "confirm" | "cancel") {
-    if (!window.confirm(action === "confirm" ? `ยืนยันการแลก #REQ-${id} ?` : `ยกเลิกคำขอ #REQ-${id} ?`)) return;
     setRedeemAction(prev => ({ ...prev, [id]: true }));
     try {
       const res  = await fetch(apiUrl("/api/admin/redemptions"), {
@@ -184,6 +217,8 @@ export default function AdminPage() {
       if (!res.ok) { setRedeemError(data.error ?? "เกิดข้อผิดพลาด"); return; }
       setRedeemError("");
       setRedeemRows(prev => prev.map(r => r.id === id ? { ...r, status: action === "confirm" ? "confirmed" : "cancelled", confirmed_at: new Date().toISOString() } : r));
+      setRedeemModal(null);
+      setToast(action === "confirm" ? `ยืนยันรับของ #REQ-${id} แล้ว` : `ยกเลิก #REQ-${id} แล้ว · คืนแต้มให้ลูกค้า`);
       fetchRedemptions();
       fetchUsers(savedPw, search);
     } finally { setRedeemAction(prev => ({ ...prev, [id]: false })); }
@@ -378,9 +413,21 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!authed || !tab || tab !== "members") return;
-    const timer = window.setTimeout(() => fetchUsers(savedPw, search), 180);
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 150);
     return () => window.clearTimeout(timer);
-  }, [search, tab, authed, fetchUsers, savedPw]);
+  }, [search, tab, authed]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  useEffect(() => {
+    if (tab !== "members" || !debouncedSearch) return;
+    const matches = users.filter(u => memberMatches(u, debouncedSearch));
+    if (matches.length !== 1) return;
+    setExpandedMemberId(matches[0].id);
+    window.setTimeout(() => primaryActionRef.current?.focus(), 0);
+  }, [debouncedSearch, tab, users]);
   function go(t: Tab) { setTab(t); sessionStorage.setItem("admin_tab", t); }
   function logout() {
     sessionStorage.removeItem("admin_pw"); sessionStorage.removeItem("admin_username"); sessionStorage.removeItem("admin_role");
@@ -410,10 +457,13 @@ export default function AdminPage() {
     patchMember(u.id, { reset_line: true }, x => ({ ...x, line_user_id: null }));
   }
 
-  async function saveCustomerId(userId: number, value: string) {
-    setEditingId(null);
+  async function saveCustomerId(userId: number, value: string): Promise<boolean> {
     // รหัสลูกค้า Hero (CUS-xxxxx) — ผูกแล้วบอทให้แต้มจากบิล Hero อัตโนมัติ; API ตัดช่องว่าง/พิมพ์ใหญ่ให้ และกันผูกซ้ำคนอื่น
     const code = value.trim().toUpperCase() || null;
+    if (code && !/^CUS-\d{4,5}$/.test(code)) {
+      setEditError("รูปแบบต้องเป็น CUS-00000");
+      return false;
+    }
     const res = await fetch(apiUrl("/api/admin/update-member"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": savedPw, "x-admin-username": savedUsername },
@@ -422,16 +472,25 @@ export default function AdminPage() {
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       alert(d.error || `บันทึกรหัสลูกค้าไม่สำเร็จ (${res.status})`);
-      return;
+      return false;
     }
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, customer_id: code, suggested_customer_id: null } : u));
+    setEditingId(null);
+    setEditError("");
+    if (code) setToast(`ผูก ${code} แล้ว`);
+    return true;
   }
 
   function confirmSuggestedCustomer(u: User) {
     if (!u.suggested_customer_id) return;
-    const hero = u.suggested_customer_name ? `${u.suggested_customer_id} · ${u.suggested_customer_name}` : u.suggested_customer_id;
-    if (!window.confirm(`ยืนยันว่าตรวจชื่อและบัตร/เบอร์ของลูกค้าแล้ว\n\nสมาชิก: ${u.first_name ?? "-"} ${u.last_name ?? ""}\nHero: ${hero}\n\nต้องการผูกรหัสนี้ใช่หรือไม่?`)) return;
-    saveCustomerId(u.id, u.suggested_customer_id);
+    setLinkChecked(false);
+    setLinkTarget(u);
+  }
+
+  function openManualCode(u: User) {
+    setEditingId(u.id);
+    setEditValue(u.customer_id ?? "");
+    setEditError("");
   }
 
   function exportTxExcel() {
@@ -589,13 +648,22 @@ export default function AdminPage() {
   const unlinked = users.filter(u => !u.customer_id);
   const suggested = users.filter(u => !u.customer_id && u.suggested_customer_id);
   const noLine = users.filter(u => !u.line_user_id);
-  const shown = users.filter(u => memberFilter === "all" ? true : memberFilter === "unlinked" ? !u.customer_id : memberFilter === "suggested" ? (!u.customer_id && !!u.suggested_customer_id) : !u.line_user_id);
+  const searchedUsers = users.filter(u => memberMatches(u, debouncedSearch));
+  const shown = searchedUsers.filter(u => memberFilter === "all" ? true : memberFilter === "unlinked" ? !u.customer_id : memberFilter === "suggested" ? (!u.customer_id && !!u.suggested_customer_id) : !u.line_user_id);
   const waitingShown = shown.filter(u => !u.customer_id).sort((a, b) => (b.waiting_days ?? 0) - (a.waiting_days ?? 0));
   const linkedShown = shown.filter(u => !!u.customer_id);
+  const linked = users.filter(u => !!u.customer_id);
+  const pendingRedeems = redeemRows.filter(r => r.status === "pending").sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const completedRedeems = redeemRows.filter(r => r.status !== "pending");
   const tierCount = (name: string) => users.filter(u => tierOf(u.points).name === name).length;
+  const linkMemberName = linkTarget ? `${linkTarget.first_name ?? "-"} ${linkTarget.last_name ?? ""}`.trim() : "";
+  const linkHeroName = linkTarget?.suggested_customer_name?.trim() ?? "";
+  const linkNameMismatch = Boolean(linkHeroName && linkMemberName.replace(/\s/g, "") !== linkHeroName.replace(/\s/g, ""));
 
-  const TabBtn = ({ id, label, icon, badge }: { id: Tab; label: string; icon: string; badge?: number }) => (
-    <button className={`ad-tab${tab === id ? " on" : ""}`} onClick={() => go(id)}>{icon} {label}{badge ? <span className="ad-badge">{badge}</span> : null}</button>
+  const TabBtn = ({ id, label, mobileLabel, icon, badge }: { id: Tab; label: string; mobileLabel?: string; icon: string; badge?: number }) => (
+    <button className={`ad-tab${tab === id ? " on" : ""}`} onClick={() => go(id)} aria-label={label}>
+      <span className="ad-tab-icon" aria-hidden="true">{icon}</span><span className="ad-tab-label"><span className="ad-tab-desktop-label">{label}</span><span className="ad-tab-mobile-label">{mobileLabel ?? label}</span></span>{badge ? <span className="ad-badge">{badge}</span> : null}
+    </button>
   );
 
   return (
@@ -604,24 +672,33 @@ export default function AdminPage() {
       <div className="ad-top"><div className="ad-top-in">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/dk-logo.jpg" alt="DK" />
-        <div>
-          <div className="ad-top-name">DK Admin · ระบบสมาชิก</div>
-          <div className="ad-top-sub">{savedUsername} <span className="ad-role">{role === "super" ? "Super Admin" : role === "staff" ? "Staff" : "Viewer"}</span></div>
+        <div className="ad-top-identity">
+          <div className="ad-top-name">DK Admin<span className="ad-top-name-extra"> · ระบบสมาชิก</span></div>
+          <div className="ad-top-sub"><span className="ad-top-user">{savedUsername}</span><span className="ad-role">{role === "super" ? "Super Admin" : role === "staff" ? "Staff" : "Viewer"}</span></div>
         </div>
         <div className="ad-top-actions">
           {role === "super" && <a className="ad-tbtn" href="/admin/rewards">🎁 ของรางวัล</a>}
           <button className="ad-tbtn" onClick={() => exportCSV(users)}>⬇️ Export CSV</button>
           <button className="ad-tbtn" onClick={logout}>ออกจากระบบ</button>
         </div>
+        <div className="ad-top-menu">
+          <button className="ad-more" aria-label="เมนูเพิ่มเติม" aria-expanded={headerMenuOpen} onClick={() => setHeaderMenuOpen(v => !v)}>⋯</button>
+          {headerMenuOpen && <div className="ad-menu-popover">
+            {role === "super" && <a href="/admin/rewards">ของรางวัล</a>}
+            {role === "super" && <button onClick={() => { go("settings"); setHeaderMenuOpen(false); }}>ตั้งค่า</button>}
+            <button onClick={() => { exportCSV(users); setHeaderMenuOpen(false); }}>Export CSV</button>
+            <button className="danger" onClick={logout}>ออกจากระบบ</button>
+          </div>}
+        </div>
       </div></div>
 
       {/* แท็บ */}
       <div className="ad-tabs"><div className="ad-tabs-in">
         <TabBtn id="overview" label="ภาพรวม" icon="📊" />
-        <TabBtn id="members" label="สมาชิก" icon="👥" badge={suggested.length || undefined} />
-        {canEdit && <TabBtn id="redeem" label="คำขอแลกของ" icon="🎁" badge={pending || undefined} />}
-        {canEdit && <TabBtn id="points" label="เพิ่ม/หักแต้ม" icon="⭐" />}
-        <TabBtn id="history" label="ประวัติแต้ม" icon="📋" />
+        <TabBtn id="members" label="สมาชิก" icon="👥" badge={unlinked.length || undefined} />
+        {canEdit && <TabBtn id="redeem" label="คำขอแลกของ" mobileLabel="แลกของ" icon="🎁" badge={pending || undefined} />}
+        {canEdit && <TabBtn id="points" label="เพิ่ม/หักแต้ม" mobileLabel="แต้ม" icon="⭐" />}
+        <TabBtn id="history" label="ประวัติแต้ม" mobileLabel="ประวัติ" icon="📋" />
         {role === "super" && <TabBtn id="settings" label="ตั้งค่า" icon="⚙️" />}
       </div></div>
 
@@ -636,30 +713,28 @@ export default function AdminPage() {
             <div className="ad-stats">
               <div className="ad-stat"><i>👥</i><div><b>{users.length.toLocaleString()}</b><span>สมาชิกทั้งหมด</span></div></div>
               <div className="ad-stat"><i>⭐</i><div><b>{totalPoints.toLocaleString()}</b><span>แต้มคงเหลือรวม</span></div></div>
-              <div className={`ad-stat${pending ? " hot" : ""}`}><i>🎁</i><div><b>{pending}</b><span>คำขอแลกของรอยืนยัน</span></div></div>
-              <div className={`ad-stat${suggested.length ? " hot" : ""}`}><i>🔗</i><div><b>{suggested.length}</b><span>รอกดผูกรหัส Hero (เบอร์ตรง)</span></div></div>
-              <div className="ad-stat"><i>❔</i><div><b>{unlinked.length}</b><span>ยังไม่ผูกรหัส Hero</span></div></div>
+              <button className={`ad-stat ad-stat--action${pending ? " hot" : ""}`} aria-label="ไปยืนยันรายการแลกของ" onClick={() => go("redeem")}><i>🎁</i><div><b>{pending}</b><span>คำขอแลกของรอยืนยัน</span></div><em>→</em></button>
+              <button className={`ad-stat ad-stat--action${suggested.length ? " hot" : ""}`} aria-label="ไปตรวจรายการเบอร์ตรง" onClick={() => { setMemberFilter("suggested"); go("members"); }}><i>🔗</i><div><b>{suggested.length}</b><span>รอกดผูกรหัส Hero</span></div><em>→</em></button>
+              <button className="ad-stat ad-stat--action ad-stat--wide-mobile" aria-label="ไปดูรายชื่อที่ยังไม่ผูก" onClick={() => { setMemberFilter("unlinked"); go("members"); }}><i>❔</i><div><b>{unlinked.length}</b><span>ยังไม่ผูก {unlinked.length} (บอทเจอเบอร์ตรง {suggested.length})</span></div><em>→</em></button>
             </div>
-            <div className="ad-grid ad-grid--2">
-              <div className="ad-card">
-                <div className="ad-card-h"><div><h3>🏅 สมาชิกแยกตามระดับ</h3><p>นับจากแต้มคงเหลือ · เกณฑ์ Bronze 100 · Silver 500 · Gold 2,000 · Platinum 5,000 · Diamond 10,000</p></div></div>
+            <div className="ad-overview-grid">
+              <div className="ad-card ad-work-card">
+                <div className="ad-card-h"><div><h3>⚡ งานที่ควรทำ</h3><p>สิ่งที่รอพนักงานอยู่ตอนนี้</p></div></div>
+                <div className="ad-work-list">
+                  {pending > 0 && <div className="ad-work-row warn"><span><b>{pending}</b> คำขอแลกของรอยืนยัน</span>{canEdit && <button className="ad-btn ad-btn--warn" onClick={() => go("redeem")}>ไปยืนยัน</button>}</div>}
+                  {suggested.length > 0 && <div className="ad-work-row warn"><span><b>{suggested.length}</b> คน บอทพบเบอร์ตรงกับ Hero</span>{canEdit && <button className="ad-btn ad-btn--warn" onClick={() => { setMemberFilter("suggested"); go("members"); }}>ตรวจและผูก</button>}</div>}
+                  {unlinked.length - suggested.length > 0 && <div className="ad-work-row info"><span><b>{unlinked.length - suggested.length}</b> คน ยังไม่พบรหัส Hero</span><button className="ad-btn ad-btn--ghost" onClick={() => { setMemberFilter("unlinked"); go("members"); }}>ดูรายชื่อ</button></div>}
+                  {pending === 0 && suggested.length === 0 && unlinked.length === 0 && <div className="ad-empty"><i>✅</i>ไม่มีงานค้าง</div>}
+                </div>
+                <details className="ad-disclosure"><summary>วิธีได้แต้ม</summary><p>ลูกค้าสมัครใน LINE → ผูกรหัส Hero ที่แท็บสมาชิก → บิลขายสด/โอนจะกลายเป็นแต้มภายใน 1–2 นาที (บิลเชื่อ K1/K2 และลูกค้าเครดิตไม่นับ)</p></details>
+              </div>
+              <div className="ad-card ad-tier-card">
+                <div className="ad-card-h"><div><h3>🏅 สมาชิกแยกตามระดับ</h3><p>นับจากแต้มคงเหลือ</p></div></div>
                 <div className="ad-twrap"><table className="ad-table"><tbody>
                   {TIERS.map(t => (
                     <tr key={t.name}><td><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.emoji} {t.name}</span></td><td className="ad-note">{t.min > 0 ? `${t.min.toLocaleString()} แต้มขึ้นไป` : "เริ่มต้น"}</td><td className="r"><b>{tierCount(t.name).toLocaleString()}</b> คน</td></tr>
                   ))}
                 </tbody></table></div>
-              </div>
-              <div className="ad-card">
-                <div className="ad-card-h"><div><h3>⚡ งานที่ควรทำ</h3><p>สิ่งที่รอพนักงานอยู่ตอนนี้</p></div></div>
-                <div className="ad-form">
-                  {pending > 0 && <div className="ad-alert ad-alert--warn" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>🎁 คำขอแลกของรอยืนยัน <b>{pending}</b> รายการ</span>{canEdit && <button className="ad-btn ad-btn--warn ad-btn--sm" onClick={() => go("redeem")}>ไปยืนยัน</button>}</div>}
-                  {suggested.length > 0 && <div className="ad-alert ad-alert--warn" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>🔗 บอทพบเบอร์ตรงกับลูกค้า Hero <b>{suggested.length}</b> คน — เช็คชื่อแล้วกดผูก</span>{canEdit && <button className="ad-btn ad-btn--warn ad-btn--sm" onClick={() => { setMemberFilter("suggested"); go("members"); }}>ไปดู</button>}</div>}
-                  {unlinked.length - suggested.length > 0 && <div className="ad-alert ad-alert--info" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span>❔ สมาชิกที่ยังไม่มีรหัส Hero <b>{unlinked.length - suggested.length}</b> คน — ยังไม่ได้แต้มจากบิล</span><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => { setMemberFilter("unlinked"); go("members"); }}>ไปดู</button></div>}
-                  {pending === 0 && suggested.length === 0 && unlinked.length === 0 && <div className="ad-empty"><i>✅</i>ไม่มีงานค้าง</div>}
-                  <div className="ad-note" style={{ marginTop: 6 }}>
-                    <b>วิธีให้แต้มอัตโนมัติ:</b> ลูกค้าสมัครใน LINE → ผูกรหัส Hero ที่แท็บ "สมาชิก" → บิลขายสด/โอนของรหัสนั้นจะกลายเป็นแต้มเองภายใน 1–2 นาที (บิลเชื่อ K1/K2 และลูกค้าเครดิตไม่นับ)
-                  </div>
-                </div>
               </div>
             </div>
           </>
@@ -667,78 +742,73 @@ export default function AdminPage() {
 
         {/* ═══ สมาชิก ═══ */}
         {tab === "members" && (
-          <div className="ad-card">
+          <div className="ad-card ad-members-card">
             <div className="ad-card-h">
-              <div><h3>👥 สมาชิก <span className="ad-chip ad-chip--muted">{shown.length.toLocaleString()} คน</span></h3><p>คลิกช่องรหัส Hero เพื่อผูก/แก้ · ✏️ เปลี่ยนเบอร์ · 🔓 ปลด LINE เดิมเมื่อลูกค้าเปลี่ยนเครื่อง</p></div>
-              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchUsers(savedPw, search)} disabled={loading}>{loading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button></div>
+              <div><h3>สมาชิก <span className="ad-chip ad-chip--muted">ทั้งหมด {users.length.toLocaleString()} คน</span></h3><p>ค้นหาเบอร์ลูกค้าเพื่อยืนยันตัวตนและผูกรหัส Hero</p></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost" onClick={() => fetchUsers(savedPw, "")} disabled={loading}>{loading ? "กำลังโหลด…" : "รีเฟรช"}</button></div>
             </div>
-            <div className="ad-toolbar">
-              <input className="ad-input" type="search" inputMode="search" aria-label="ค้นหาสมาชิก" placeholder="พิมพ์ชื่อ หรือเบอร์ท้าย 3–4 ตัว…" value={search} onChange={e => setSearch(e.target.value)} />
-              {search && <button className="ad-btn ad-btn--ghost" onClick={() => { setSearch(""); fetchUsers(savedPw, ""); }}>ล้าง</button>}
-              <div className="ad-filters" style={{ marginLeft: "auto" }}>
+            <div className="ad-member-toolbar">
+              <div className="ad-search-wrap"><input className="ad-input ad-member-search" type="search" inputMode="search" aria-label="ค้นหาสมาชิก" placeholder="ค้นหาเบอร์ลูกค้า (พิมพ์ 4 ตัวท้ายพอ) หรือชื่อ" value={search} onChange={e => setSearch(e.target.value)} />
+              {search && <button className="ad-search-clear" aria-label="ล้างคำค้น" onClick={() => { setSearch(""); setDebouncedSearch(""); }}>×</button>}</div>
+              <div className="ad-filters">
                 {([["all", "ทั้งหมด"], ["suggested", `รอกดผูก ${suggested.length}`], ["unlinked", `ยังไม่ผูก ${unlinked.length}`], ["noline", `ไม่มี LINE ${noLine.length}`]] as const).map(([k, l]) => (
                   <button key={k} className={`ad-filter${memberFilter === k ? " on" : ""}`} onClick={() => setMemberFilter(k)}>{l}</button>
                 ))}
               </div>
             </div>
-            {waitingShown.length > 0 && <div className="ad-verify-list">
-              <div className="ad-safety">🪪 <b>ก่อนกดยืนยัน:</b> ถามชื่อลูกค้า แล้วดูบัตรหรือเช็กเบอร์จากเครื่องลูกค้า ป้องกันการสวมเบอร์</div>
+            {shown.length === 0 && <div className="ad-search-empty"><b>{debouncedSearch ? `ไม่พบเบอร์ ${debouncedSearch.replace(/\D/g, "").slice(-4) || debouncedSearch}` : "ไม่พบสมาชิกตามตัวกรอง"}{debouncedSearch ? " — ลูกค้ายังไม่ได้สมัครใน LINE" : ""}</b>{debouncedSearch && <span>ให้ลูกค้าสแกน QR สมัครสมาชิก</span>}</div>}
+            {waitingShown.length > 0 && <section className="ad-waiting-section">
+              <div className="ad-section-title"><h4>รอยืนยัน {unlinked.length}</h4><span>เรียงจากคนที่รอนานที่สุด</span></div>
+              <div className="ad-safety"><b>ก่อนกดยืนยัน</b> ถามชื่อลูกค้า แล้วดูบัตรหรือเช็กเบอร์จากเครื่องลูกค้า เพื่อป้องกันการสวมเบอร์</div>
+              <div className="ad-verify-list">
               {waitingShown.map(u => <article className="ad-verify-card" key={u.id}>
-                <div className="ad-verify-head"><div><span className="ad-chip ad-chip--warn">รอยืนยัน {u.waiting_days ?? 0} วัน</span><h4>{u.display_name || "ไม่ระบุชื่อ LINE"}</h4><span>ชื่อที่กรอก: <b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b> · {fmtPhone(u.phone)}</span></div><div className="ad-pending-bills" title="ผูกรหัสแล้ว ระบบดึงบิลของรหัสนี้ตั้งแต่วันที่นี้มาให้แต้มเอง"><span>ย้อนหลังถึง</span><b>{backfillStartLabel(u.created_at)}</b></div></div>
+                <div className="ad-verify-head"><div><span className="ad-chip ad-chip--warn">รอ {u.waiting_days ?? 0} วัน</span><h4>{u.display_name || "ไม่ระบุชื่อ LINE"}</h4><span><b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b> · {fmtPhone(u.phone)}</span></div><span className="ad-backfill">บิลตั้งแต่ {backfillStartLabel(u.created_at)} จะได้แต้มย้อนหลัง</span></div>
                 <div className="ad-match">
-                  <div><small>ข้อมูลจาก LINE / สมัคร</small><strong>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</strong><span>{fmtPhone(u.phone)}{u.company ? ` · ${u.company}` : ""}</span></div>
-                  <div className="ad-match-arrow">เทียบกับ →</div>
+                  <div><small>สมาชิก LINE</small><strong>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</strong><span>{fmtPhone(u.phone)}{u.company ? ` · ${u.company}` : ""}</span></div>
+                  <div className="ad-match-arrow"><span className="desktop">เทียบกับ →</span><span className="mobile">↓</span></div>
                   <div><small>ลูกค้า Hero ที่ระบบเสนอ</small><strong>{u.suggested_customer_id ?? "ยังไม่พบรหัสที่ตรง"}</strong><span>{u.suggested_customer_name ?? "ไม่มีชื่อจาก Hero ให้เทียบ"}</span></div>
                 </div>
                 <div className="ad-verify-actions">
-                  {u.suggested_customer_id ? <button className="ad-btn ad-btn--ok" onClick={() => confirmSuggestedCustomer(u)}>ตรวจแล้ว · ยืนยันผูกรหัส</button> : <button className="ad-btn ad-btn--ghost" onClick={() => { setEditingId(u.id); setEditValue(""); }}>กรอกรหัส Hero เอง</button>}
-                  <span>ผูกแล้ว บิลตั้งแต่วันสมัคร (ไม่เกิน 30 วัน) จะได้แต้มเองภายใน 10 นาที</span>
+                  {u.suggested_customer_id ? <button ref={debouncedSearch && searchedUsers.length === 1 && searchedUsers[0].id === u.id ? primaryActionRef : undefined} className="ad-btn ad-btn--ok" onClick={() => confirmSuggestedCustomer(u)}>ตรวจและผูกรหัส</button> : <button ref={debouncedSearch && searchedUsers.length === 1 && searchedUsers[0].id === u.id ? primaryActionRef : undefined} className="ad-btn ad-btn--ghost" onClick={() => openManualCode(u)}>กรอกรหัส Hero เอง</button>}
                 </div>
-                {editingId === u.id && <input className="ad-code-in ad-code-in--wide" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }} placeholder="กรอกรหัสแล้วกด Enter" />}
+                {editingId === u.id && <div className="ad-code-form"><label htmlFor={`hero-${u.id}`}>รหัสลูกค้า Hero</label><input id={`hero-${u.id}`} className={`ad-code-in ad-code-in--wide${editError ? " invalid" : ""}`} autoFocus value={editValue} onChange={e => { setEditValue(e.target.value.toUpperCase()); setEditError(""); }} placeholder="CUS-00000" />{editError && <span className="ad-field-error">{editError}</span>}<div className="ad-alert ad-alert--warn">ตรวจชื่อใน Hero ก่อนบันทึก</div><div className="ad-code-form-actions"><button className="ad-btn ad-btn--primary" onClick={() => saveCustomerId(u.id, editValue)}>บันทึก</button><button className="ad-link-btn" onClick={() => { setEditingId(null); setEditError(""); }}>ยกเลิก</button></div></div>}
               </article>)}
-            </div>}
-            {linkedShown.length > 0 && <h4 className="ad-section-label">สมาชิกที่ผูกแล้ว</h4>}
-            <div className="ad-twrap"><table className="ad-table">
-              <thead><tr><th>#</th><th>สมาชิก</th><th>เบอร์ / LINE</th><th>รหัส Hero</th><th>ระดับ</th><th className="r">แต้ม</th><th>วันเกิด</th><th>สมัครเมื่อ</th></tr></thead>
+              </div>
+            </section>}
+            {linkedShown.length > 0 && <section className="ad-linked-section"><div className="ad-section-title"><h4>ผูกแล้ว {linked.length}</h4></div>
+            <div className="ad-twrap ad-member-table"><table className="ad-table">
+              <thead><tr><th>#</th><th>สมาชิก</th><th>เบอร์ / LINE</th><th>รหัส Hero</th><th>ระดับ</th><th className="r">แต้ม</th><th className="r">คำสั่ง</th></tr></thead>
               <tbody>
-                {shown.length === 0 && <tr><td colSpan={8}><div className="ad-empty"><i>🔍</i>{users.length === 0 ? "ยังไม่มีสมาชิก — รอลูกค้าสมัครผ่าน LINE" : "ไม่พบข้อมูลตามตัวกรอง"}</div></td></tr>}
                 {linkedShown.map((u, i) => {
                   const t = tierOf(u.points);
-                  const isEditing = editingId === u.id;
                   return (
-                    <tr key={u.id}>
+                    <Fragment key={u.id}><tr>
                       <td className="ad-note">{i + 1}</td>
-                      <td><span className="ad-av">{initials(u)}</span><span className="ad-name" style={{ display: "inline-block", verticalAlign: "middle" }}><b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b>{u.company && <span>🏢 {u.company}</span>}</span></td>
+                      <td><span className="ad-av">{initials(u)}</span><span className="ad-name"><b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b>{u.company && <span>{u.company}</span>}</span></td>
                       <td>
                         <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtPhone(u.phone)}</span>
-                        {canEdit && <button className="ad-icon" onClick={() => changePhone(u)} title="เปลี่ยนเบอร์">✏️</button>}
                         <div style={{ marginTop: 4 }}>
                           {u.line_user_id
-                            ? <span className="ad-chip ad-chip--ok">LINE ✓{canEdit && <button className="ad-icon" style={{ marginLeft: 6 }} onClick={() => resetLine(u)} title="ปลด LINE เดิม (ลูกค้าเปลี่ยนเครื่อง/LINE หาย)">🔓</button>}</span>
+                            ? <span className="ad-chip ad-chip--ok">LINE ✓</span>
                             : <span className="ad-chip ad-chip--danger" title="รอลูกค้าสมัครด้วยเบอร์นี้">ไม่มี LINE</span>}
                         </div>
                       </td>
-                      <td>
-                        {isEditing ? (
-                          <input className="ad-code-in" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => saveCustomerId(u.id, editValue)}
-                            onKeyDown={e => { if (e.key === "Enter") saveCustomerId(u.id, editValue); if (e.key === "Escape") setEditingId(null); }} placeholder="CUS-xxxxx" />
-                        ) : (
-                          <span className={`ad-code${u.customer_id ? "" : " empty"}`} title={canEdit ? "คลิกเพื่อแก้ไข" : ""} onClick={() => { if (!canEdit) return; setEditingId(u.id); setEditValue(u.customer_id ?? u.suggested_customer_id ?? ""); }}>{u.customer_id ?? "ยังไม่ผูก"}</span>
-                        )}
-                        {!u.customer_id && u.suggested_customer_id && !isEditing && canEdit && (
-                          // บอทเจอลูกค้า Hero ที่เบอร์ตรงกัน — ให้พนักงานเช็คชื่อแล้วกดยืนยัน (ไม่ผูกอัตโนมัติ กันคนสมัครด้วยเบอร์คนอื่น)
-                          <button className="ad-suggest" onClick={() => confirmSuggestedCustomer(u)} title="บอทพบลูกค้า Hero ที่เบอร์โทรตรงกัน — ตรวจชื่อก่อนกด">🔗 เบอร์ตรง {u.suggested_customer_id} · กดผูก</button>
-                        )}
-                      </td>
+                      <td><span className="ad-code">{u.customer_id}</span></td>
                       <td><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.emoji} {t.name}</span></td>
                       <td className="r"><b>{u.points.toLocaleString()}</b></td>
-                      <td className="ad-note">{formatBirthday(u.birthday)}</td>
-                      <td className="ad-note">{formatDate(u.created_at)}</td>
-                    </tr>
+                      <td className="r"><button ref={debouncedSearch && searchedUsers.length === 1 && searchedUsers[0].id === u.id ? primaryActionRef : undefined} className="ad-row-more" aria-label={`คำสั่งสำหรับ ${u.first_name ?? "สมาชิก"}`} onClick={() => setExpandedMemberId(expandedMemberId === u.id ? null : u.id)}>⋯</button></td>
+                    </tr>{expandedMemberId === u.id && <tr className="ad-expanded-row"><td colSpan={7}><div className="ad-expanded-content"><span><small>วันเกิด</small><b>{formatBirthday(u.birthday)}</b></span><span><small>สมัครเมื่อ</small><b>{formatDate(u.created_at)}</b></span>{canEdit && <div className="ad-expanded-actions"><button className="ad-btn ad-btn--ghost" onClick={() => changePhone(u)}>เปลี่ยนเบอร์</button><button className="ad-btn ad-btn--ghost" onClick={() => openManualCode(u)}>แก้รหัส Hero</button>{u.line_user_id && <button className="ad-btn ad-btn--ghost" onClick={() => resetLine(u)}>ปลด LINE เดิม</button>}</div>}</div>{editingId === u.id && <div className="ad-code-form inline"><label htmlFor={`hero-linked-${u.id}`}>รหัสลูกค้า Hero</label><input id={`hero-linked-${u.id}`} className={`ad-code-in${editError ? " invalid" : ""}`} value={editValue} onChange={e => { setEditValue(e.target.value.toUpperCase()); setEditError(""); }} />{editError && <span className="ad-field-error">{editError}</span>}<div className="ad-code-form-actions"><button className="ad-btn ad-btn--primary" onClick={() => saveCustomerId(u.id, editValue)}>บันทึก</button><button className="ad-link-btn" onClick={() => setEditingId(null)}>ยกเลิก</button></div></div>}</td></tr>}</Fragment>
                   );
                 })}
               </tbody>
             </table></div>
+            <div className="ad-member-cards">{linkedShown.map(u => { const t = tierOf(u.points); return <article className="ad-member-card" key={u.id}>
+              <div className="ad-member-card-top"><div><b>{u.first_name ? `${u.first_name} ${u.last_name ?? ""}` : "-"}</b><span className="ad-chip ad-chip--tier" style={{ background: t.color }}>{t.name}</span></div><button ref={debouncedSearch && searchedUsers.length === 1 && searchedUsers[0].id === u.id ? primaryActionRef : undefined} className="ad-row-more" aria-label={`คำสั่งสำหรับ ${u.first_name ?? "สมาชิก"}`} onClick={() => setMemberMenuId(memberMenuId === u.id ? null : u.id)}>⋯</button></div>
+              <div className="ad-member-card-body"><span>{fmtPhone(u.phone)} · {u.line_user_id ? "LINE ✓" : "ไม่มี LINE"}</span><div><code>{u.customer_id}</code><strong>{u.points.toLocaleString()} แต้ม</strong></div></div>
+              {memberMenuId === u.id && <div className="ad-member-card-menu"><div><span>วันเกิด {formatBirthday(u.birthday)}</span><span>สมัคร {formatDate(u.created_at)}</span></div>{canEdit && <><button onClick={() => changePhone(u)}>เปลี่ยนเบอร์</button><button onClick={() => openManualCode(u)}>แก้รหัส Hero</button>{u.line_user_id && <button onClick={() => resetLine(u)}>ปลด LINE เดิม</button>}</>}</div>}
+              {editingId === u.id && <div className="ad-code-form inline"><label htmlFor={`hero-mobile-${u.id}`}>รหัสลูกค้า Hero</label><input id={`hero-mobile-${u.id}`} className={`ad-code-in${editError ? " invalid" : ""}`} value={editValue} onChange={e => { setEditValue(e.target.value.toUpperCase()); setEditError(""); }} />{editError && <span className="ad-field-error">{editError}</span>}<div className="ad-code-form-actions"><button className="ad-btn ad-btn--primary" onClick={() => saveCustomerId(u.id, editValue)}>บันทึก</button><button className="ad-link-btn" onClick={() => setEditingId(null)}>ยกเลิก</button></div></div>}
+            </article>; })}</div>
+            </section>}
           </div>
         )}
 
@@ -746,55 +816,47 @@ export default function AdminPage() {
         {tab === "redeem" && canEdit && (
           <div className="ad-card">
             <div className="ad-card-h">
-              <div><h3>🎁 คำขอแลกของรางวัล {pending > 0 && <span className="ad-badge">{pending} รอยืนยัน</span>}</h3><p>ลูกค้ากดแลกใน LINE → มารับที่ร้าน → ตรวจบัตรสมาชิกแล้วกดยืนยัน ระบบหักแต้มให้</p></div>
-              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => fetchRedemptions()} disabled={redeemLoading}>{redeemLoading ? "กำลังโหลด…" : "🔄 รีเฟรช"}</button></div>
+              <div><h3>คำขอแลกของรางวัล {pending > 0 && <span className="ad-badge">{pending} รอยืนยัน</span>}</h3><p>ตรวจเลขคำขอ บัตรสมาชิก และส่งมอบของก่อนยืนยัน</p></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost" onClick={() => fetchRedemptions()} disabled={redeemLoading}>{redeemLoading ? "กำลังโหลด…" : "รีเฟรช"}</button></div>
             </div>
             {redeemError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{redeemError}</div>}
-            {redeemRows.length === 0 ? <div className="ad-empty"><i>🎁</i>ยังไม่มีคำขอ</div> : (
-              <><div className="ad-redeem-grid">
-                {redeemRows.filter(r => r.status === "pending").map(r => {
+            {pendingRedeems.length === 0 ? <div className="ad-empty ad-redeem-empty"><i>✓</i>ไม่มีคำขอรอรับของ</div> : <div className="ad-redeem-grid">
+                {pendingRedeems.map(r => {
                   const name = r.first_name ? `${r.first_name} ${r.last_name ?? ""}` : (r.display_name ?? "-");
                   const busy = redeemAction[r.id];
+                  const age = redemptionAge(r.created_at);
                   return <article className="ad-redeem-card" key={r.id}>
-                    <div className="ad-redeem-top"><span className="ad-chip ad-chip--warn">รอรับของ</span><b>#REQ-{r.id}</b><time>{formatDateTime(r.created_at)}</time></div>
-                    <div className="ad-reward-name">🎁 {r.reward_name}</div>
-                    <div className="ad-redeem-person"><div className="ad-av">{name.slice(0, 1)}</div><div><b>{name}</b><span>{fmtPhone(r.phone)} · ใช้ {r.points_required.toLocaleString()} แต้ม</span></div></div>
-                    <div className="ad-safety ad-safety--compact">ตรวจชื่อลูกค้าและของรางวัลให้ตรงก่อนส่งมอบ</div>
-                    <div className="ad-redeem-actions"><button className="ad-btn ad-btn--ok" onClick={() => handleRedeemAction(r.id, "confirm")} disabled={busy}>{busy ? "กำลังบันทึก…" : "✓ ยืนยันว่ารับของแล้ว"}</button><button className="ad-btn ad-btn--danger" onClick={() => handleRedeemAction(r.id, "cancel")} disabled={busy}>ยกเลิกคำขอ</button></div>
+                    <div className="ad-redeem-top"><span className={`ad-chip ${age.overdue ? "ad-chip--danger" : "ad-chip--warn"}`}>{age.label}</span><b className="ad-req-number">#REQ-{r.id}</b><time>{formatDateTime(r.created_at)}</time></div>
+                    <div className="ad-reward-name">{r.reward_name}</div>
+                    <div className="ad-redeem-person"><div className="ad-av">{initialFromName(r.first_name || r.display_name, r.phone.slice(-2))}</div><div><b>{name}</b><span>{fmtPhone(r.phone)} · ใช้ {r.points_required.toLocaleString()} แต้ม</span></div></div>
+                    <div className="ad-safety ad-safety--compact">ขอให้ลูกค้าเปิดบัตรสมาชิกใน LINE แล้วดูว่าเลขคำขอตรงกัน</div>
+                    <div className="ad-redeem-actions"><button className="ad-cancel-text" onClick={() => { setRedeemModal({ row: r, action: "cancel" }); setCancelReason("ลูกค้าไม่มารับ"); }} disabled={busy}>ยกเลิกคำขอ</button><button className="ad-btn ad-btn--ok ad-redeem-confirm" onClick={() => { setRedeemModal({ row: r, action: "confirm" }); setHandoffChecked(false); }} disabled={busy}>{busy ? "กำลังบันทึก…" : "ยืนยันรับของ"}</button></div>
                   </article>;
                 })}
               </div>
-              <div className="ad-card-h ad-history-head"><div><h3>รายการที่ดำเนินการแล้ว</h3></div></div>
-              <div className="ad-twrap"><table className="ad-table">
-                <thead><tr><th>#REQ</th><th>สถานะ</th><th>ขอเมื่อ</th><th>ลูกค้า</th><th>เบอร์</th><th>ของรางวัล</th><th className="r">แต้ม</th><th></th></tr></thead>
+            }
+              <div className="ad-card-h ad-history-head"><div><h3>ประวัติคำขอ</h3></div></div>
+              {completedRedeems.length === 0 ? <div className="ad-empty">ยังไม่มีประวัติ</div> : <><div className="ad-twrap ad-redeem-history-table"><table className="ad-table">
+                <thead><tr><th>เลขคำขอ</th><th>สถานะ</th><th>ขอเมื่อ</th><th>ลูกค้า</th><th>เบอร์</th><th>ของรางวัล</th><th className="r">แต้ม</th><th>ยืนยันเมื่อ</th></tr></thead>
                 <tbody>
-                  {redeemRows.filter(r => r.status !== "pending").map(r => {
+                  {completedRedeems.map(r => {
                     const name = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-");
-                    const isPending = r.status === "pending", isConfirmed = r.status === "confirmed";
-                    const busy = redeemAction[r.id];
+                    const isConfirmed = r.status === "confirmed";
                     return (
                       <tr key={r.id}>
-                        <td><b style={{ color: "var(--ad-blue)" }}>#{r.id}</b></td>
-                        <td><span className={`ad-chip ${isPending ? "ad-chip--warn" : isConfirmed ? "ad-chip--ok" : "ad-chip--danger"}`}>{isPending ? "⏳ รอยืนยัน" : isConfirmed ? "✅ ยืนยันแล้ว" : "❌ ยกเลิก"}</span></td>
+                        <td><b className="ad-mono" style={{ color: "var(--ad-blue)" }}>#REQ-{r.id}</b></td>
+                        <td><span className={`ad-chip ${isConfirmed ? "ad-chip--ok" : "ad-chip--danger"}`}>{isConfirmed ? "ยืนยันแล้ว" : "ยกเลิก"}</span></td>
                         <td className="ad-note">{formatDateTime(r.created_at)}</td>
                         <td><b>{name}</b></td>
                         <td>{fmtPhone(r.phone)}</td>
                         <td><b>{r.reward_name}</b></td>
-                        <td className="r" style={{ color: "var(--ad-orange)", fontWeight: 800 }}>{r.points_required.toLocaleString()}</td>
-                        <td>
-                          {isPending ? (
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button className="ad-btn ad-btn--ok ad-btn--sm" onClick={() => handleRedeemAction(r.id, "confirm")} disabled={busy}>{busy ? "…" : "✅ ยืนยัน"}</button>
-                              <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => handleRedeemAction(r.id, "cancel")} disabled={busy}>{busy ? "…" : "ยกเลิก"}</button>
-                            </div>
-                          ) : <span className="ad-note">{isConfirmed && r.confirmed_at ? formatDate(r.confirmed_at) : "-"}</span>}
-                        </td>
+                        <td className="r"><b>−{r.points_required.toLocaleString()}</b></td>
+                        <td className="ad-note">{isConfirmed && r.confirmed_at ? formatDateTime(r.confirmed_at) : "-"}</td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table></div></>
-            )}
+              </table></div><div className="ad-redeem-history-cards">{completedRedeems.map(r => { const name = r.first_name ? `${r.first_name} ${r.last_name}` : (r.display_name ?? "-"); return <article key={r.id}><div><code>#REQ-{r.id}</code><span className={`ad-chip ${r.status === "confirmed" ? "ad-chip--ok" : "ad-chip--danger"}`}>{r.status === "confirmed" ? "ยืนยันแล้ว" : "ยกเลิก"}</span></div><b>{r.reward_name}</b><span>{name} · {fmtPhone(r.phone)}</span><div><span>{r.confirmed_at ? formatDateTime(r.confirmed_at) : "-"}</span><strong>−{r.points_required.toLocaleString()} แต้ม</strong></div></article>; })}</div></>}
           </div>
         )}
 
@@ -1010,6 +1072,22 @@ export default function AdminPage() {
           </>
         )}
       </div>
+      {linkTarget && <div className="ad-modal-backdrop" role="presentation" onMouseDown={e => { if (e.currentTarget === e.target) setLinkTarget(null); }}><section className="ad-modal" role="dialog" aria-modal="true" aria-labelledby="link-modal-title">
+        <div className="ad-modal-head"><h2 id="link-modal-title">ผูกรหัส Hero ให้ลูกค้า</h2><button className="ad-modal-close" aria-label="ปิด" onClick={() => setLinkTarget(null)}>×</button></div>
+        <div className="ad-confirm-pairs"><div><span>สมาชิก LINE</span><b>{linkMemberName}</b><small>{fmtPhone(linkTarget.phone)}</small></div><div><span>Hero</span><b className="ad-mono">{linkTarget.suggested_customer_id}</b><small>{linkHeroName || "ไม่มีชื่อจาก Hero"}</small></div></div>
+        {linkNameMismatch && <div className="ad-alert ad-alert--warn">ชื่อไม่ตรงกันทั้งหมด</div>}
+        <label className="ad-check"><input type="checkbox" checked={linkChecked} onChange={e => setLinkChecked(e.target.checked)} /><span>ตรวจบัตร/เบอร์บนเครื่องลูกค้าแล้ว</span></label>
+        <div className="ad-modal-actions"><button className="ad-btn ad-btn--ghost" onClick={() => setLinkTarget(null)}>ยกเลิก</button><button className="ad-btn ad-btn--ok" disabled={!linkChecked || !linkTarget.suggested_customer_id} onClick={async () => { if (linkTarget.suggested_customer_id && await saveCustomerId(linkTarget.id, linkTarget.suggested_customer_id)) setLinkTarget(null); }}>ยืนยันผูกรหัส</button></div>
+      </section></div>}
+      {redeemModal && <div className="ad-modal-backdrop" role="presentation" onMouseDown={e => { if (e.currentTarget === e.target) setRedeemModal(null); }}><section className="ad-modal" role="dialog" aria-modal="true" aria-labelledby="redeem-modal-title">
+        <div className="ad-modal-head"><div><span className="ad-mono ad-modal-req">#REQ-{redeemModal.row.id}</span><h2 id="redeem-modal-title">{redeemModal.action === "confirm" ? "ยืนยันการส่งมอบของ" : "ยกเลิกคำขอ"}</h2></div><button className="ad-modal-close" aria-label="ปิด" onClick={() => setRedeemModal(null)}>×</button></div>
+        <div className="ad-modal-reward">{redeemModal.row.reward_name}</div>
+        <div className="ad-modal-customer"><b>{redeemModal.row.first_name ? `${redeemModal.row.first_name} ${redeemModal.row.last_name ?? ""}` : (redeemModal.row.display_name ?? "-")}</b><span>{fmtPhone(redeemModal.row.phone)}</span></div>
+        <div className="ad-points-change">{redeemModal.action === "confirm" ? "หัก" : "คืน"} <b>{redeemModal.row.points_required.toLocaleString()} แต้ม</b></div>
+        {redeemModal.action === "confirm" ? <label className="ad-check"><input type="checkbox" checked={handoffChecked} onChange={e => setHandoffChecked(e.target.checked)} /><span>ส่งมอบของให้ลูกค้าแล้ว</span></label> : <><fieldset className="ad-reason-list"><legend>เหตุผลที่ยกเลิก</legend>{(["ลูกค้าไม่มารับ", "ของหมด", "กดผิด"] as const).map(reason => <label key={reason}><input type="radio" name="cancel-reason" value={reason} checked={cancelReason === reason} onChange={() => setCancelReason(reason)} /><span>{reason}</span></label>)}</fieldset><div className="ad-alert ad-alert--info">แต้มจะคืนให้ลูกค้า</div></>}
+        <div className="ad-modal-actions"><button className="ad-btn ad-btn--ghost" onClick={() => setRedeemModal(null)}>กลับ</button><button className={`ad-btn ${redeemModal.action === "confirm" ? "ad-btn--ok" : "ad-btn--danger"}`} disabled={redeemAction[redeemModal.row.id] || (redeemModal.action === "confirm" && !handoffChecked)} onClick={() => handleRedeemAction(redeemModal.row.id, redeemModal.action)}>{redeemModal.action === "confirm" ? "ยืนยันรับของ" : "ยืนยันยกเลิก"}</button></div>
+      </section></div>}
+      {toast && <div className="ad-toast" role="status">✓ {toast}</div>}
     </div>
   );
 }
