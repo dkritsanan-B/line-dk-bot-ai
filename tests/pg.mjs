@@ -10,7 +10,7 @@ export async function freshDb() {
       first_name TEXT, last_name TEXT, points INT NOT NULL DEFAULT 0, total_earned INT NOT NULL DEFAULT 0,
       customer_id TEXT, suggested_customer_id TEXT, last_purchase_at TIMESTAMPTZ,
       notified_inactive_11m BOOLEAN NOT NULL DEFAULT FALSE, company TEXT, birthday DATE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), backfill_from DATE, backfill_done_at TIMESTAMPTZ
     );
     CREATE TABLE transactions (
       id SERIAL PRIMARY KEY, user_id INT NOT NULL, purchase_amount NUMERIC NOT NULL DEFAULT 0,

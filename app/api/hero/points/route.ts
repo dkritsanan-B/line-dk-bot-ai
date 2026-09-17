@@ -56,6 +56,7 @@ async function pushMessage(to: string, message: object) {
 }
 
 const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
+const dateOnly = (v: unknown) => v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").slice(0, 10);
 
 // GET → รายชื่อสมาชิกที่ผูกรหัส Hero แล้ว (codes เดิม + members พร้อมระดับ) และสมาชิกที่ยังไม่ผูก (unlinked มีเบอร์) ให้ watcher บนเครื่องร้าน
 //   members[].level = ระดับราคา Hero (CSCUSTOMER.PRICELEVEL) 0=Welcome 1=Bronze … 5=Diamond — ชิ้น B: watcher เขียนลง Hero ให้ (ลูกค้าเครดิตได้ 0)
@@ -65,7 +66,7 @@ const normCode = (v: unknown) => String(v ?? "").trim().toUpperCase();
 export async function GET(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   await migrateDB();
-  const rows = await sql`SELECT id, customer_id, suggested_customer_id, phone, total_earned, points, last_purchase_at FROM users`;
+  const rows = await sql`SELECT id, customer_id, suggested_customer_id, phone, total_earned, points, last_purchase_at, backfill_from, backfill_done_at FROM users`;
   const members = rows.filter((r) => normCode(r.customer_id)).map((r) => {
     const tier = getEffectiveTier(Number(r.total_earned ?? 0), Number(r.points ?? 0), (r.last_purchase_at as string | null) ?? null);
     return { id: r.id as number, code: normCode(r.customer_id), tier: tier.name, level: tierIndex(tier) };
@@ -79,7 +80,28 @@ export async function GET(req: NextRequest) {
   const pending = rows.filter((r) => !normCode(r.customer_id) && normCode(r.suggested_customer_id))
     .map((r) => ({ id: r.id as number, code: normCode(r.suggested_customer_id) as string }));
   const pending_codes = [...new Set(pending.map((p) => p.code))];
-  return NextResponse.json({ codes, members, unlinked, pending, pending_codes }, { headers: { "Cache-Control": "no-store" } });
+  const backfill = rows
+    .filter((r) => normCode(r.customer_id) && r.backfill_from && !r.backfill_done_at)
+    .slice(0, 50)
+    .map((r) => ({ code: normCode(r.customer_id), from: dateOnly(r.backfill_from) }));
+  return NextResponse.json({ codes, members, unlinked, pending, pending_codes, backfill }, { headers: { "Cache-Control": "no-store" } });
+}
+
+// PATCH { backfill_done: ["CUS-..."] } → ปิดคิวที่ส่งสำเร็จแล้ว (ทำซ้ำได้โดยไม่เปลี่ยนแถวที่ปิดไปแล้ว)
+export async function PATCH(req: NextRequest) {
+  if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  let body: { backfill_done?: unknown };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
+  const codes = [...new Set((Array.isArray(body.backfill_done) ? body.backfill_done : []).map(normCode).filter(Boolean))].slice(0, 50);
+  if (!codes.length) return NextResponse.json({ updated: 0 });
+  await migrateDB();
+  const rows = await sql`
+    UPDATE users SET backfill_done_at = NOW()
+    WHERE UPPER(TRIM(customer_id)) = ANY(${codes})
+      AND backfill_from IS NOT NULL AND backfill_done_at IS NULL
+    RETURNING id
+  `;
+  return NextResponse.json({ updated: rows.length });
 }
 
 // PUT { links: [{ id, customer_id }] } → "แนะนำ" รหัส Hero ให้สมาชิก (watcher จับคู่เบอร์โทรได้ตัวเดียว) — เก็บใน suggested_customer_id ให้พนักงานกดยืนยันในหน้า /admin
@@ -174,9 +196,10 @@ async function notePendingBill(code: string, billNo: string, amount: number, dat
 
 export async function POST(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  let body: { bills?: BillIn[] };
+  let body: { bills?: BillIn[]; backfill?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "bad json" }, { status: 400 }); }
   const bills = Array.isArray(body.bills) ? body.bills.slice(0, 200) : [];
+  const isBackfill = body.backfill === true;
   if (!bills.length) return NextResponse.json({ error: "no bills" }, { status: 400 });
 
   await migrateDB();
@@ -192,10 +215,7 @@ export async function POST(req: NextRequest) {
     if (amount <= 0) { results.push({ bill_no: billNo, status: "skip", message: "ยอด ≤ 0" }); continue; }
 
     try {
-      const dup = await sql`SELECT 1 FROM hero_point_bills WHERE bill_no = ${billNo} LIMIT 1`;
-      if (dup.length) { results.push({ bill_no: billNo, status: "dup" }); continue; }
-
-      const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned, points, last_purchase_at FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
+      const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned, points, last_purchase_at, backfill_from, backfill_done_at FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
       const u = users[0];
       if (!u) {
         // เดิม: ข้ามเงียบ ๆ ไม่เหลือร่องรอยว่าลูกค้าที่รอผูกรหัสซื้อของไปแล้วกี่ใบ
@@ -209,6 +229,29 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      if (isBackfill) {
+        if (!u.backfill_from || u.backfill_done_at) {
+          results.push({ bill_no: billNo, status: "skip", message: "สมาชิกไม่มีคิวย้อนหลังหรือปิดงานแล้ว" });
+          continue;
+        }
+        if (!date) {
+          results.push({ bill_no: billNo, status: "skip", message: "วันที่บิลไม่ถูกต้อง" });
+          continue;
+        }
+        const allowed = await sql`
+          SELECT 1
+          WHERE ${date}::date >= ${u.backfill_from}::date
+            AND ${date}::date <= (NOW() AT TIME ZONE 'Asia/Bangkok')::date
+        `;
+        if (!allowed.length) {
+          results.push({ bill_no: billNo, status: "skip", message: "วันที่บิลอยู่นอกช่วงแต้มย้อนหลัง" });
+          continue;
+        }
+      }
+
+      const dup = await sql`SELECT 1 FROM hero_point_bills WHERE bill_no = ${billNo} LIMIT 1`;
+      if (dup.length) { results.push({ bill_no: billNo, status: "dup" }); continue; }
+
       const before = getTierFromPoints(Number(u.total_earned ?? 0));
       // ระดับที่ใช้คิดโบนัส = ระดับ ณ ตอนซื้อ (ก่อนแต้มบิลนี้เข้า, คิด hard-drop ถ้าหายไป 12 เดือน)
       const bonusTier = getEffectiveTier(Number(u.total_earned ?? 0), Number(u.points ?? 0), (u.last_purchase_at as string | null) ?? null);
@@ -216,7 +259,7 @@ export async function POST(req: NextRequest) {
       const bonus = computeBonus(lines, bonusTier);
       const bonusPts = bonusPoints(bonus.baht);
 
-      const r = await addPoints(u.phone as string, amount, `บิล ${billNo}`);
+      const r = await addPoints(u.phone as string, amount, `${isBackfill ? "แต้มย้อนหลัง " : ""}บิล ${billNo}`);
       const pts = r?.pointsEarned ?? 0;
       if (bonusPts > 0) {
         // โบนัสไม่นับเข้า total_earned (ไม่ดันระดับ) — เป็นมูลค่าส่วนลดที่คืนเป็นแต้ม แลกได้เหมือนแต้มปกติ
@@ -224,7 +267,7 @@ export async function POST(req: NextRequest) {
         const summary = bonus.lines.filter((l) => l.baht > 0).map((l) => `${l.reason} ${l.rate}${l.rule === "sheet" ? "บ/ม" : "%"}`);
         await sql`
           INSERT INTO transactions (user_id, purchase_amount, points_earned, type, note, expires_at)
-          VALUES (${u.id as number}, 0, ${bonusPts}, 'earn', ${`โบนัส ${bonusTier.name} บิล ${billNo} (${[...new Set(summary)].join(", ")})`}, NOW() + INTERVAL '1 year')
+          VALUES (${u.id as number}, 0, ${bonusPts}, 'earn', ${`${isBackfill ? "โบนัสย้อนหลัง" : "โบนัส"} ${bonusTier.name} บิล ${billNo} (${[...new Set(summary)].join(", ")})`}, NOW() + INTERVAL '1 year')
         `;
       }
       // บันทึกบิลแม้ได้ 0 แต้ม (ยอดต่ำกว่า 100) — จะได้ไม่ถูกส่งซ้ำทุกรอบ

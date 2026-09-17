@@ -1,4 +1,4 @@
-// ฝั่งพนักงาน: หน้าแอดมินต้องเห็นว่าใครค้างรอผูกรหัสนานแค่ไหน และตอนกดผูกต้องไม่มีแต้มย้อนหลัง
+// ฝั่งพนักงาน: หน้าแอดมินต้องเห็นว่าใครค้างรอผูกรหัสนานแค่ไหน และตอนกดผูกต้องเปิดคิวแต้มย้อนหลังโดยยังไม่บวกแต้มทันที
 import { test, eq, ok } from "./_harness.mjs";
 import { onQuery, reset, queriesWith, calls } from "./mocks/db.mjs";
 
@@ -45,7 +45,7 @@ test("GET /api/admin/members: อ่านตารางบิลค้าง�
   eq(d.users[0].pending_bills, null);
 });
 
-test("PATCH ผูกรหัสให้สมาชิก: ปิดบิลค้าง แต่ห้ามให้แต้มย้อนหลัง", async () => {
+test("PATCH ผูกรหัสให้สมาชิก: ปิดตัวนับบิลค้างและเปิดคิว แต่ยังห้ามบวกแต้มทันที", async () => {
   reset();
   onQuery("FROM users WHERE id", [{ id: 5, customer_id: null, phone: "0855555555", line_user_id: "U1", first_name: "สมชาย", last_name: "ใจดี" }]);
   onQuery("TRIM(customer_id)", []);   // รหัสนี้ยังไม่มีใครใช้
@@ -57,7 +57,7 @@ test("PATCH ผูกรหัสให้สมาชิก: ปิดบิล
   const d = await res.json();
   eq(d.success, true);
   ok(d.done.some((x) => x.includes("CUS-10595")), "ต้องบันทึกว่าผูกรหัสอะไร: " + JSON.stringify(d.done));
-  ok(d.done.some((x) => x.includes("ปิดบิลค้าง 2 ใบ")), "ต้องบอกว่าปิดบิลค้างกี่ใบ: " + JSON.stringify(d.done));
+  ok(d.done.some((x) => x.includes("ปิดตัวนับบิลค้าง 2 ใบ")), "ต้องบอกว่าปิดตัวนับบิลค้างกี่ใบ: " + JSON.stringify(d.done));
 
   const gave = calls.filter((c) => c.text.includes("points = points +") || c.text.includes("INSERT INTO transactions"));
   eq(gave.length, 0, "ห้ามมีแต้มย้อนหลังตอนผูกรหัส");

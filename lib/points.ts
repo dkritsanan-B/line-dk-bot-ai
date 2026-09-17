@@ -51,6 +51,8 @@ export async function migrateDB() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birthday               DATE`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id            TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS suggested_customer_id  TEXT`;   // บอทเดารหัส Hero จากเบอร์ → พนักงานกดยืนยันเอง (ไม่ผูกอัตโนมัติ กันสวมเบอร์คนอื่น)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS backfill_from           DATE`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS backfill_done_at        TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_earned           INT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_purchase_at       TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notified_inactive_11m  BOOLEAN NOT NULL DEFAULT FALSE`;
@@ -529,7 +531,7 @@ export function toClientLink(s: LinkState | null | undefined): ClientLinkState |
     status: "pending", earns_points: false, customer_id: null,
     waiting_days: s.waiting_days, overdue: s.overdue,
     headline: "รอพนักงานยืนยันตัวตน — แต้มยังไม่เข้า",
-    detail: "เพื่อความปลอดภัยของแต้ม พนักงานต้องยืนยันว่าเบอร์นี้เป็นของคุณจริงก่อน หลังยืนยันแล้ว บิลถัดไปแต้มจะเข้าเองอัตโนมัติค่ะ",
+    detail: "เพื่อความปลอดภัยของแต้ม พนักงานต้องยืนยันว่าเบอร์นี้เป็นของคุณจริงก่อน หลังยืนยันแล้ว บิลที่ซื้อตั้งแต่วันสมัคร (ย้อนหลังไม่เกิน 30 วัน) จะได้แต้มด้วยค่ะ",
     action: "ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า \"ยืนยันสมาชิก LINE\" พร้อมบอกเบอร์ที่สมัครไว้ค่ะ",
   };
 }
