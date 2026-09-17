@@ -1,7 +1,7 @@
 // พิสูจน์ SQL ของการตัดแต้มหมดอายุกับ Postgres จริง (PGlite ในเครื่อง ไม่ต่อฐานข้อมูลร้าน)
 import { test, eq, ok } from "./_harness.mjs";
 import { freshDb } from "./pg.mjs";
-import { expireUserPoints, usersWithDueLots, ledgerViewFor } from "../lib/points-ledger.ts";
+import { expireUserPoints, usersWithDueLots, ledgerViewFor, previewExpiredPoints } from "../lib/points-ledger.ts";
 
 const DAY = 86400000;
 const NOW = Date.parse("2026-09-16T05:00:00Z");
@@ -134,5 +134,44 @@ test("[Postgres] ภาพรวมบนบัตรใช้สูตรเด
   const v = await ledgerViewFor(db, id, 1950, 31, NOW);
   eq(v.soon, 0);
   eq(v.soonEarliest, null);
+  await pg.close();
+});
+
+test("[Postgres] dry run เท่ากับรันจริง และไม่เปลี่ยนฐานข้อมูลแม้แต่แถวเดียว", async () => {
+  const { pg, db } = await freshDb();
+  const a = await seed(db, { points: 420, line: "DRY-A", rows: [
+    { type: "earn", pts: 120, exp: -2 }, { type: "earn", pts: 300, exp: 200 },
+  ] });
+  const b = await seed(db, { points: 1950, line: "DRY-B", rows: [
+    { type: "earn", pts: 50, exp: -1 }, { type: "earn", pts: 1950, exp: 300 }, { type: "redeem", pts: 50 },
+  ] });
+  const c = await seed(db, { points: 30, line: "DRY-C", rows: [{ type: "earn", pts: 100, exp: -1 }] });
+
+  const snapshot = async () => JSON.stringify({
+    users: await db.query(`SELECT * FROM users ORDER BY id`),
+    transactions: await db.query(`SELECT * FROM transactions ORDER BY id`),
+    rewards: await db.query(`SELECT * FROM rewards ORDER BY id`),
+    redemptions: await db.query(`SELECT * FROM redemption_requests ORDER BY id`),
+  });
+  const before = await snapshot();
+  const dry = await previewExpiredPoints(db, NOW);
+  const after = await snapshot();
+
+  eq(after, before, "dry run ต้องไม่เปลี่ยนข้อมูลในทุกตาราง");
+  eq(dry, {
+    candidates: 3,
+    affected: 2,
+    totalExpired: 150,
+    capped: false,
+    users: [
+      { user_id: a, balance: 420, expire: 120 },
+      { user_id: c, balance: 30, expire: 30 },
+    ],
+  });
+
+  const actual = [];
+  for (const id of [a, b, c]) actual.push(await expireUserPoints(db, id, NOW));
+  eq(actual.filter(r => r.expired > 0).length, dry.affected, "จำนวนคนที่ตัดจริงต้องเท่ากับ dry run");
+  eq(actual.reduce((sum, r) => sum + r.expired, 0), dry.totalExpired, "แต้มที่ตัดจริงต้องเท่ากับ dry run");
   await pg.close();
 });

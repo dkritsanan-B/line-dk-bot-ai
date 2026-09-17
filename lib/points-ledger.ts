@@ -141,6 +141,48 @@ export async function usersWithDueLots(db: Db, now: number = Date.now(), limit: 
   return rows.map(r => Number(r.user_id));
 }
 
+export interface ExpirePreviewItem {
+  user_id: number;
+  balance: number;
+  expire: number;
+}
+
+export interface ExpirePreview {
+  candidates: number;
+  affected: number;
+  totalExpired: number;
+  capped: boolean;
+  users: ExpirePreviewItem[];
+}
+
+/** ภาพรวมการตัดแต้มรอบนี้แบบอ่านอย่างเดียว — ห้ามเพิ่มคำสั่งเขียนในฟังก์ชันนี้ */
+export async function previewExpiredPoints(
+  db: Db,
+  now: number = Date.now(),
+  limit: number = EXPIRE_USERS_PER_RUN,
+  previewLimit: number = 50,
+): Promise<ExpirePreview> {
+  const userIds = await usersWithDueLots(db, now, limit);
+  const affected: ExpirePreviewItem[] = [];
+
+  for (const userId of userIds) {
+    const users = await db.query(`SELECT points FROM users WHERE id = $1`, [userId]);
+    const u = users[0];
+    if (!u) continue;
+    const balance = Math.max(0, toInt(u.points));
+    const expire = viewLedger(await readLedger(db, userId), balance, now, 0).dueNow;
+    if (expire > 0) affected.push({ user_id: userId, balance, expire });
+  }
+
+  return {
+    candidates: userIds.length,
+    affected: affected.length,
+    totalExpired: affected.reduce((sum, u) => sum + u.expire, 0),
+    capped: userIds.length >= limit,
+    users: affected.slice(0, Math.max(0, Math.min(50, previewLimit))),
+  };
+}
+
 export interface ExpireResult {
   userId: number;
   expired: number;

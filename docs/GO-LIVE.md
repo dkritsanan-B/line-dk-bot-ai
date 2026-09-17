@@ -25,6 +25,9 @@ npx next build
 
 1. push branch แล้ว merge เข้า main (Vercel ทีม dk-boss-projects จะ deploy ให้เอง)
 2. **ภายในวันเดียวกัน ก่อน 01:00 น.** เรียกตัวตัดแต้มแบบไม่เขียน (dry run) กับข้อมูลจริง แล้วดูตัวเลข
+   ```bash
+   curl -H "Authorization: Bearer $CRON_SECRET" "https://<โดเมนจริง>/api/cron/expire-points?dry=1"
+   ```
    - จำนวนสมาชิกที่จะถูกตัด และแต้มรวมที่จะตัด ต้องสมเหตุสมผล (ร้านเพิ่งเริ่มระบบ ควรเป็น 0 หรือใกล้ 0)
    - ถ้าตัวเลขผิดปกติ ให้ปิด cron `expire-points` ใน vercel.json ก่อน แล้วค่อยหาสาเหตุ
 3. ทดสอบด้วยบัญชี LINE ของเจ้าของร้านเอง (ใช้โควตา push น้อยที่สุด)

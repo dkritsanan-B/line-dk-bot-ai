@@ -4,7 +4,7 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
-import { usersWithDueLots, expireUserPoints, EXPIRE_USERS_PER_RUN } from "@/lib/points-ledger";
+import { usersWithDueLots, expireUserPoints, previewExpiredPoints, EXPIRE_USERS_PER_RUN } from "@/lib/points-ledger";
 import { pointsExpiredFlex } from "@/lib/line-ui";
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
@@ -35,9 +35,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const now = Date.now();
+  if (req.nextUrl.searchParams.get("dry") === "1") {
+    const preview = await previewExpiredPoints(db, now);
+    return NextResponse.json({ ok: true, dryRun: true, ...preview });
+  }
+
   await migrateDB();
 
-  const now = Date.now();
   const userIds = await usersWithDueLots(db, now, EXPIRE_USERS_PER_RUN);
 
   let totalExpired = 0, applied = 0, skippedRace = 0, failed = 0, notified = 0;

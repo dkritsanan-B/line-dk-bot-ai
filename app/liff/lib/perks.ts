@@ -57,7 +57,8 @@ export function retailSummary(): { max: number; from: string } {
 /** ข้อความสั้นใต้ชื่อระดับบนบันได เช่น "ลด 2%" / "สะสมแต้ม" */
 export function ladderNote(tierName: string): string {
   const n = RULES.retail.byTier[idx(tierName)] ?? 0;
-  return n ? `ลด ${n}%` : "สะสมแต้ม";
+  const birthday = birthdayPointsOf(tierName);
+  return n ? `ลด ${n}%` : birthday ? `คูปองวันเกิด ${birthday.toLocaleString("th-TH")} แต้ม` : "สะสมแต้ม";
 }
 
 /** อัตราสะสมปกติ — ต้องตรงกับ POINTS_PER_BAHT ใน lib/points.ts (scripts/check-tiers.mjs ตรวจให้) */
