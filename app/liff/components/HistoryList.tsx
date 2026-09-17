@@ -1,12 +1,12 @@
 "use client";
 // ประวัติแต้ม + แท็บกรอง (P5)
-// สีของแต่ละประเภทมาจากคลาสใน liff.css (--ok / --danger / --ink-3) ไม่ใช่ค่าสีในไฟล์นี้
+// สีของแต่ละประเภทมาจากคลาสใน liff.css (--ok / --danger) + styles/content.css (lf-ct-*) ไม่ใช่ค่าสีในไฟล์นี้
 //
-// จังหวะของแถว — ทุกแถวสูงเท่ากันเสมอ (ผู้ตรวจนักออกแบบ: ต้องกวาดตาไล่ลงได้)
-//   บรรทัด 1  ชื่อรายการ บรรทัดเดียว ยาวเกินตัดด้วย …      |  +185 แต้ม (ตัวเลขกับคำว่าแต้มบรรทัดเดียวกัน)
-//   บรรทัด 2  วันที่ (+ เลขบิล) บรรทัดเดียว
-//   บรรทัด 3  สถานะสั้น ๆ บรรทัดเดียว: "ใช้ได้ถึง …" (แต้มที่ได้รับ) / ประเภทรายการ (ใช้แลก/หมดอายุ)
-//   ทุกบรรทัดห้ามตัดขึ้นบรรทัดใหม่ → ความสูงคงที่ ไม่ขึ้นกับความยาวข้อความ
+// จังหวะของแถว (c3 ผู้ตรวจนักออกแบบ: ความเด่นต้องไล่จาก ชื่อ/แต้ม → รายละเอียด)
+//   บรรทัด 1  ชื่อรายการ 16px/600 บรรทัดเดียว ยาวเกินตัดด้วย …  |  +185 แต้ม ชิดขวา
+//   บรรทัด 2  "14 ก.ย. · IV-690402 · 18,500 บาท" 14px/400 บรรทัดเดียว
+//   บรรทัด 3  "ใช้ได้ถึง …" สีอำพัน — เฉพาะแต้มที่เหลือ ≤ EXPIRE_SOON_DAYS วัน
+// หัวข้อ "แต้มคิดอย่างไร" อยู่ท้ายรายการ (ของรอง)
 //
 // โหลดไม่ได้ ≠ ไม่มีรายการ: ถ้า API ล้มต้องบอกในกล่องนี้ว่าโหลดไม่ได้ + ปุ่มลองใหม่ (ห้ามขึ้น "ยังไม่มีรายการ")
 import { formatDate } from "../lib/tiers";
@@ -14,9 +14,12 @@ import type { TxItem } from "../lib/types";
 import type { Problem } from "../lib/api";
 import Icon, { type IconName } from "./Icon";
 import { ProblemNotice } from "./ProblemNotice";
-import { BAHT_PER_POINT } from "../lib/perks";
+import { PointsHowTo } from "./TierPerks";
 
 export type TxFilter = "all" | "earn" | "redeem" | "expire";
+
+/** เตือน "ใช้ได้ถึง" เฉพาะแต้มที่เหลือไม่เกินกี่วัน */
+const EXPIRE_SOON_DAYS = 60;
 
 const KIND: Record<string, { key: string; icon: IconName; label: string; sign: string }> = {
   earn:   { key: "earn",   icon: "star",      label: "สะสมแต้ม",      sign: "+" },
@@ -24,53 +27,44 @@ const KIND: Record<string, { key: string; icon: IconName; label: string; sign: s
   expire: { key: "expire", icon: "hourglass", label: "แต้มหมดอายุ",   sign: "−" },
 };
 
+/** "14 ก.ย." — ปีแสดงเฉพาะเมื่อไม่ใช่ปีนี้ ("14 ก.ย. 68") */
+function shortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("th-TH", sameYear ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "2-digit" });
+}
+
 // "บิล IV-690402 · เมทัลชีท 120 เมตร" → หัว = สินค้า, อ้างอิง = เลขบิล (ย้ายไปบรรทัดรอง)
 function splitNote(note: string): { title: string; ref: string | null } {
   const m = note.match(/^บิล\s+(\S+)\s*·\s*(.+)$/);
   return m ? { title: m[2], ref: m[1] } : { title: note, ref: null };
 }
 
-// c2 (ผู้ตรวจ c1: แต้มเข้าน้อยกว่าที่คิดก็เถียงไม่ได้) — แถวบิลบอกยอดบิลด้วย, แถวแต้มพิเศษ/คูปองวันเกิดมีชื่อภาษาคน
-//   รูปแบบ note ที่เซิร์ฟเวอร์เขียน:
-//     แต้มพิเศษ  "โบนัส Gold บิล IV-690402 (เมทัลชีท (บาท/เมตร) 2บ/ม, …)"   (app/api/hero/points)
-//     วันเกิด    "วันเกิด 2569 — คูปองวันเกิดระดับ Gold"                  (app/api/cron/birthday)
-function specialNote(note: string): { title: string; ref: string | null; detail: string | null } | null {
-  const b = note.match(/^โบนัส\s+(\S+)\s+บิล\s+(\S+)(?:\s+\((.+)\))?$/);
-  if (b) {
-    // "เมทัลชีท (บาท/เมตร) 2บ/ม, เหล็ก (ไม่รวมเหล็กเส้น) 1%" → "เมทัลชีท 2 บาท/เมตร · เหล็ก 1%"
-    const parts = (b[3] ?? "").split(/,\s*/).filter(Boolean).map(p => {
-      const m = p.match(/^(.*?)\s+([\d.]+)(บ\/ม|%)$/);
-      if (!m) return p;
-      const label = m[1].replace(/\s*\(.*\)\s*$/, "");
-      return `${label} ${m[2]}${m[3] === "%" ? "%" : " บาท/เมตร"}`;
-    });
-    return { title: `แต้มพิเศษระดับ ${b[1]}`, ref: b[2], detail: parts.length ? `ราคาป้าย: ${parts.join(" · ")}` : "รายการที่จ่ายเต็มราคาป้าย" };
-  }
-  const d = note.match(/^(?:วันเกิด|ของขวัญวันเกิด)\s+\d{4}/);
-  if (d) return { title: "คูปองวันเกิด", ref: null, detail: null };
+// รูปแบบ note ที่เซิร์ฟเวอร์เขียน:
+//   แต้มพิเศษ  "โบนัส Gold บิล IV-690402 (เมทัลชีท (บาท/เมตร) 2บ/ม, …)"   (app/api/hero/points)
+//   วันเกิด    "วันเกิด 2569 — คูปองวันเกิดระดับ Gold"                  (app/api/cron/birthday)
+// รายละเอียดในวงเล็บไม่แสดงแล้ว (c3) — คำอธิบายอยู่ใน "แต้มคิดอย่างไร"
+function specialNote(note: string): { title: string; ref: string | null } | null {
+  const b = note.match(/^โบนัส\s+(\S+)\s+บิล\s+(\S+)/);
+  if (b) return { title: `แต้มพิเศษระดับ ${b[1]}`, ref: b[2] };
+  if (/^(?:วันเกิด|ของขวัญวันเกิด)\s+\d{4}/.test(note)) return { title: "คูปองวันเกิด", ref: null };
   return null;
 }
 
-function rowText(t: TxItem, k: (typeof KIND)[string]): { title: string; ref: string | null; status: string; amount: string | null } {
-  if (k.key === "expire") {
-    return { title: k.label, ref: null, status: t.note ? t.note : "ครบ 1 ปีนับจากวันที่ได้", amount: null };
-  }
-  if (k.key === "redeem") {
-    return { title: t.note || "แลกของรางวัล", ref: null, status: "ใช้แต้มแลกของรางวัล", amount: null };
-  }
-  const until = t.expires_at ? `ใช้ได้ถึง ${formatDate(t.expires_at)}` : "ได้รับแต้มสะสม";
+function rowText(t: TxItem, k: (typeof KIND)[string]): { title: string; meta: string } {
+  const date = shortDate(t.created_at);
+  if (k.key === "expire") return { title: k.label, meta: date };
+  if (k.key === "redeem") return { title: t.note || "แลกของรางวัล", meta: date };
   const sp = t.note ? specialNote(t.note) : null;
-  if (sp) return { title: sp.title, ref: sp.ref, status: until, amount: sp.detail };
-  const s = t.note ? splitNote(t.note) : { title: k.label, ref: null };
-  const amt = Number(t.purchase_amount) || 0;
-  return {
-    title: s.title, ref: s.ref, status: until,
-    amount: amt > 0 ? `ยอดบิล ${amt.toLocaleString("th-TH", { maximumFractionDigits: 2 })} บาท` : null,
-  };
+  const s = sp ?? (t.note ? splitNote(t.note) : { title: k.label, ref: null });
+  const amt = sp ? 0 : Number(t.purchase_amount) || 0;
+  const parts = [date, s.ref, amt > 0 ? `${amt.toLocaleString("th-TH", { maximumFractionDigits: 2 })} บาท` : null];
+  return { title: s.title, meta: parts.filter(Boolean).join(" · ") };
 }
 
 export default function HistoryList({
-  txList, txFilter, onFilter, loading, problem, onRetry,
+  txList, txFilter, onFilter, loading, problem, onRetry, id,
 }: {
   txList: TxItem[];
   txFilter: TxFilter;
@@ -78,8 +72,10 @@ export default function HistoryList({
   loading?: boolean;
   problem?: Problem | null;
   onRetry: () => void;
+  id?: string;
 }) {
   const filtered = txFilter === "all" ? txList : txList.filter(t => t.type === txFilter);
+  const now = Date.now();
   let body: React.ReactNode;
   if (problem) {
     body = <ProblemNotice problem={problem} what="ประวัติแต้ม" onRetry={onRetry} retrying={loading} compact />;
@@ -90,38 +86,33 @@ export default function HistoryList({
   } else {
     body = filtered.map(t => {
       const k = KIND[t.type] ?? KIND.expire;
-      const { title, ref, status, amount } = rowText(t, k);
-      const warnSoon = k.key === "earn" && t.expires_at && new Date(t.expires_at).getTime() - Date.now() < 90 * 86400000;
+      const { title, meta } = rowText(t, k);
+      const left = k.key === "earn" && t.expires_at ? new Date(t.expires_at).getTime() - now : NaN;
+      const soon = left >= 0 && left <= EXPIRE_SOON_DAYS * 86400000;
       return (
-        <div key={t.id} className="lf-tx">
+        <div key={t.id} className="lf-tx lf-ct-tx">
           <div className={`lf-tx-ic lf-tx-ic--${k.key}`}><Icon name={k.icon} size={22} /></div>
-          <div className="lf-tx-main">
-            <div className="lf-tx-head">
-              <b title={title}>{title}</b>
+          <div className="lf-ct-tx-main">
+            <div className="lf-ct-tx-head">
+              <b className="lf-ct-tx-title" title={title}>{title}</b>
               <div className={`lf-tx-amt lf-tx-amt--${k.key}`}>{k.sign}{t.points_earned.toLocaleString()}<small>แต้ม</small></div>
             </div>
-            <span className="lf-tx-line">{formatDate(t.created_at)}{ref && <> · บิล {ref}</>}</span>
-            {amount && <span className="lf-tx-line lf-tx-amtline" title={amount}>{amount}</span>}
-            <span className={`lf-tx-line lf-tx-exp${warnSoon ? " lf-tx-exp--soon" : ""}`}>{status}</span>
+            <span className="lf-ct-tx-meta">{meta}</span>
+            {soon && <span className="lf-ct-tx-soon">ใช้ได้ถึง {formatDate(t.expires_at!)}</span>}
           </div>
         </div>
       );
     });
   }
   return (
-    <div className="lf-card lf-histcard">
+    <div className="lf-card lf-histcard lf-ct-hist" id={id}>
       <div className="lf-tabs" role="tablist">
         {([{ key: "all", label: "ทั้งหมด" }, { key: "earn", label: "ได้รับ" }, { key: "redeem", label: "ใช้แล้ว" }, { key: "expire", label: "หมดอายุ" }] as const).map(tab => (
           <button key={tab.key} role="tab" aria-selected={txFilter === tab.key} className={`lf-tab${txFilter === tab.key ? " on" : ""}`} onClick={() => onFilter(tab.key)}>{tab.label}</button>
         ))}
       </div>
-      {!problem && !loading && txList.length > 0 && (
-        <details className="lf-histhelp">
-          <summary>แต้มคิดอย่างไร</summary>
-          <p><b>แต้มจากยอดซื้อ</b> = ยอดบิล ÷ {BAHT_PER_POINT} ปัดเศษทิ้ง<br /><b>แต้มเพิ่มตามระดับ</b> = ได้เพิ่มจากสินค้าบางหมวด และแสดงแยกอีกแถว</p>
-        </details>
-      )}
       {body}
+      {!problem && !loading && txList.length > 0 && <PointsHowTo />}
     </div>
   );
 }

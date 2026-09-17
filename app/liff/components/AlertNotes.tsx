@@ -95,14 +95,15 @@ export default function AlertNotes({
         const daysLeft = Math.ceil((new Date(exp).getTime() - Date.now()) / 86400000);
         // สีเหลืองอำพันเสมอ — เป็น "คำเตือน" ไม่ใช่ข้อผิดพลาด (ผู้ตรวจ r4: ชมพู/แดงดูเหมือนระบบพัง)
         return (
-          <div className="lf-note lf-note--warn lf-note--compact">
-            <div className="lf-note-row">
-              <div>
-                <b><i><Icon name="hourglass" size={20} /></i> {(expiry!.expiring_points ?? 0).toLocaleString()} แต้ม จะหมดอายุ</b>
-                <span className="lf-note-when"><span className="lf-nw">วันที่ {expDate}</span>{daysLeft <= 90 ? <> <span className="lf-nw">(อีก {daysLeft} วัน)</span></> : ""}</span>
+          // P: จำนวนแต้ม 20px สีเข้มเป็นหลัก · วันที่ 15px น้ำหนักปกติ · ปุ่มอยู่ขวาบรรทัดเดียวกันทุกจอ (styles/card.css)
+          <div className="lf-note lf-note--warn lf-note--compact lf-cd-exp">
+            <div className="lf-cd-exp-txt">
+              <div className="lf-cd-exp-pts">
+                <span className="lf-nw">{(expiry!.expiring_points ?? 0).toLocaleString()} แต้ม</span> <span className="lf-nw">จะหมดอายุ</span>
               </div>
-              <button className="lf-link" onClick={onViewExpiring}>ดูรายการ <Icon name="chevron" size={18} /></button>
+              <div className="lf-cd-exp-when"><span className="lf-nw">วันที่ {expDate}</span>{daysLeft <= 90 ? <> <span className="lf-nw">(อีก {daysLeft} วัน)</span></> : ""}</div>
             </div>
+            <button className="lf-link lf-cd-exp-btn" onClick={onViewExpiring}>ดูรายการ <Icon name="chevron" size={18} /></button>
           </div>
         );
       })()}

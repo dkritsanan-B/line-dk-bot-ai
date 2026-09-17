@@ -77,7 +77,7 @@ for (const view of VIEWS) {
         }
         // ภาพเพิ่มเติม: กดแลกของรางวัลชิ้นแรก เพื่อดูข้อความตอบกลับ (สำเร็จ/แต้มไม่พอ/ของหมด)
         if (pg.key === "rewards" && scenario !== "new") {
-          const btn = page.getByRole("button", { name: /แลกเลย/ });
+          const btn = page.getByRole("button", { name: /^แลก$/ });
           if (await btn.count()) {
             await btn.first().click();
             await page.waitForTimeout(400);

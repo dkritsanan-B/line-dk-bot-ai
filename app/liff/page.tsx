@@ -14,6 +14,7 @@ import HistoryList, { type TxFilter } from "./components/HistoryList";
 import TierPerks from "./components/TierPerks";
 import { ProblemScreen } from "./components/ProblemNotice";
 import { saveCard } from "./lib/cardCache";
+import "./styles/content.css";
 import { BAHT_PER_POINT, daysToBirthday } from "./lib/perks";
 
 // หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม
@@ -22,6 +23,7 @@ import { BAHT_PER_POINT, daysToBirthday } from "./lib/perks";
 // 16 ก.ย. 69 — ระบบล่ม ≠ ยังไม่สมัคร:
 //   จอสมัครขึ้นได้เฉพาะเมื่อ API ตอบ registered:false + code:"NOT_REGISTERED" เท่านั้น
 //   อย่างอื่นที่ไม่ใช่ "สมาชิก" หรือ "ยังไม่สมัคร" → จอแจ้งปัญหา (ProblemScreen) พร้อมปุ่มลองใหม่
+const HISTORY_ID = "lf-history";
 const DEFAULT_REVIEW_PROFILE: Profile = { userId: "review", displayName: "ผู้ตรวจ", pictureUrl: "" };
 
 function registerErrorText(p: Problem): string {
@@ -56,6 +58,7 @@ export default function LiffPage() {
   const [token, setToken]         = useState("");   // LIFF access token — ใช้ยืนยันตัวตนกับ API
   const [txFilter, setTxFilter]   = useState<TxFilter>("all");
   const liffReady = useRef(false);
+  const scrollToHistory = useRef(false);   // กดเปิดประวัติ → เลื่อนไปที่รายการเลย ไม่ต้องไถผ่านบัตร
 
   /** รับคำตอบ /api/member แล้วตัดสินว่าเป็นจอไหน — ไม่มีทางตกไปจอสมัครเพราะระบบล่ม */
   const fetchMember = useCallback(async (tok: string) => {
@@ -132,6 +135,14 @@ export default function LiffPage() {
       points: link?.status === "pending" ? 0 : (member.points ?? 0),
     });
   }, [member, registered, link]);
+
+  useEffect(() => {
+    if (!txOpen || !scrollToHistory.current) return;
+    // ระหว่างโหลด หน้ายังสั้น เลื่อนไม่ถึง → เลื่อนอีกครั้งตอนรายการมาแล้ว
+    if (!txLoading) scrollToHistory.current = false;
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => document.getElementById(HISTORY_ID)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }));
+  }, [txOpen, txLoading]);
 
   async function loadTransactions() {
     setTxOpen(true);
@@ -247,7 +258,7 @@ export default function LiffPage() {
         />
         <QuickActions
           txLoading={txLoading} txOpen={txOpen}
-          onToggleHistory={() => { if (!txOpen) loadTransactions(); else setTxOpen(false); }}
+          onToggleHistory={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } else setTxOpen(false); }}
           onEdit={() => {
             setFirstName(member?.first_name ?? ""); setLastName(member?.last_name ?? ""); setPhone(member?.phone ?? "");
             setCompany(member?.company ?? ""); setBirthday(member?.birthday ? member.birthday.substring(0, 10) : ""); setError(""); setEditing(true);
@@ -257,33 +268,30 @@ export default function LiffPage() {
           isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry} points={points}
           totalEarned={totalEarned} lastPurchaseAt={lastPurchaseAt}
           expiryUnavailable={expiryUnavailable} justLinked={justLinked} birthdayIn={pendingLink ? null : birthdayIn}
-          onViewExpiring={() => { if (!txOpen) loadTransactions(); setTxFilter("expire"); }}
+          onViewExpiring={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } setTxFilter("expire"); }}
         />
       </div>
 
       <div className="lf-col lf-col--side">
         {txOpen && (
           <HistoryList
+            id={HISTORY_ID}
             txList={txList} txFilter={txFilter} onFilter={setTxFilter}
             loading={txLoading} problem={txProblem} onRetry={loadTransactions}
           />
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
-        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} />
+        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} />
         <div className="lf-foot">
           {pendingLink ? (
             // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
             <>
               <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
-              <div>ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
-              <div><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">ยื่นหน้าบัตรนี้หรือบอกเบอร์ก่อนคิดเงิน</span></div>
+              <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
             </>
           ) : (
-            <>
-              {/* กติกา 3 ข้อ บรรทัดละข้อ */}
-              <div>ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม · แต้มใช้ได้ 1 ปี</div>
-              <div className="lf-foot-key"><span className="lf-nw">ซื้อของทุกครั้ง</span> <span className="lf-nw">ยื่นหน้าบัตรนี้หรือบอกเบอร์ก่อนคิดเงิน</span></div>
-            </>
+            // c3: "ยื่นบัตร/บอกเบอร์ก่อนคิดเงิน" อยู่บนบัตรที่เดียว — ท้ายหน้าไม่พูดซ้ำ
+            <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
           )}
         </div>
       </div>

@@ -19,25 +19,24 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={profile.pictureUrl} alt="" />
             : <div className="ph"><Icon name="user" size={28} /></div>}
-          <div><b>สวัสดีค่ะ {profile?.displayName}</b><span>สมัครสมาชิกฟรี ใช้เวลาไม่ถึง 1 นาที</span></div>
+          <div><b>สวัสดีค่ะ {profile?.displayName}</b><span><span className="lf-nw">สมัครสมาชิกฟรี</span> <span className="lf-nw">ใช้เวลาไม่ถึง 1 นาที</span></span></div>
         </div>
-        <div className="lf-signup-pitch" aria-label="สิทธิ์ที่ได้รับจากสมาชิก">
-          <b>สมัครฟรี แล้วสะสมแต้มทุกบิล</b>
-          <span>ทุก {BAHT_PER_POINT} บาท = 1 แต้ม · ระดับสูงขึ้นรับส่วนลดหน้าร้านสูงสุด {disc.max}%</span>
-          <small>สิทธิ์เริ่มหลังพนักงานยืนยันตัวตนที่ร้านครั้งเดียว</small>
-        </div>
-        <div className="lf-signup-steps" aria-label="ขั้นตอนสมัครสมาชิก">
-          <div className="on"><b>1</b><span>กรอกข้อมูล<small>ตอนนี้</small></span></div>
-          <i aria-hidden="true" />
-          <div><b>2</b><span>ยืนยันที่ร้าน<small>ครั้งเดียว</small></span></div>
-          <i aria-hidden="true" />
-          <div><b>3</b><span>เริ่มใช้สิทธิ์<small>ทุกครั้งที่ซื้อ</small></span></div>
-        </div>
+        {/* c3: กล่องชวนสมัครเหลือ 2 บรรทัด · "สิทธิ์เริ่มหลังยืนยัน" ตัดทิ้ง เพราะขั้นตอนที่ 2 บอกอยู่แล้ว */}
+        <ul className="lf-ct-pitch" aria-label="สิทธิ์ที่ได้รับจากสมาชิก">
+          <li><Icon name="star" size={22} /><span><span className="lf-nw">ทุก {BAHT_PER_POINT} บาท</span> <span className="lf-nw">= 1 แต้ม</span></span></li>
+          <li><Icon name="tag" size={22} /><span><span className="lf-nw">ส่วนลดหน้าร้าน</span> <span className="lf-nw">สูงสุด {disc.max}%</span></span></li>
+        </ul>
+        {/* ขั้นตอน: เส้นเชื่อมทึบ 2px เต็มช่อง · คำในแต่ละขั้นห้ามตัดกลางคำ */}
+        <ol className="lf-ct-steps" aria-label="ขั้นตอนสมัครสมาชิก">
+          <li className="on"><b>1</b><span className="lf-nw">กรอกข้อมูล</span><small className="lf-nw">ตอนนี้</small></li>
+          <li><b>2</b><span className="lf-nw">ยืนยันที่ร้าน</span><small className="lf-nw">ครั้งเดียว</small></li>
+          <li><b>3</b><span className="lf-nw">เริ่มใช้สิทธิ์</span><small className="lf-nw">ทุกครั้งที่ซื้อ</small></li>
+        </ol>
         <MemberForm isEdit={false} {...form} />
         <div className="lf-after-signup" aria-label="หลังสมัครสมาชิก">
           <b>หลังสมัคร</b>
-          <span>มาซื้อครั้งแรก บอกเบอร์ให้แคชเชียร์ยืนยันครั้งเดียว ใช้เวลาไม่กี่วินาที</span>
-          <small>บิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)</small>
+          <span><span className="lf-nw">มาซื้อครั้งแรก</span> <span className="lf-nw">บอกเบอร์ให้แคชเชียร์</span> <span className="lf-nw">ยืนยันครั้งเดียว</span> <span className="lf-nw">ใช้เวลาไม่กี่วินาที</span></span>
+          <small><span className="lf-nw">บิลตั้งแต่วันสมัคร</span> <span className="lf-nw">ได้แต้มย้อนหลังอัตโนมัติ</span> <span className="lf-nw">(ไม่เกิน {PENDING_POINTS_DAYS} วัน)</span></small>
         </div>
         <details className="lf-benefit-details">
           <summary>ดูสิทธิ์และระดับสมาชิกทั้งหมด</summary>
@@ -63,8 +62,8 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
         </details>
       </div>
       <div className="lf-foot">
-        <div className="lf-foot-key">ซื้อครั้งต่อไป บอกเบอร์หรือยื่นหน้าบัตรสมาชิกก่อนคิดเงิน</div>
-        ไม่ได้พกมือถือหรือเน็ตไม่ดี ใช้เบอร์โทรที่สมัครไว้ได้ค่ะ
+        <div className="lf-foot-key"><span className="lf-nw">ซื้อครั้งต่อไป</span> <span className="lf-nw">บอกเบอร์หรือยื่นหน้าบัตรสมาชิก</span> <span className="lf-nw">ก่อนคิดเงิน</span></div>
+        <span className="lf-nw">ไม่ได้พกมือถือหรือเน็ตไม่ดี</span> <span className="lf-nw">ใช้เบอร์โทรที่สมัครไว้ได้ค่ะ</span>
       </div>
     </Shell>
   );

@@ -8,6 +8,7 @@ import { ProblemScreen } from "../components/ProblemNotice";
 import { callApi, problemOf, redeemErrorText, SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
 import { formatDate } from "../lib/tiers";
 import type { PendingRedemption, RedeemSummary } from "../lib/types";
+import "../styles/rewards.css";
 
 // หน้าของรางวัล — ตัวตน = LIFF access token · สไตล์อยู่ ../liff.css
 //
@@ -46,7 +47,7 @@ function rulesText(minReward: number | null, example: string | null): string[] {
     "แต้มใช้ได้ 1 ปี นับจากวันที่ได้ แต้มก้อนที่ใกล้หมดอายุจะขึ้นเตือนที่หน้าบัตร",
     `ตั้งแต่ระดับ ${firstTierOf("steel")} ซื้อเหล็กหรือเมทัลชีทราคาป้าย ได้แต้มพิเศษเพิ่ม (คิดทีละรายการ รายการที่ขอลดราคาได้แต้มปกติ) และมีคูปองวันเกิดเป็นแต้มตั้งแต่ระดับ ${birthdayFrom()}`,
     "ไม่ได้ซื้อเกิน 1 ปี ระดับจะลดชั่วคราว ยอดสะสมไม่หาย ซื้อครั้งถัดไปกลับระดับเดิมทันที · ร้านเตือนที่หน้าบัตรล่วงหน้า 3 เดือน",
-    `กด "แลกเลย" แล้วกดยืนยัน แต้มจะถูกจองไว้ให้ ยังไม่หัก${minReward ? ` · ของรางวัลเริ่มที่ ${minReward.toLocaleString()} แต้ม` : ""}`,
+    `กด "แลก" แล้วกดยืนยัน แต้มจะถูกจองไว้ให้ ยังไม่หัก${minReward ? ` · ของรางวัลเริ่มที่ ${minReward.toLocaleString()} แต้ม` : ""}`,
     "ส่วนลดจากแต้มต้องกดแลกก่อนจ่าย · จำนวนคูปองหรือของรางวัลที่ใช้ต่อบิล ให้ดูเงื่อนไขของแต่ละรายการก่อนกด",
     "มารับของที่ร้าน เปิดหน้าบัตรสมาชิกในแอปให้พนักงานดู พร้อมบอกเลขคำขอ (#REQ-…) พนักงานหักแต้มตอนส่งของให้",
     "เปลี่ยนใจก่อนรับของ แจ้งพนักงานหรือโทรร้านให้ยกเลิกคำขอได้ แต้มที่จองไว้คืนครบ · รับของแล้วคืนแต้มไม่ได้ค่ะ",
@@ -259,48 +260,46 @@ export default function RewardsPage() {
       ) : rewards.map(reward => {
         const st = cardState(reward, summary, available);
         const ok = st.kind === "can";
-        const out = st.kind === "out";
         const msg = redeemMsg?.id === reward.id ? redeemMsg : null;
         const reserved = summary?.reserved_by_reward[String(reward.id)] ?? 0;
         const left = reward.stock === null ? null : Math.max(0, reward.stock - reserved);
+        const confirming = ok && (confirmId === reward.id || redeemingId === reward.id);
+        const cond = reward.description || "ร้านยังไม่ได้ระบุรายละเอียดเพิ่มเติม";
+        // การ์ดแถวแนวนอน (17 ก.ย. 69) — สถานะบอกที่เดียว: แลกได้ = ปุ่ม "แลก" · แลกไม่ได้ = ข้อความแทนที่ปุ่ม
         return (
-          <div key={reward.id} className={`lf-reward${ok ? " can" : ""}${out ? " out" : ""}${st.kind === "mine" ? " mine" : ""}`}>
-            <div className="lf-reward-img">
-              {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={72} strokeWidth={1.5} />}
-              {out ? <span className="lf-badge lf-badge--out">{st.reservedFull ? "มีคนจองครบแล้ว" : "ของหมด รอของเข้า"}</span>
-                : st.kind === "mine" ? <span className="lf-badge lf-badge--mine">รอรับของ</span>
-                : ok ? <span className="lf-badge lf-badge--ok">แลกได้เลย</span> : null}
+          <div key={reward.id} className={`lf-rw-card${ok || st.kind === "mine" ? "" : " is-off"}`}>
+            <div className="lf-rw-thumb" aria-hidden={reward.image_url ? undefined : true}>
+              {reward.image_url ? <img src={reward.image_url} alt={reward.name} /> : <Icon name={rewardIcon(reward.name)} size={34} strokeWidth={1.75} />}
             </div>
-            <div className="lf-reward-body">
-              <div className="lf-reward-name">{reward.name}</div>
-              <div className="lf-reward-desc lf-reward-condition"><b>เงื่อนไข:</b> {reward.description || "ร้านยังไม่ได้ระบุรายละเอียดเพิ่มเติม"}</div>
-              {left !== null && left > 0 && <div className="lf-reward-desc">เหลือให้แลก {left.toLocaleString()} ชิ้น</div>}
-              <div className="lf-reward-row">
-                <div className={`lf-cost${ok ? " ok" : ""}`}>{reward.points_required.toLocaleString()} แต้ม</div>
-                <div className={`lf-need${ok ? " ok" : ""}`}>
-                  {st.kind === "can" ? <><Icon name="check" size={18} /> แต้มพอแล้ว</>
-                    : st.kind === "lack" ? <>ขาดอีก {st.lacking.toLocaleString()} แต้ม</>
-                    : st.kind === "out" ? (st.reservedFull ? "ของที่เหลือมีคนจองครบ" : "ของยังไม่เข้า")
-                    : st.kind === "mine" ? <>คำขอ #REQ-{st.req.id}</>
-                    : "สมัครก่อนจึงแลกได้"}
+            <div className="lf-rw-body">
+              <div className="lf-rw-name">{reward.name}</div>
+              <div className="lf-rw-cond" title={cond}>เงื่อนไข: {cond}</div>
+              <div className="lf-rw-foot">
+                <div className="lf-rw-pts">
+                  <b>{reward.points_required.toLocaleString()}<small>แต้ม</small></b>
+                  {left !== null && left > 0 && left <= 20 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
                 </div>
+                {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด แทนที่ปุ่ม */}
+                {ok ? (!confirming && (
+                  <button type="button" className="lf-rw-btn" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
+                    แลก
+                  </button>
+                )) : st.kind === "mine" ? (
+                  <span className="lf-rw-state lf-rw-state--mine" title={`คำขอ #REQ-${st.req.id}`}><Icon name="hourglass" size={16} />รอรับของ</span>
+                ) : st.kind === "lack" ? (
+                  <span className="lf-rw-state lf-rw-state--lack"><span>ขาดอีก <b>{st.lacking.toLocaleString()}</b> แต้ม</span></span>
+                ) : st.kind === "out" ? (
+                  <span className="lf-rw-state">{st.reservedFull ? "มีคนจองครบแล้ว" : "ของหมด รอของเข้า"}</span>
+                ) : (
+                  <span className="lf-rw-state">สมัครก่อนจึงแลกได้</span>
+                )}
               </div>
-              {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด ไม่ต้องกดแล้วค่อยเด้ง */}
-              {!msg && st.kind === "mine" && (
-                <div className="lf-why lf-why--mine"><Icon name="hourglass" size={18} /><span>มีคำขอชิ้นนี้รออยู่แล้ว มารับของที่ร้านได้เลย</span></div>
-              )}
-              {!msg && st.kind === "out" && (
-                <div className="lf-why"><Icon name="alertCircle" size={18} /><span>{st.reservedFull ? "ของที่เหลือถูกจองครบแล้ว รอรอบของเข้าถัดไปนะคะ" : "ของหมดชั่วคราว รอรอบของเข้าถัดไปนะคะ"}</span></div>
-              )}
               {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
-                <div className="lf-why"><Icon name="alertCircle" size={18} /><span>แต้มส่วนหนึ่งถูกจองไว้กับคำขอที่รอรับของ</span></div>
+                <div className="lf-rw-note">แต้มส่วนหนึ่งถูกจองไว้กับคำขอที่รอรับของ</div>
               )}
-              {ok && confirmId !== reward.id && redeemingId !== reward.id && (
-                <button className="lf-btn lf-btn--accent lf-btn--stack" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
-                  <Icon name="gift" size={22} /> แลกเลย
-                </button>
-              )}
-              {ok && (confirmId === reward.id || redeemingId === reward.id) && (
+            </div>
+            {(confirming || msg) && <div className="lf-rw-extra">
+              {confirming && (
                 <div className="lf-confirm" role="group" aria-label={`ยืนยันแลก ${reward.name}`}>
                   <b>ยืนยันแลกชิ้นนี้?</b>
                   <div className="lf-confirm-math">
@@ -310,14 +309,14 @@ export default function RewardsPage() {
                   <p>แต้มจะถูกจองไว้จนมารับของที่ร้าน · เปลี่ยนใจแจ้งพนักงานให้ยกเลิกได้</p>
                   <div className="lf-confirm-acts">
                     <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setConfirmId(null)} disabled={redeemingId !== null}>ยังไม่แลก</button>
-                    <button type="button" className="lf-btn lf-btn--accent lf-btn--sm" onClick={() => handleRedeem(reward)} disabled={redeemingId !== null}>
+                    <button type="button" className="lf-rw-btn" onClick={() => handleRedeem(reward)} disabled={redeemingId !== null}>
                       {redeemingId === reward.id ? "กำลังส่งคำขอ…" : "ยืนยันแลก"}
                     </button>
                   </div>
                 </div>
               )}
               {msg && <div className={`lf-msg ${msg.ok ? "ok" : "err"}`} role={msg.ok ? "status" : "alert"}><i><Icon name={msg.ok ? "check" : "alert"} size={20} /></i><span>{msg.text}</span></div>}
-            </div>
+            </div>}
           </div>
         );
       })}

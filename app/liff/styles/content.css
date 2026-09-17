@@ -1,0 +1,70 @@
+/* เนื้อหาหน้าสมาชิก (c3 ผู้ตรวจนักออกแบบ) — สิทธิ์ · ประวัติแต้ม · หน้าสมัคร
+ * ใช้ตัวแปรจาก liff.css เท่านั้น · คลาสใหม่ขึ้นต้น lf-ct- */
+
+/* ══ สิทธิ์ของระดับ ══════════════════════════════════════════════ */
+/* หัวกลุ่มเหลือแค่ชื่อ 16px หนา */
+.lf-ct-head b { font-size: var(--fs-body); font-weight: var(--fw-black); }
+/* หน่วย "/100 บาท" "/เมตร" หนาเท่าตัวเลข สีเดียวกัน — อ่านเป็นก้อนเดียว */
+.lf-perkrow .lf-ct-val small { font-size: var(--fs-body); font-weight: var(--fw-black); color: inherit; margin-left: 1px; }
+/* แถว "เหล็กเส้น — แต้มปกติ" : ไม่มีสิทธิ์เพิ่ม ใช้สีเทาเข้ม ไม่เด่นเท่าแถวที่ได้สิทธิ์ */
+.lf-perkrow .lf-ct-plain { font-size: 15px; font-weight: var(--fw-bold); color: var(--ink-2); }
+
+/* ══ แต้มคิดอย่างไร (ที่เดียวทั้งหน้า) ═══════════════════════════ */
+.lf-ct-how { margin-top: var(--sp-4); border-top: 1px solid var(--line); }
+.lf-ct-how summary { min-height: var(--h-tap); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); color: var(--dk-blue-strong); font-size: var(--fs-body); font-weight: var(--fw-black); cursor: pointer; list-style: none; }
+.lf-ct-how summary::-webkit-details-marker { display: none; }
+.lf-ct-how summary::after { content: "+"; font-size: var(--fs-h2); line-height: 1; }
+.lf-ct-how[open] summary::after { content: "−"; }
+.lf-ct-how ul { margin: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) calc(var(--sp-3) + var(--sp-4)); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
+.lf-ct-how li + li { margin-top: var(--sp-1); }
+.lf-ct-how li b { color: var(--ink); font-weight: var(--fw-black); }
+
+/* ══ ประวัติแต้ม ══════════════════════════════════════════════════ */
+.lf-ct-hist { scroll-margin-top: var(--sp-3); }
+.lf-ct-tx { align-items: center; padding: var(--sp-3) 0; }
+.lf-ct-tx:last-of-type { border-bottom: none; }
+.lf-ct-tx-main { flex: 1; min-width: 0; }
+.lf-ct-tx-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+/* ชื่อ: บรรทัดเดียวทุกความกว้าง ยาวเกินตัดด้วย … (ทับกติกา 2 บรรทัดของจอแคบใน liff.css) */
+.lf-ct-tx .lf-ct-tx-title {
+  flex: 1; min-width: 0; display: block;
+  font-size: var(--fs-body); font-weight: var(--fw-med); color: var(--ink); line-height: var(--lh-tight);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+}
+.lf-ct-tx .lf-tx-amt { font-size: var(--fs-lead); }
+.lf-ct-tx .lf-tx-amt small { font-size: 14px; }
+/* บรรทัดสอง: วันที่ · เลขบิล · ยอด — 14px ปกติ สี ink-2 (#33415C บนขาว ≈ 10:1) */
+.lf-ct-tx-meta { display: block; margin-top: 2px; font-size: 14px; font-weight: 400; color: var(--ink-2); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* บรรทัดสาม (เฉพาะแต้มใกล้หมดอายุ ≤ 60 วัน) — อำพันหนา (#85510B บนขาว ≈ 6.6:1) */
+.lf-ct-tx-soon { display: block; margin-top: 2px; font-size: 14px; font-weight: var(--fw-black); color: var(--warn); line-height: 1.4; white-space: nowrap; }
+
+@media (max-width: 419px) {
+  .lf-ct-tx { gap: var(--sp-2); }
+  .lf-ct-tx .lf-tx-ic { width: 36px; height: 36px; }
+}
+@media (max-width: 359px) {
+  .lf-ct-tx .lf-tx-amt { font-size: var(--fs-body); }
+}
+
+/* ══ หน้าสมัคร ═══════════════════════════════════════════════════ */
+/* กล่องชวนสมัคร 2 บรรทัด */
+.lf-ct-pitch { list-style: none; margin: 0 0 var(--sp-4); padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-2); border-radius: var(--r-md); background: var(--dk-sky); border-left: var(--bw-rail) solid var(--dk-blue); }
+.lf-ct-pitch li { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--dk-navy); line-height: var(--lh-tight); }
+.lf-ct-pitch li svg { flex-shrink: 0; color: var(--dk-blue-strong); }
+
+/* ขั้นตอน 1-2-3: เส้นเชื่อมทึบ 2px จากกลางวงก่อนหน้าถึงกลางวงนี้ */
+.lf-ct-steps { list-style: none; margin: 0 0 var(--sp-5); padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lf-ct-steps li { position: relative; min-width: 0; text-align: center; padding: 0 2px; }
+.lf-ct-steps li + li::before { content: ""; position: absolute; top: 15px; left: -50%; right: 50%; height: 2px; background: var(--line-strong); }
+.lf-ct-steps li.on + li::before { background: var(--dk-blue); }
+.lf-ct-steps b { position: relative; z-index: 1; width: 32px; height: 32px; margin: 0 auto var(--sp-1); box-sizing: border-box; border: 2px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--ink-2); font-size: var(--fs-body); font-weight: var(--fw-black); }
+.lf-ct-steps li.on b { background: var(--dk-blue); border-color: var(--dk-blue); color: var(--on-brand); }
+.lf-ct-steps span { display: block; font-size: 15px; font-weight: var(--fw-bold); color: var(--ink); line-height: 1.3; }
+.lf-ct-steps small { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); line-height: 1.3; }
+@media (max-width: 359px) {
+  .lf-ct-steps span { font-size: 14px; }
+}
+
+/* วลีห้ามตัดในกล่อง "หลังสมัคร" — liff.css ตั้ง span ในกล่องนี้เป็น block ต้องคืนเป็น inline */
+.lf-after-signup .lf-nw { display: inline; }
