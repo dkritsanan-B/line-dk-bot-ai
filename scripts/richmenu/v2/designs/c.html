@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DK Rich Menu — Workshop Safety</title>
+  <style>
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUI.ttf") format("truetype");font-weight:400}
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUIB.ttf") format("truetype");font-weight:700}
+    *{box-sizing:border-box}html,body{margin:0;width:2500px;height:1686px;overflow:hidden}
+    body{font-family:Leelawadee,"Leelawadee UI",Tahoma,sans-serif;background:#20252b;color:#fff}
+    .canvas{position:relative;width:2500px;height:1686px;overflow:hidden;background:
+      radial-gradient(circle at 20% 10%,rgba(255,255,255,.08) 0 2px,transparent 3px) 0 0/35px 35px,
+      linear-gradient(130deg,#323941,#1d2228)}
+    .btn{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;border-right:8px solid #111418;border-bottom:8px solid #111418;background:linear-gradient(140deg,rgba(63,72,82,.96),rgba(30,35,41,.98))}
+    .btn:after{content:"";position:absolute;inset:24px;border:5px solid #747d87;pointer-events:none}
+    .member{left:0;top:0;width:1000px;height:1686px;flex-direction:column;justify-content:flex-start;padding:68px 65px 74px;background:#ffd400;color:#15191d;border-right:14px solid #0e3a78;border-bottom:0;text-align:center}
+    .member:before,.stripe:before{content:"";position:absolute;left:-100px;right:-100px;height:150px;background:repeating-linear-gradient(135deg,#111 0 70px,#ffd400 70px 140px)}
+    .member:before{bottom:0}
+    .member:after{inset:28px;border:9px solid #111}
+    .brandline{position:relative;z-index:1;display:flex;align-items:center;gap:26px;width:100%;text-align:left}
+    .logo{width:150px;height:150px;object-fit:cover;border:7px solid #111}
+    .brandline strong{font-family:Arial,sans-serif;font-size:59px;line-height:.96;letter-spacing:-1px}
+    .member-icon{position:relative;z-index:1;margin-top:130px;width:300px;height:300px;display:grid;place-items:center;background:#111;transform:rotate(-2deg);box-shadow:18px 18px 0 #0e3a78}
+    .member-icon svg{width:185px;height:185px;stroke:#ffd400}
+    .member h1{position:relative;z-index:1;margin:82px 0 14px;font-size:140px;line-height:.94;letter-spacing:-5px}
+    .member p{position:relative;z-index:1;margin:0;font-size:58px;line-height:1.35;font-weight:700}
+    .member .tap{position:relative;z-index:1;margin-top:90px;padding:23px 45px 18px;background:#0e3a78;color:#fff;font-size:56px;font-weight:700;box-shadow:12px 12px 0 #111}
+    .tile{padding:45px 30px 35px;flex-direction:column;text-align:center}
+    .tile .icon{width:170px;height:170px;display:grid;place-items:center;background:#ffd400;border:7px solid #111;box-shadow:12px 12px 0 #0e3a78;margin-bottom:36px}
+    .tile svg{width:100px;height:100px;stroke:#111}
+    .tile h2{font-size:94px;line-height:1.02;margin:0;font-weight:700;letter-spacing:-3px}
+    .tile p{font-size:51px;line-height:1.18;margin:17px 0 0;color:#f4f6f8;white-space:nowrap}
+    .tile .tag{position:absolute;left:0;top:0;padding:12px 27px 8px;background:#ffd400;color:#111;font:700 39px/1 Arial,sans-serif;letter-spacing:2px}
+    .map{left:1000px;top:0;width:750px;height:843px}.contact{left:1750px;top:0;width:750px;height:843px;border-right:0}
+    .game{left:1000px;top:843px;width:500px;height:843px;border-bottom:0}.facebook{left:1500px;top:843px;width:500px;height:843px;border-bottom:0}.website{left:2000px;top:843px;width:500px;height:843px;border:0}
+    .narrow h2{font-size:90px}.narrow p{font-size:50px;white-space:normal;max-width:420px}.narrow .icon{width:155px;height:155px}.narrow .icon svg{width:92px;height:92px}
+    svg{fill:none;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+  </style>
+</head>
+<body>
+<main class="canvas">
+  <section class="btn member">
+    <div class="brandline"><img class="logo" src="../../../../public/dk-logo.jpg" alt="DK Steel and Tools"><strong>STEEL<br>AND TOOLS</strong></div>
+    <div class="member-icon"><svg viewBox="0 0 100 100"><rect x="11" y="21" width="78" height="58" rx="8"/><circle cx="33" cy="48" r="10"/><path d="M21 68c3-9 9-14 12-14s9 5 12 14M55 43h22M55 57h17"/></svg></div>
+    <h1>บัตรสมาชิก</h1>
+    <p>สมัคร · เช็คแต้ม<br>แลกของรางวัล</p>
+    <div class="tap">เปิดบัตรของฉัน</div>
+  </section>
+  <section class="btn tile map">
+    <span class="tag">02</span><div class="icon"><svg viewBox="0 0 100 100"><path d="M50 90S20 62 20 38a30 30 0 0 1 60 0c0 24-30 52-30 52Z"/><circle cx="50" cy="38" r="10"/></svg></div>
+    <h2>แผนที่ร้าน</h2><p>ดูเส้นทางมาร้าน</p>
+  </section>
+  <section class="btn tile contact">
+    <span class="tag">03</span><div class="icon"><svg viewBox="0 0 100 100"><path d="M24 15h16l8 22-12 8c7 13 14 20 27 27l8-12 22 8v16c0 7-6 12-13 11C43 91 9 57 13 27c1-7 4-12 11-12Z"/></svg></div>
+    <h2>ติดต่อฝ่ายขาย</h2><p>โทร / LINE พนักงาน</p>
+  </section>
+  <section class="btn tile narrow game">
+    <span class="tag">04</span><div class="icon"><svg viewBox="0 0 100 100"><path d="M30 35h40c12 0 19 10 17 22l-5 27-18-16H36L18 84l-5-27c-2-12 5-22 17-22Z"/><path d="M31 51v16M23 59h16M66 53h.1M76 63h.1"/></svg></div>
+    <h2>เกมรับแต้ม</h2><p>ตอบคำถาม<br>รับ 1 แต้ม/วัน</p>
+  </section>
+  <section class="btn tile narrow facebook">
+    <span class="tag">05</span><div class="icon"><svg viewBox="0 0 100 100"><path d="M58 88V55h12l3-14H58v-8c0-7 4-11 11-11h7V10c-4-1-9-2-15-2-15 0-25 9-25 26v7H24v14h12v33"/></svg></div>
+    <h2>Facebook</h2><p>ข่าวสารจาก<br>เพจ DK</p>
+  </section>
+  <section class="btn tile narrow website">
+    <span class="tag">06</span><div class="icon"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/><path d="M10 50h80M50 10c13 12 20 25 20 40S63 78 50 90C37 78 30 65 30 50s7-28 20-40Z"/></svg></div>
+    <h2>เว็บไซต์ร้าน</h2><p>สินค้า<br>โปรโมชั่น</p>
+  </section>
+</main>
+</body>
+</html>

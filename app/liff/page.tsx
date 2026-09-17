@@ -6,6 +6,7 @@ import { getEffectiveTier, getNextTier, getTierFromPoints, monthsSince } from ".
 import type { ClientLink, Expiry, Member, MemberResponse, Profile, TxItem } from "./lib/types";
 import { callApi, problemOf, SHOP_PHONE, type Problem } from "./lib/api";
 import SignupCard from "./components/SignupCard";
+import SignupSuccess from "./components/SignupSuccess";
 import MemberForm from "./components/MemberForm";
 import MemberCard from "./components/MemberCard";
 import AlertNotes from "./components/AlertNotes";
@@ -15,7 +16,7 @@ import TierPerks from "./components/TierPerks";
 import { ProblemScreen } from "./components/ProblemNotice";
 import { saveCard } from "./lib/cardCache";
 import "./styles/content.css";
-import { BAHT_PER_POINT, daysToBirthday } from "./lib/perks";
+import { BAHT_PER_POINT, birthdayPointsOf, daysToBirthday } from "./lib/perks";
 
 // หน้าสมาชิก LINE — สมัคร / บัตรสมาชิก / ประวัติแต้ม
 // ไฟล์นี้เหลือแค่ state + โหลดข้อมูล + ประกอบคอมโพเนนต์ (คอมโพเนนต์ย่อยอยู่ใน components/)
@@ -51,6 +52,7 @@ export default function LiffPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
   const [editing, setEditing]     = useState(false);
+  const [signupComplete, setSignupComplete] = useState(false);
   const [txList, setTxList]       = useState<TxItem[]>([]);
   const [txLoading, setTxLoading] = useState(false);
   const [txProblem, setTxProblem] = useState<Problem | null>(null);
@@ -182,6 +184,7 @@ export default function LiffPage() {
       // สมัครเสร็จ → เซิร์ฟเวอร์ส่งสถานะการผูกมาด้วย → ขึ้นจอ "รอพนักงานยืนยันตัวตน" ทันที
       if (r.data.link !== undefined) setLink(r.data.link ?? null);
       if (wasNew) { setExpiry(null); setExpiryUnavailable(false); }
+      if (wasNew) setSignupComplete(true);
       setEditing(false);
       if (typeof window !== "undefined") window.scrollTo({ top: 0 });
     } finally { setSubmitting(false); }
@@ -216,6 +219,15 @@ export default function LiffPage() {
     <ProblemScreen sub="บัตรสมาชิกสะสมแต้ม" what="บัตรสมาชิก" problem={problemOf("SERVER_ERROR")} onRetry={retry} retrying={retrying} />
   );
 
+  /* ── สมัครสำเร็จ — ให้ลูกค้าเห็นผลสำเร็จและขั้นต่อไปก่อนบัตรรอยืนยัน ── */
+  if (signupComplete) return (
+    <SignupSuccess
+      name={member?.first_name ?? firstName}
+      phone={(member?.phone ?? phone).replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}
+      onContinue={() => setSignupComplete(false)}
+    />
+  );
+
   /* ── แก้ไขข้อมูล ── */
   if (editing) return (
     <Shell sub="แก้ไขข้อมูลสมาชิก" layout="form">
@@ -246,6 +258,9 @@ export default function LiffPage() {
   // ผูกแล้วแต่ยังไม่เคยได้แต้ม = เพิ่งยืนยันตัวตน → แสดงข้อความยินดี (เดิมป้ายเตือนหายไปเงียบ ๆ)
   const justLinked = link?.status === "linked" && totalEarned === 0 && points === 0 && !lastPurchaseAt ? link : null;
   const birthdayIn = daysToBirthday(member?.birthday);
+  // cron วันเกิดคิดจากระดับที่ใช้อยู่ (getEffectiveTier) ไม่ใช่ระดับตามยอดสะสม
+  const expectedBirthdayBonus = birthdayIn === 0 ? birthdayPointsOf(tier.name) : 0;
+  const birthdayBonus = expectedBirthdayBonus > 0 && points - totalEarned === expectedBirthdayBonus ? expectedBirthdayBonus : 0;
 
   return (
     <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
@@ -256,6 +271,7 @@ export default function LiffPage() {
           tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
           name={name} formattedPhone={formattedPhone} member={member} profile={profile} pendingLink={pendingLink}
           realTier={isInactive ? baseTier : null}
+          birthdayBonus={birthdayBonus}
         />
         <QuickActions
           txLoading={txLoading} txOpen={txOpen} locked={!!pendingLink}
@@ -266,7 +282,7 @@ export default function LiffPage() {
           }}
         />
         <AlertNotes
-          isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry} points={points}
+          isInactive={isInactive} isNearDrop={isNearDrop} tier={tier} baseTier={baseTier} expiry={expiry}
           totalEarned={totalEarned} lastPurchaseAt={lastPurchaseAt}
           expiryUnavailable={expiryUnavailable} justLinked={justLinked} birthdayIn={pendingLink ? null : birthdayIn}
           onViewExpiring={() => { if (!txOpen) { scrollToHistory.current = true; loadTransactions(); } setTxFilter("expire"); }}
@@ -282,21 +298,13 @@ export default function LiffPage() {
           />
         )}
         {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
-        <TierPerks tier={isInactive ? baseTier : tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
+        <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
       </div>
 
       {/* ท้ายหน้าอยู่นอกคอลัมน์ → เดสก์ท็อปจัดกลางใต้ทั้งสองคอลัมน์ (styles/content.css) · มือถือยังอยู่ท้ายสุดด้วย order */}
       <div className="lf-foot">
-        {pendingLink ? (
-          // ยังไม่ผูก: ห้ามบอกว่าแต้มเข้าเอง (ไม่จริงสำหรับเขา) · สิ่งที่ต้องทำอยู่บนบัตรแล้ว ไม่พูดซ้ำ
-          <>
-            <div className="lf-foot-key">หลังยืนยันตัวตนแล้ว</div>
-            <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
-          </>
-        ) : (
-          // c3: "ยื่นบัตร/บอกเบอร์ก่อนคิดเงิน" อยู่บนบัตรที่เดียว — ท้ายหน้าไม่พูดซ้ำ
-          <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
-        )}
+        {/* บรรทัดกติกาบรรทัดเดียว — "ยื่นบัตร/บอกเบอร์" อยู่บนบัตรที่เดียว · ตอนรอยืนยันก็ไม่บอกว่าแต้มเข้าเอง */}
+        <div><span className="lf-nw">ซื้อทุก {BAHT_PER_POINT} บาท = 1 แต้ม</span> · <span className="lf-nw">แต้มใช้ได้ 1 ปี</span></div>
       </div>
     </Shell>
   );

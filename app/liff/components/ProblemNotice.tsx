@@ -11,11 +11,11 @@
 //   - รหัสปัญหาเป็นบรรทัดเล็กสำหรับแจ้งร้าน ไม่ใช่หัวข้อ
 //   - วันระบบล่ม: โชว์บัตรล่าสุดที่เครื่องจำไว้ + บอกว่าบิลวันนี้ยังได้แต้ม
 //     (จริงตามบอทฝั่งร้าน hero_points_watch.js: ดูบิลย้อน 2 วัน และบิลที่ส่งไม่สำเร็จจะลองใหม่รอบถัดไป)
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Shell } from "../ui";
-import { SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
+import { SHOP_LIFF_URL, SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
 import { loadCard, type CardSnapshot } from "../lib/cardCache";
-import { formatDate } from "../lib/tiers";
+import { TIERS } from "../lib/tiers";
 import Icon from "./Icon";
 
 // รหัสอ้างอิงที่ลูกค้าเห็น (17 ก.ย. 69 ผู้ตรวจนักออกแบบ) — เดิมโชว์รหัสดิบ "DB_UNAVAILABLE" ซึ่งลูกค้าอ่านไม่ออก
@@ -37,7 +37,14 @@ function copyOf(p: Problem, what: string, compact?: boolean): { title: string; b
   if (p.kind === "auth") {
     return {
       title: "หมดเวลาใช้งานหน้านี้",
-      body: "กรุณาปิดหน้านี้ แล้วเปิดใหม่จากเมนูใน LINE ของร้าน · แต้มของคุณไม่หายค่ะ",
+      body: "กรุณาปิดหน้านี้ แล้วเปิดใหม่ จากเมนูใน LINE ของร้าน · แต้มของคุณไม่หายค่ะ",
+      showPhone: false,
+    };
+  }
+  if (p.code === "LINE_UNAVAILABLE") {
+    return {
+      title: "เปิดหน้านี้จากแอป LINE",
+      body: `ตอนนี้เชื่อมต่อ LINE ไม่สำเร็จ กรุณาเปิด${what} จากเมนูในแอป LINE อีกครั้งค่ะ`,
       showPhone: false,
     };
   }
@@ -52,9 +59,9 @@ function copyOf(p: Problem, what: string, compact?: boolean): { title: string; b
   }
   if (p.kind === "offline") {
     return {
-      title: `โหลด${what}ไม่ได้`,
-      body: "อินเทอร์เน็ตอาจหลุดหรือสัญญาณอ่อน เช็คเน็ตแล้วกดลองใหม่ · แต้มของคุณไม่หายค่ะ",
-      showPhone: true,
+      title: "ไม่มีอินเทอร์เน็ต",
+      body: `ตอนนี้โหลด${what}ไม่ได้ ระบบจะลองใหม่อัตโนมัติ เมื่ออินเทอร์เน็ตกลับมา · แต้มของคุณไม่หายค่ะ`,
+      showPhone: false,
     };
   }
   return {
@@ -62,6 +69,12 @@ function copyOf(p: Problem, what: string, compact?: boolean): { title: string; b
     body: `ตอนนี้โหลด${what}ไม่ได้ แต้มของคุณไม่หาย ยังอยู่ครบ รอสักครู่แล้วกดลองใหม่ค่ะ`,
     showPhone: true,
   };
+}
+
+// ตัวตัดคำภาษาไทยของเบราว์เซอร์ (พจนานุกรม ICU) ตัดผิดได้ เช่น "แล้วก|ดลองใหม่" "กดล|องใหม่"
+// → ให้ขึ้นบรรทัดใหม่ได้เฉพาะตรงช่องว่างที่เราเว้นไว้เอง (แต่ละวลีสั้นพอสำหรับจอ 320px) · " ·" ติดท้ายวลีก่อนหน้า
+function nwChunks(text: string) {
+  return text.split(/ (?!·)/).map((w, i) => <span key={i}>{i > 0 && " "}<span className="lf-nw">{w}</span></span>);
 }
 
 export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, retrying, compact }: {
@@ -74,20 +87,41 @@ export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, r
 }) {
   const c = copyOf(problem, what, compact);
   const ref = problemRef(problem.code);
+  const lineUrl = SHOP_LIFF_URL;
+  async function closeWindow() {
+    try {
+      const liff = (await import("@line/liff")).default;
+      liff.closeWindow();
+    } catch {
+      window.close();
+    }
+  }
   // รหัสดิบสำหรับทีมร้าน (เปิด DevTools ดูได้) — ไม่ขึ้นบนจอ
   useEffect(() => { console.warn(`[DK member] ${ref} = ${problem.code}${problem.serverMessage ? ` · ${problem.serverMessage}` : ""}`); }, [ref, problem.code, problem.serverMessage]);
   return (
     <div className={`lf-problem${compact ? " lf-problem--compact" : ""}${problem.kind === "auth" ? " lf-problem--auth" : ""}`} role="alert">
       <div className="lf-problem-head">
-        <i><Icon name={problem.kind === "auth" ? "alertCircle" : "alert"} size={compact ? 22 : 28} /></i>
+        <i><Icon name={problem.kind === "offline" ? "wifiOff" : problem.kind === "auth" ? "alertCircle" : "alert"} size={compact ? 22 : 28} /></i>
         <b>{c.title}</b>
       </div>
-      <p className="lf-problem-body">{c.body}</p>
+      <p className="lf-problem-body">{nwChunks(c.body)}</p>
       <div className="lf-problem-acts">
-        <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={onRetry} disabled={retrying}>
-          {retrying ? "กำลังลองใหม่…" : <><Icon name="refresh" size={20} /> ลองใหม่</>}
-        </button>
-        {c.showPhone && (
+        {problem.kind === "auth" ? (
+          <>
+            <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={closeWindow}>ปิดหน้านี้</button>
+            <button type="button" className="lf-problem-retry-link" onClick={onRetry} disabled={retrying}>{retrying ? "กำลังลองใหม่…" : "ลองใหม่"}</button>
+          </>
+        ) : problem.code === "LINE_UNAVAILABLE" && lineUrl ? (
+          <>
+            <a className="lf-btn lf-btn--primary lf-btn--sm lf-problem-open-line" href={lineUrl}>เปิดใน LINE</a>
+            <button type="button" className="lf-problem-retry-link" onClick={onRetry} disabled={retrying}>{retrying ? "กำลังลองใหม่…" : "ลองใหม่"}</button>
+          </>
+        ) : (
+          <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={onRetry} disabled={retrying}>
+            {retrying ? "กำลังลองใหม่…" : <><Icon name="refresh" size={20} /> ลองใหม่</>}
+          </button>
+        )}
+        {c.showPhone && problem.kind !== "offline" && (
           <a className="lf-btn lf-btn--ghost lf-btn--sm lf-problem-tel" href={SHOP_TEL}>
             <Icon name="phone" size={20} /> โทรร้าน <span className="lf-nw">{SHOP_PHONE}</span>
           </a>
@@ -102,19 +136,20 @@ export function ProblemNotice({ problem, what = "ข้อมูล", onRetry, r
 
 /** ระหว่างระบบล่ม — ลูกค้ายังซื้อของได้ และยังมีบัตรให้โชว์ */
 function MeanwhileCard({ snap }: { snap: CardSnapshot | null }) {
+  const tier = TIERS.find(t => t.name === snap?.tier) ?? TIERS[TIERS.length - 1];
+  const savedAt = snap ? new Date(snap.savedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "";
   return (
     <section className="lf-card lf-meanwhile" aria-label="ระหว่างนี้">
       <h3><Icon name="check" size={22} /> วันนี้ซื้อของได้ตามปกติ</h3>
-      <p>บอกเบอร์โทรที่แคชเชียร์เหมือนเดิม แต้มคิดจากบิลในระบบร้าน <b>บิลวันนี้ยังได้แต้ม</b> ระบบจะเติมให้เองเมื่อกลับมาใช้ได้ค่ะ</p>
+      <p>บอกเบอร์โทรที่แคชเชียร์เหมือนเดิม แต้มคิดจากบิลในระบบร้าน <b>บิลวันนี้ยังได้แต้ม</b> ระบบจะเติมให้เอง<span className="lf-nw">เมื่อกลับมาใช้ได้ค่ะ</span></p>
       {snap && (
-        <div className="lf-snap">
+        <div className="lf-snap lf-snap-card lf-mcard" data-ink={tier.ink} data-tier={tier.name} style={{ background: tier.cardGrad } as CSSProperties}>
           <div className="lf-snap-head">
-            <b>บัตรของคุณ (ข้อมูลล่าสุดที่เครื่องนี้จำไว้)</b>
-            <span>ณ {formatDate(snap.savedAt)} · โชว์พนักงานได้</span>
+            <b>บัตรของคุณ · {snap.tier}</b>
+            <span>ข้อมูล ณ {savedAt}</span>
           </div>
-          <div className="lf-snap-row"><span>ชื่อ</span><b>{snap.name || "-"}</b></div>
-          <div className="lf-snap-row"><span>เบอร์โทร</span><b className="lf-snap-num">{snap.phone}</b></div>
-          <div className="lf-snap-row"><span>ระดับ</span><b>{snap.tier}</b></div>
+          <div className="lf-snap-name">{snap.name || "-"}</div>
+          <div className="lf-snap-phone">{snap.phone}</div>
           <div className="lf-snap-row"><span>แต้มใช้ได้</span><b className="lf-snap-num">{snap.points.toLocaleString()} แต้ม</b></div>
         </div>
       )}
@@ -132,6 +167,12 @@ export function ProblemScreen({ sub, what, problem, onRetry, retrying, back }: {
 }) {
   const [snap, setSnap] = useState<CardSnapshot | null>(null);
   useEffect(() => { setSnap(loadCard()); }, []);
+  useEffect(() => {
+    if (problem.kind !== "offline") return;
+    const handleOnline = () => onRetry();
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [problem.kind, onRetry]);
   return (
     <Shell sub={sub} short back={back}>
       <div className="lf-card">

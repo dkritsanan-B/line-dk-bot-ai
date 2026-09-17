@@ -35,18 +35,18 @@ export default function MemberForm({
   }, [error]);
   return (
     <div className="lf-form">
-      <div className="lf-row">
-        <Field label="ชื่อ">
-          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="ชื่อจริง" autoComplete="given-name" />
-        </Field>
-        <Field label="นามสกุล">
-          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="นามสกุล" autoComplete="family-name" />
-        </Field>
-      </div>
       <Field label="เบอร์มือถือ" hint={isEdit ? "เปลี่ยนเบอร์ได้ที่ร้าน — พนักงานจะแก้ให้ค่ะ" : "ใช้ยืนยันตัวตนและรับแต้มจากบิลที่ร้าน"}>
         <input className="lf-input lf-input--num" type="tel" inputMode="numeric" maxLength={10} value={phone} readOnly={isEdit}
           onChange={e => onPhone(e.target.value.replace(/\D/g, ""))} placeholder="08X XXX XXXX" autoComplete="tel" />
       </Field>
+      <div className="lf-row">
+        <Field label="ชื่อ">
+          <input className="lf-input" type="text" value={firstName} onChange={e => onFirstName(e.target.value)} placeholder="สมชาย" autoComplete="given-name" />
+        </Field>
+        <Field label="นามสกุล">
+          <input className="lf-input" type="text" value={lastName} onChange={e => onLastName(e.target.value)} placeholder="ใจดี" autoComplete="family-name" />
+        </Field>
+      </div>
       <Field label="วันเกิด" hint="รับของขวัญวันเกิดทุกปี">
         <BirthdayField value={birthday} onChange={onBirthday} />
       </Field>

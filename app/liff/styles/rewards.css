@@ -1,7 +1,7 @@
 /* หน้าของรางวัล — การ์ดแถวแนวนอน (17 ก.ย. 69 ผู้ตรวจนักออกแบบ)
  * เดิม: กรอบรูปสูง 180px + ป้าย "แลกได้เลย" + "✓ แต้มพอแล้ว" + ปุ่ม "แลกเลย" บอกเรื่องเดียวกัน 3 ครั้ง → จอแรกเห็นชิ้นเดียว
- * ตอนนี้: รูป 64×64 ซ้าย · ชื่อ + เงื่อนไข 1 บรรทัด · แถวล่าง แต้มซ้าย ปุ่ม "แลก" ขวา
- *         แลกไม่ได้ → การ์ดหม่น + ปุ่มเทากดไม่ได้บอกเหตุผล ที่เดียวกับปุ่ม · ของหมด/จองครบ มีป้ายมุมรูป
+ * ตอนนี้: รูป 64×64 ซ้าย · ชื่อ + คำอธิบาย · แถวล่าง แต้มซ้าย การกระทำ/สถานะขวา
+ *         รูปทรงปุ่มใช้เฉพาะ "แลก" ส่วนสถานะเป็นข้อความ และของหมดมีป้ายบนรูป
  * คลาสทั้งหมดขึ้นต้น lf-rw- · ใช้ตัวแปรจาก ../liff.css */
 
 .lf-rw-card {
@@ -10,7 +10,6 @@
   --lf-rw-fs-cond: 14px;
   --lf-rw-h-btn: 44px;
   --lf-rw-btn-w: 96px;
-  --lf-rw-off-bg: #E4E9F0;   /* พื้นปุ่ม/รูปของที่แลกไม่ได้ · ตัวอักษร --ink-2 บนพื้นนี้ ≈ 8.4:1 */
   display: grid;
   grid-template-columns: var(--lf-rw-thumb) minmax(0, 1fr);
   column-gap: var(--sp-3);
@@ -47,14 +46,15 @@
   position: absolute; left: 0; right: 0; bottom: 0;
   padding: 1px 2px;
   background: var(--ink-2); color: var(--on-brand);
-  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.35;
-  text-align: center; white-space: nowrap;
+  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.2;
+  /* รูป 64px แคบกว่าคำ "หมดชั่วคราว" — ให้ตัดบรรทัดตามคำ ห้ามตัดท้ายทิ้ง */
+  text-align: center; overflow-wrap: normal;
 }
 
 /* การ์ดที่แลกไม่ได้ — ถอยลงไปเป็นพื้นหลัง: ไม่มีเงา พื้นเทาอ่อน รูปขาวดำจาง
  * ตัวหนังสือไม่ลดความทึบ (ยังผ่าน AA): ชื่อ --ink-2 ≈ 9.6:1 · เงื่อนไข/แต้ม --ink-3 ≈ 5.7:1 บน --surface-2 */
 .lf-rw-card.is-off { background: var(--surface-2); box-shadow: none; border: 1px solid var(--line); }
-.lf-rw-card.is-off .lf-rw-thumb { background: var(--lf-rw-off-bg); color: var(--ink-3); }
+.lf-rw-card.is-off .lf-rw-thumb { background: var(--line); color: var(--ink-3); }
 .lf-rw-card.is-off .lf-rw-thumb img { opacity: .55; filter: grayscale(1); }
 .lf-rw-card.is-off .lf-rw-name { color: var(--ink-2); }
 .lf-rw-card.is-off .lf-rw-cond { color: var(--ink-3); }
@@ -66,10 +66,16 @@
   font-size: var(--lf-rw-fs-name); font-weight: var(--fw-black); line-height: var(--lh-tight); color: var(--ink);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.lf-rw-copy { margin-top: var(--sp-1); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
 .lf-rw-cond {
-  margin-top: 2px;
   font-size: var(--lf-rw-fs-cond); line-height: 1.45; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lf-rw-condition {
+  display: inline-flex; align-items: center; width: fit-content; min-height: 26px;
+  padding: 1px var(--sp-2); border-radius: var(--r-pill);
+  background: var(--dk-sky); color: var(--dk-blue-strong);
+  font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.35; white-space: nowrap;
 }
 
 /* แถวล่าง: แต้มซ้าย · ปุ่ม/สถานะขวา */
@@ -78,12 +84,11 @@
   min-height: var(--lf-rw-h-btn);
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2);
 }
-/* ปุ่มเหตุผลยาว (ขาดอีก 1,150 แต้ม) บนการ์ดแคบ → ปุ่มขึ้นบรรทัดใหม่ชิดขวา แทนการทับตัวเลขแต้ม */
 .lf-rw-foot > .lf-rw-btn { margin-left: auto; }
 .lf-rw-pts { flex-shrink: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-2); }
 .lf-rw-pts b { font-size: var(--fs-lead); font-weight: var(--fw-heavy); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lf-rw-pts b small { font-size: var(--lf-rw-fs-cond); font-weight: var(--fw-bold); color: var(--ink-2); margin-left: 2px; }
-/* คงเหลือน้อย (≤ 20) — สีอำพัน */
+/* คงเหลือน้อย (≤ 10) — สีอำพัน */
 .lf-rw-left { font-size: var(--lf-rw-fs-cond); font-weight: var(--fw-bold); color: var(--warn); white-space: nowrap; }
 
 /* ปุ่มแลก — สีทึบกรมท่า ตัวอักษรขาว (≈ 11:1) */
@@ -102,46 +107,53 @@
 .lf-rw-btn:disabled { opacity: .6; cursor: default; }
 .lf-rw-btn:focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
 
-/* ปุ่มเทากดไม่ได้ (แลกไม่ได้) — ตำแหน่ง/ความสูงเดียวกับปุ่มแลก ข้อความบอกเหตุผล
- * ไม่ใช้ opacity (ตัวอักษรต้องคม): --ink-2 บน --lf-rw-off-bg ≈ 8.4:1 · รอรับของ: --warn บน --warn-tint ≈ 6:1 */
-.lf-rw-btn.lf-rw-btn--off,
-.lf-rw-btn.lf-rw-btn--off:hover {
-  opacity: 1; cursor: not-allowed;
-  padding: 0 var(--sp-3);
-  background: var(--lf-rw-off-bg); color: var(--ink-2);
-  font-weight: var(--fw-bold); white-space: nowrap;
-  box-shadow: inset 0 0 0 1px var(--line);
+/* สถานะไม่มีรูปทรงปุ่ม เพื่อแยกจากสิ่งที่กดได้ชัดเจน */
+.lf-rw-status {
+  margin-left: auto; min-width: 104px; max-width: 148px;
+  color: var(--ink-3); font-size: 14px; font-weight: var(--fw-bold); line-height: 1.3; text-align: right;
 }
-.lf-rw-btn.lf-rw-btn--off:active { transform: none; }
-.lf-rw-btn.lf-rw-btn--mine,
-.lf-rw-btn.lf-rw-btn--mine:hover { background: var(--warn-tint); color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn-line); }
-.lf-rw-btn--off svg { flex-shrink: 0; }
+.lf-rw-status--mine { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-1); color: var(--warn); }
+.lf-rw-status--mine svg { flex-shrink: 0; }
+.lf-rw-status--out b, .lf-rw-status--out span { display: block; }
+.lf-rw-status--out b { color: var(--ink-2); font-size: 14px; }
+.lf-rw-status--out span { margin-top: 1px; font-size: var(--fs-label); font-weight: var(--fw-med); }
+.lf-rw-progress {
+  display: block; width: 100%; height: 4px; margin-top: var(--sp-1);
+  border-radius: var(--r-pill); overflow: hidden; background: var(--line);
+}
+.lf-rw-progress i { display: block; height: 100%; border-radius: inherit; background: var(--dk-blue); }
 
 /* บรรทัดเล็กเสริม (แต้มส่วนหนึ่งถูกจองไว้) */
 .lf-rw-note { margin-top: var(--sp-1); font-size: var(--lf-rw-fs-cond); line-height: 1.45; color: var(--ink-2); }
 
-/* กล่องยืนยัน / ผลการแลก — กินเต็มความกว้างการ์ด */
+/* ข้อผิดพลาดหลังส่งคำขออยู่ใต้การ์ด ส่วนยืนยันและสำเร็จใช้ bottom sheet */
 .lf-rw-extra { grid-column: 1 / -1; min-width: 0; }
-.lf-rw-card .lf-confirm { border-color: var(--dk-blue); background: var(--dk-sky); }
-.lf-rw-card .lf-confirm .lf-rw-btn { width: 100%; min-height: var(--h-btn-sm); }
-.lf-rw-card .lf-confirm-acts .lf-btn { min-height: var(--h-btn-sm); }
 
-/* หัวข้อพับเปิดกติกา — เท่าหัวข้อพับเปิดในหน้าบัตร (16px หนา) ไม่ให้ใหญ่กว่าชื่อของรางวัล */
+/* กติกาท้ายหน้าเป็นแถวเรียบ ไม่แย่งน้ำหนักจากรายการของรางวัล */
+.lf-wrap .lf-rules {
+  min-height: 52px; padding: 2px var(--sp-2); border-radius: 0;
+  border-top: 1px solid var(--line); background: transparent; box-shadow: none;
+}
 .lf-wrap .lf-rules summary { font-size: var(--fs-body); }
 .lf-wrap .lf-rules summary::after { font-size: var(--fs-h2); line-height: 1; }
 
 /* ชิปกรองของรางวัล (17 ก.ย. 69) — สูง 44px · มือถือเลื่อนแนวนอนชนขอบจอ · เดสก์ท็อปตัดบรรทัดได้
  * ปกติ: --ink-2 บน --surface ขอบ --line-strong (≥ 3:1) · เลือกอยู่: ขาวบน --dk-blue (ภาษาเดียวกับ .lf-tab.on) */
+.lf-rw-chips-wrap { position: relative; min-width: 0; --lf-rw-bleed: var(--sp-4); }
+@media (max-width: 419px) { .lf-rw-chips-wrap { --lf-rw-bleed: var(--sp-3); } }
+.lf-rw-chips-wrap::after {
+  content: ""; position: absolute; z-index: 1; top: 0; right: calc(var(--lf-rw-bleed) * -1); bottom: 0;
+  width: var(--sp-6); pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--bg));
+}
 .lf-rw-chips {
   --lf-rw-h-chip: 44px;
   display: flex; gap: var(--sp-2);
   overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
   /* ยื่นออกชนขอบจอเท่าระยะขอบของ .lf-wrap พอดี (liff.css: 16px · จอ < 420px เหลือ 12px) — ไม่ให้หน้าเลื่อนข้าง */
-  --lf-rw-bleed: var(--sp-4);
   margin: 0 calc(var(--lf-rw-bleed) * -1);
   padding: 2px var(--lf-rw-bleed);
 }
-@media (max-width: 419px) { .lf-rw-chips { --lf-rw-bleed: var(--sp-3); } }
 .lf-rw-chips::-webkit-scrollbar { display: none; }
 .lf-rw-chip {
   flex-shrink: 0;
@@ -173,18 +185,89 @@
 .lf-rw-empty > span b { color: var(--ink); }
 .lf-rw-empty .lf-btn { width: auto; margin-top: var(--sp-1); }
 
+.lf-rw-grid { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+
+/* แถบสรุปแต้มสั้น กระชับ และให้ตัวเลขเป็นจุดเด่น */
+.lf-wrap--catalog > .lf-balance:not(.lf-balance--signup) { display: block; padding: var(--sp-2) var(--sp-4); }
+.lf-balance-line { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.lf-balance-line > span { color: var(--ink-2); }
+.lf-balance-line > b { display: flex; align-items: baseline; gap: var(--sp-1); font-size: var(--fs-num); }
+/* ตัวเลขนับถอยอยู่ใน span — กันกฎ .lf-balance span ของ liff.css (ตัวเล็กสีจาง) มาทับ */
+.lf-balance-line > b > span { display: inline; font-size: inherit; font-weight: inherit; color: inherit; }
+.lf-balance-line > b small { color: var(--ink-2); font-size: var(--fs-body); font-weight: var(--fw-black); }
+.lf-balance-reserved {
+  padding-top: var(--sp-2); border-top: 1px solid var(--line);
+  color: var(--ink-2); font-size: 14px; font-weight: var(--fw-med);
+}
+.lf-balance-reserved b { display: inline; color: var(--warn); font-size: inherit; font-weight: var(--fw-black); }
+.lf-wrap--catalog > .lf-balance--signup {
+  min-height: 64px; padding: var(--sp-2) var(--sp-3); flex-wrap: nowrap;
+}
+.lf-balance--signup .lf-balance-main > span { font-size: var(--fs-body); }
+.lf-balance--signup .lf-balance-main > p { font-size: 14px; white-space: nowrap; }
+.lf-balance--signup .lf-balance-cta { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+
+/* กล่องยืนยันและผลสำเร็จวางชิดขอบล่างแบบ LIFF */
+.lf-rw-modal {
+  position: fixed; z-index: 20; inset: 0; padding: var(--sp-4);
+  display: flex; align-items: flex-end; justify-content: center;
+  background: color-mix(in srgb, var(--dk-navy) 64%, transparent);
+}
+.lf-rw-sheet {
+  width: min(100%, 520px); max-height: calc(100vh - var(--sp-7)); overflow-y: auto;
+  padding: var(--sp-3) var(--sp-4) var(--sp-5); border-radius: var(--r-lg) var(--r-lg) var(--r-sm) var(--r-sm);
+  background: var(--surface); box-shadow: var(--sh-3);
+}
+.lf-rw-sheet-handle { width: 40px; height: 4px; margin: 0 auto var(--sp-4); border-radius: var(--r-pill); background: var(--line-strong); }
+.lf-rw-sheet-item { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: var(--sp-3); }
+.lf-rw-sheet-thumb {
+  width: 64px; height: 64px; border-radius: var(--r-sm); overflow: hidden;
+  display: flex; align-items: center; justify-content: center; background: var(--dk-sky); color: var(--dk-blue-strong);
+}
+.lf-rw-sheet-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.lf-rw-sheet-kicker { display: block; color: var(--ink-3); font-size: var(--fs-label); font-weight: var(--fw-bold); }
+.lf-rw-sheet h2 { margin: 1px 0 0; color: var(--ink); font-size: var(--fs-h2); font-weight: var(--fw-black); line-height: var(--lh-tight); }
+.lf-rw-sheet-item p { margin: var(--sp-1) 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.4; }
+.lf-rw-sheet-item .lf-rw-condition { margin-top: var(--sp-1); }
+.lf-rw-sheet-math {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--r-sm); background: var(--surface-2);
+  font-size: var(--fs-body);
+}
+.lf-rw-sheet-math span { color: var(--ink-2); }
+.lf-rw-sheet-math b { color: var(--ink); font-weight: var(--fw-black); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lf-rw-sheet-note { margin: var(--sp-3) 0; color: var(--ink-2); font-size: var(--fs-body); line-height: 1.45; }
+.lf-rw-sheet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.lf-rw-sheet-actions :is(.lf-btn, .lf-rw-btn) { width: 100%; min-height: var(--h-btn-sm); }
+.lf-rw-sheet--success { text-align: center; }
+.lf-rw-success-icon {
+  width: 64px; height: 64px; margin: 0 auto var(--sp-3); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: var(--ok-tint); color: var(--ok);
+}
+.lf-rw-sheet--success h2 { font-size: var(--fs-h1); }
+.lf-rw-success-no {
+  margin-top: var(--sp-3); color: var(--dk-blue-strong); font-size: var(--fs-num); font-weight: var(--fw-heavy);
+  font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); overflow-wrap: anywhere;
+}
+.lf-rw-sheet--success > p { margin: var(--sp-2) 0 var(--sp-4); color: var(--ink-2); font-size: var(--fs-body); }
+.lf-rw-sheet--success > .lf-rw-btn { width: 100%; min-height: var(--h-btn-sm); }
+
 /* เดสก์ท็อป: ยังเป็นตารางการ์ด (2–3 ใบต่อแถว) การ์ดสูงเท่ากันในแถว รูปใหญ่ขึ้น
  * แถวล่าง (แต้ม + ปุ่ม) กินเต็มความกว้างการ์ดและติดขอบล่างเสมอ — แถวที่ 2 (1fr) รับความสูงส่วนเกิน
  * บรรทัดเสริมอยู่ในแถว 1fr ชิดล่าง ติดเหนือแถวล่างพอดี → ปุ่มทุกใบในแถวยังตรงกัน */
 @media (min-width: 900px) {
-  .lf-wrap--catalog > .lf-rw-card { align-self: stretch; }
-  .lf-wrap--catalog > .lf-rw-chips,
+  .lf-wrap--catalog > .lf-rw-chips-wrap,
+  .lf-wrap--catalog > .lf-rw-grid,
   .lf-wrap--catalog > .lf-rw-empty,
   .lf-wrap--catalog > .lf-note { grid-column: 1 / -1; }
+  .lf-wrap--catalog > .lf-balance { width: min(100%, 560px); justify-self: start; }
+  .lf-rw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: var(--sp-4); }
+  .lf-rw-grid > .lf-rw-empty { grid-column: 1 / -1; }
   .lf-rw-chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .lf-rw-chips-wrap::after { display: none; }
   .lf-rw-card {
     --lf-rw-thumb: 88px; padding: var(--sp-4); column-gap: var(--sp-4);
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
   .lf-rw-thumb { grid-row: 1; }
   .lf-rw-note  { grid-column: 1 / -1; grid-row: 2; align-self: end; }
@@ -195,4 +278,12 @@
   }
   .lf-rw-extra { grid-row: 4; }
   .lf-rw-cond { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .lf-rw-modal { align-items: center; }
+  /* กล่องกลางจอไม่ใช่ sheet ที่ลากได้ — ไม่ต้องมีขีดจับ */
+  .lf-rw-sheet-handle { display: none; }
+  .lf-rw-sheet { border-radius: var(--r-lg); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-rw-btn { transition: none; }
 }

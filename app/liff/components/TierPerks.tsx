@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 // สิทธิ์ของระดับ "ตอนนี้" (P3) — ช่างถามได้ใน 5 วิ ว่า "ตอนนี้ลดกี่ %"
 // ถ้าระดับนี้ยังไม่มีส่วนลด บอกว่าระดับถัดไปที่มีสิทธิ์ได้อะไร · ตัวเลขทั้งหมดมาจาก lib/tierRules.ts
 // แถวสิทธิ์จัดเป็น 2 กลุ่ม (ลดทันที / ได้แต้มเพิ่ม) — หัวกลุ่มเหลือแค่ชื่อ
@@ -51,11 +52,12 @@ export function PointsHowTo() {
   );
 }
 
-export default function TierPerks({ tier, restore, hideOnMobile, showHow, pending }: {
-  tier: Tier; restore?: boolean; hideOnMobile?: boolean; showHow?: boolean;
+export default function TierPerks({ tier, currentTier, restore, hideOnMobile, showHow, pending }: {
+  tier: Tier; currentTier?: Tier; restore?: boolean; hideOnMobile?: boolean; showHow?: boolean;
   /** true = สมัครแล้วแต่ยังไม่ยืนยันตัวตนที่ร้าน */
   pending?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const mine = perksOf(tier.name);
   const myBirthday = birthdayPointsOf(tier.name);
   // ระดับแรกที่สูงกว่าเราและมีสิทธิ์ (TIERS เรียงสูง→ต่ำ)
@@ -68,24 +70,37 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow, pendin
     .filter(g => g.rows.length);
   const shownTier = mine.length ? tier.name : target!.name;
   const bdShown = mine.length ? myBirthday : target ? birthdayPointsOf(target.name) : 0;
+  // นับเป็นจำนวนแถวสิทธิ์ที่ซ่อนอยู่ (กลุ่มที่ 2 เป็นต้นไป + คูปองวันเกิด)
+  const hiddenCount = groups.slice(1).reduce((n, g) => n + g.rows.length, 0) + (bdShown > 0 ? 1 : 0);
+  const visibleGroups = expanded ? groups : groups.slice(0, 1);
+  const pausedClass = restore ? " lf-perk-paused" : "";
+  const activeBirthday = currentTier ? birthdayPointsOf(currentTier.name) : 0;
   return (
     <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}`}>
       {pending ? (
         <>
           <h3><Icon name="tag" size={22} /> หลังยืนยันตัวตน ได้สิทธิ์เหล่านี้</h3>
+          <div className="lf-perknow">
+            <b>หลังยืนยัน ได้ทันที</b>
+            <span>สะสมแต้มทุกบิล · แลกของรางวัล</span>
+          </div>
           {mine.length ? (
             <p>ระดับ <TierMark tier={tier} /> <b>{tier.name}</b></p>
           ) : (
             <p>
-              เมื่อถึงระดับ <TierMark tier={target!} /> <b>{target!.name}</b> <span className="lf-nw">· สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม</span>
+              เป้าหมายถัดไป: <TierMark tier={target!} /> <b>{target!.name}</b> <span className="lf-nw">· สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม</span>
               {" "}<span className="lf-nw">(ซื้อรวมราว {bahtFor(target!.min)} บาท)</span>
             </p>
           )}
         </>
       ) : restore && mine.length ? (
         <>
-          <h3><Icon name="tag" size={22} /> ซื้อครั้งถัดไป ได้สิทธิ์นี้คืน</h3>
-          <p>ระดับจริงของคุณ <TierMark tier={tier} /> <b>{tier.name}</b></p>
+          <div className="lf-perknow lf-perknow--current">
+            <b>ตอนนี้ได้</b>
+            <span>สะสมแต้มทุกบิล{activeBirthday > 0 ? <> · คูปองวันเกิด <strong>{activeBirthday.toLocaleString()} แต้ม</strong></> : ""}</span>
+          </div>
+          <h3><Icon name="tag" size={22} /> สิทธิ์ระดับ <TierMark tier={tier} /> {tier.name} <em className="lf-perk-pause-chip">พักไว้</em></h3>
+          <p>ซื้อครั้งถัดไป สิทธิ์เหล่านี้กลับมาใช้ได้ทันที</p>
         </>
       ) : mine.length ? (
         <>
@@ -107,38 +122,43 @@ export default function TierPerks({ tier, restore, hideOnMobile, showHow, pendin
           </p>
         </>
       )}
-      {groups.map(g => (
-        <div key={g.via} className="lf-perkgroup">
+      {visibleGroups.map(g => (
+        <div key={g.via} className={`lf-perkgroup${pausedClass}`}>
           <div className="lf-perkhead lf-ct-head">
             <b>{VIA_HEAD[g.via].title}</b>
             {/* แต้มกลุ่มนี้เป็นแต้ม "เพิ่ม" แยกจากแต้มยอดซื้อ (lib/tierRules.ts computeBonus → รายการแยกในประวัติ) */}
             {g.via === "points" && <span className="lf-ct-headnote"><span className="lf-nw">บวกเพิ่มจากแต้มปกติ</span> <span className="lf-nw">(ทุก {BAHT_PER_POINT} บาท = 1 แต้ม)</span></span>}
           </div>
           {g.rows.map(l => (
-            <div key={l.key} className="lf-perkrow">
-              <span>{l.label}</span>
-              <div className="lf-ct-valbox">
-                <b className="lf-ct-val">{l.value}{l.per && <small>{l.per}</small>}</b>
-                {l.via === "points" && <em className="lf-ct-sub">{totalNote(l.key, shownTier)}</em>}
+            <div key={l.key} className="lf-perkrow-wrap">
+              <div className="lf-perkrow">
+                <span>{l.label}</span>
+                <div className="lf-ct-valbox">
+                  <b className="lf-ct-val">{l.value}{l.per && <small>{l.per}</small>}</b>
+                  {l.via === "points" && <em className="lf-ct-sub">{totalNote(l.key, shownTier)}</em>}
+                </div>
               </div>
+              {l.key === "steel" && (
+                <p className="lf-ct-note">เหล็กเส้น: ได้แต้มปกติ ({NORMAL_PER_100} แต้ม/100 บาท) ไม่มีแต้มเพิ่ม</p>
+              )}
             </div>
           ))}
-          {/* เหล็กเส้นไม่ใช่สิทธิ์ — หมายเหตุเบา ๆ ใต้กลุ่ม ไม่ใช้ตัวหนาสีน้ำเงินแบบแถวสิทธิ์ */}
-          {g.rows.some(l => l.key === "steel") && (
-            <p className="lf-ct-note">
-              <span className="lf-nw">เหล็กเส้น: ได้แต้มปกติ</span> <span className="lf-nw">({NORMAL_PER_100} แต้ม/100 บาท)</span> <span className="lf-nw">ไม่มีแต้มเพิ่ม</span>
-            </p>
-          )}
         </div>
       ))}
-      {bdShown > 0 && (
-        <div className="lf-perkgroup">
+      {bdShown > 0 && expanded && (
+        <div className={`lf-perkgroup${pausedClass}`}>
           <div className="lf-perkhead lf-ct-head"><b>ของขวัญวันเกิด</b></div>
           <div className="lf-perkrow">
             <span><Icon name="cake" size={18} /> คูปองวันเกิด</span>
             <b className="lf-ct-val">+{bdShown.toLocaleString()} แต้ม</b>
           </div>
         </div>
+      )}
+      {hiddenCount > 0 && (
+        <button type="button" className="lf-perk-more" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>
+          {expanded ? "ซ่อนสิทธิ์เพิ่มเติม" : `ดูสิทธิ์ทั้งหมด (+${hiddenCount})`}
+          <Icon name="chevron" size={18} />
+        </button>
       )}
       {showHow && <PointsHowTo />}
     </section>

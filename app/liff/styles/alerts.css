@@ -19,3 +19,11 @@
 .lf-note.lf-al-quiet strong { color: var(--ink); font-weight: var(--fw-bold); }
 .lf-note.lf-al-quiet .lf-al-txt { min-width: 0; flex: 1; }
 
+/* วันเกิดเป็นบรรยากาศฉลอง พื้นอ่อนและเงาเบา ไม่มีแถบเตือนหนา */
+.lf-note.lf-note--gift {
+  background: var(--accent-tint); border: 0; color: var(--accent-strong);
+  box-shadow: var(--sh-1);
+}
+.lf-note.lf-note--gift { color: var(--ink); }
+.lf-note.lf-note--gift > b { color: var(--accent-strong); }
+.lf-note.lf-note--gift strong { color: var(--ink); }

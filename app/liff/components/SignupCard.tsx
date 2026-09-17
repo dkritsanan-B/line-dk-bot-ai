@@ -27,8 +27,8 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
         </div>
         {/* c3: กล่องชวนสมัครเหลือ 2 บรรทัด · "สิทธิ์เริ่มหลังยืนยัน" ตัดทิ้ง เพราะขั้นตอนที่ 2 บอกอยู่แล้ว */}
         <ul className="lf-ct-pitch" aria-label="สิทธิ์ที่ได้รับจากสมาชิก">
-          <li><Icon name="star" size={22} /><span><span className="lf-nw">ทุก {BAHT_PER_POINT} บาท</span> <span className="lf-nw">= 1 แต้ม</span></span></li>
-          <li><Icon name="tag" size={22} /><span><span className="lf-nw">ส่วนลดหน้าร้าน</span> <span className="lf-nw">{discRange} ตามระดับ</span></span></li>
+          <li><Icon name="star" size={22} /><span>สมัครวันนี้: สะสมแต้มทุกบิล</span></li>
+          <li><Icon name="tag" size={22} /><span>ส่วนลดสูงสุด {disc.max}% เมื่อเลื่อนระดับ</span></li>
         </ul>
         {/* ขั้นตอน: เส้นเชื่อมทึบ 2px เต็มช่อง · คำในแต่ละขั้นห้ามตัดกลางคำ */}
         <ol className="lf-ct-steps" aria-label="ขั้นตอนสมัครสมาชิก">
@@ -64,10 +64,6 @@ export default function SignupCard({ profile, form }: { profile: Profile | null;
           ))}
         </ol>
         </details>
-      </div>
-      <div className="lf-foot">
-        <div className="lf-foot-key"><span className="lf-nw">ซื้อครั้งต่อไป</span> <span className="lf-nw">บอกเบอร์หรือยื่นหน้าบัตรสมาชิก</span> <span className="lf-nw">ก่อนคิดเงิน</span></div>
-        <span className="lf-nw">ไม่ได้พกมือถือหรือเน็ตไม่ดี</span> <span className="lf-nw">ใช้เบอร์โทรที่สมัครไว้ได้ค่ะ</span>
       </div>
     </Shell>
   );

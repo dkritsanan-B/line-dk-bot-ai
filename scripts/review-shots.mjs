@@ -37,6 +37,9 @@ const url = (p, scenario) => `${BASE}${p}?review=${encodeURIComponent(SECRET)}&a
 
 async function shoot(ctx, page, dest, { full = true } = {}) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
+  // ปุ่มสมัครแบบ sticky: ภาพเต็มหน้าจะวาดปุ่มค้างกลางฟอร์ม (ทับช่องบริษัท + เว้นที่ว่างใต้ฟอร์ม) ซึ่งผู้ใช้จริงไม่เห็น
+  // → เลื่อนลงสุดก่อนถ่าย ปุ่มจะอยู่ที่เดิมของมัน
+  if (full) await page.evaluate(() => { if (document.querySelector(".lf-ct-sticky")) window.scrollTo(0, document.body.scrollHeight); });
   await page.screenshot({ path: dest, fullPage: full });
   return dest;
 }
@@ -85,13 +88,14 @@ for (const view of VIEWS) {
             // กดแลกแล้วต้องมีกล่องยืนยันก่อน — ถ่ายไว้ 1 ภาพ แล้วกดยืนยันเพื่อดูผล
             const cf = page.getByRole("button", { name: /ยืนยันแลก/ });
             if (await cf.count()) {
-              const dc = await shoot(ctx, page, path.join(OUT, scenario, `${pg.key}-${view.key}-confirm.png`));
+              // bottom sheet เป็น UI ติด viewport — ถ่ายเฉพาะ viewport เพื่อไม่ให้ฉากหลังหยุดกลางภาพ full-page
+              const dc = await shoot(ctx, page, path.join(OUT, scenario, `${pg.key}-${view.key}-confirm.png`), { full: false });
               index.shots.push({ scenario, page: pg.key + ":confirm", view: view.key, file: path.relative(process.cwd(), dc), text: "", consoleErrors });
               await cf.first().click();
             }
             await page.waitForTimeout(1200);
             const d3 = path.join(OUT, scenario, `${pg.key}-${view.key}-redeem.png`);
-            await shoot(ctx, page, d3);
+            await shoot(ctx, page, d3, { full: false });
             index.shots.push({ scenario, page: pg.key + ":redeem", view: view.key, file: path.relative(process.cwd(), d3), text: "", consoleErrors });
           }
         }
@@ -118,8 +122,8 @@ for (const view of VIEWS) {
       key: "x_after_signup", scenario: "new", path: "/liff",
       after: async page => {
         // คนเดียวกับสถานการณ์ pending/linkedNew (ช่างสมชาย) — ผู้ตรวจเดินทั้งเส้นทาง ชื่อต้องต่อกัน
-        await page.getByPlaceholder("ชื่อจริง").fill("สมชาย");
-        await page.getByPlaceholder("นามสกุล").fill("ใจดี");
+        await page.getByPlaceholder("สมชาย").fill("สมชาย");
+        await page.getByPlaceholder("ใจดี").fill("ใจดี");
         await page.getByPlaceholder("08X XXX XXXX").fill("0812345678");
         const sels = page.locator(".lf-date select");
         if (await sels.count() === 3) {
@@ -130,6 +134,23 @@ for (const view of VIEWS) {
         }
         await page.getByRole("button", { name: /สมัครสมาชิกฟรี/ }).click();
         await page.waitForTimeout(1200);
+      },
+    },
+    // สมัครเสร็จ → จอสำเร็จก่อน (ภาพบน) → กด "เข้าใจแล้ว" → บัตรรอยืนยัน (ภาพนี้)
+    {
+      key: "x_after_signup_card", scenario: "new", path: "/liff",
+      after: async page => {
+        await page.getByPlaceholder("สมชาย").fill("สมชาย");
+        await page.getByPlaceholder("ใจดี").fill("ใจดี");
+        await page.getByPlaceholder("08X XXX XXXX").fill("0812345678");
+        const sels = page.locator(".lf-date select");
+        for (let i = 0; i < await sels.count(); i++) {
+          const vals = await sels.nth(i).locator("option").evaluateAll(os => os.map(o => o.value).filter(Boolean));
+          if (vals.length) await sels.nth(i).selectOption(vals[Math.min(5, vals.length - 1)]);
+        }
+        await page.getByRole("button", { name: /สมัครสมาชิกฟรี/ }).click();
+        await page.getByRole("button", { name: /เข้าใจแล้ว/ }).click({ timeout: 5000 });
+        await page.waitForTimeout(600);
       },
     },
   ];

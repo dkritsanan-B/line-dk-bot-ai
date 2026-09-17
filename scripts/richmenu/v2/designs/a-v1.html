@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DK Rich Menu — Premium Steel</title>
+  <style>
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUI.ttf") format("truetype");font-weight:400}
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUIB.ttf") format("truetype");font-weight:700}
+    *{box-sizing:border-box}html,body{margin:0;width:2500px;height:1686px;overflow:hidden}
+    body{font-family:Leelawadee,"Leelawadee UI",Tahoma,sans-serif;background:#071d3c;color:#fff}
+    .canvas{position:relative;width:2500px;height:1686px;overflow:hidden;background:
+      linear-gradient(118deg,transparent 0 47%,rgba(255,255,255,.028) 47.1% 47.4%,transparent 47.5%),
+      linear-gradient(160deg,#071a36 0%,#0e3a78 58%,#082650 100%)}
+    .canvas:before{content:"";position:absolute;inset:-420px -100px;background:repeating-linear-gradient(135deg,transparent 0 190px,rgba(255,255,255,.028) 191px 197px);transform:rotate(-2deg)}
+    .btn{position:absolute;display:flex;align-items:center;isolation:isolate;overflow:hidden;background:rgba(7,28,58,.20);border-right:6px solid rgba(255,255,255,.12);border-bottom:6px solid rgba(255,255,255,.12)}
+    .btn:after{content:"";position:absolute;inset:22px;border:3px solid rgba(255,255,255,.14);z-index:-1}
+    .member{left:0;top:0;width:1250px;height:1124px;padding:92px 88px;align-items:flex-start;flex-direction:column;border-right:8px solid #ffd400;border-bottom:8px solid #ffd400;background:linear-gradient(155deg,rgba(23,71,166,.56),rgba(5,22,48,.46))}
+    .member:after{inset:34px;border:6px solid #ffd400}
+    .member .logo{width:178px;height:178px;object-fit:cover;border:6px solid #ffd400;box-shadow:0 16px 35px rgba(0,0,0,.30)}
+    .eyebrow{margin-top:55px;color:#ffd400;font-size:54px;font-weight:700;letter-spacing:2px}
+    .member h1{margin:18px 0 8px;font-size:142px;line-height:1.02;font-weight:700;letter-spacing:-4px}
+    .member .sub{font-size:60px;color:#fff;line-height:1.25}
+    .member .cta{margin-top:auto;display:flex;align-items:center;gap:24px;font-size:58px;font-weight:700;color:#071d3c;background:#ffd400;padding:20px 34px 17px}
+    .member .cta svg{width:54px;height:54px;stroke:#071d3c}
+    .standard{padding:54px 62px;gap:50px}
+    .standard .icon-wrap{width:168px;height:168px;flex:none;display:grid;place-items:center;border:5px solid #ffd400;background:rgba(255,212,0,.08)}
+    .standard svg{width:100px;height:100px;stroke:#ffd400}
+    .copy h2{margin:0;font-size:100px;line-height:1.05;font-weight:700;letter-spacing:-2px}
+    .copy p{margin:15px 0 0;font-size:52px;line-height:1.2;color:#e9f1ff}
+    .map{left:1250px;top:0;width:1250px;height:562px}
+    .contact{left:1250px;top:562px;width:1250px;height:562px}
+    .small{top:1124px;height:562px;padding:42px 38px;flex-direction:column;justify-content:center;text-align:center;gap:16px}
+    .small .icon-wrap{width:120px;height:120px}
+    .small svg{width:74px;height:74px}
+    .small .copy h2{font-size:90px;line-height:1}
+    .small .copy p{font-size:50px;margin-top:11px;white-space:nowrap}
+    .game{left:0;width:834px}.facebook{left:834px;width:833px}.website{left:1667px;width:833px;border-right:0}
+    svg{fill:none;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+    .bolt{position:absolute;right:45px;top:46px;width:280px;height:280px;opacity:.045;stroke:#fff;stroke-width:14}
+  </style>
+</head>
+<body>
+<main class="canvas">
+  <section class="btn member">
+    <svg class="bolt" viewBox="0 0 100 100"><path d="M14 30h47L43 50h43L40 91l12-29H14z"/></svg>
+    <img class="logo" src="../../../../public/dk-logo.jpg" alt="DK Steel and Tools">
+    <div class="eyebrow">สิทธิพิเศษสำหรับลูกค้า DK</div>
+    <h1>บัตรสมาชิก</h1>
+    <div class="sub">สมัคร · เช็คแต้ม · แลกของ</div>
+    <div class="cta">เปิดบัตรของฉัน <svg viewBox="0 0 64 64"><path d="M12 32h38M37 19l13 13-13 13"/></svg></div>
+  </section>
+  <section class="btn standard map">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path d="M50 90S20 62 20 38a30 30 0 0 1 60 0c0 24-30 52-30 52Z"/><circle cx="50" cy="38" r="10"/></svg></div>
+    <div class="copy"><h2>แผนที่ร้าน</h2><p>ดูเส้นทางมาร้าน DK</p></div>
+  </section>
+  <section class="btn standard contact">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path d="M24 15h16l8 22-12 8c7 13 14 20 27 27l8-12 22 8v16c0 7-6 12-13 11C43 91 9 57 13 27c1-7 4-12 11-12Z"/></svg></div>
+    <div class="copy"><h2>ติดต่อฝ่ายขาย</h2><p>โทร / LINE พนักงาน</p></div>
+  </section>
+  <section class="btn standard small game">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path d="M30 35h40c12 0 19 10 17 22l-5 27-18-16H36L18 84l-5-27c-2-12 5-22 17-22Z"/><path d="M31 51v16M23 59h16M66 53h.1M76 63h.1"/></svg></div>
+    <div class="copy"><h2>เล่นเกมรับแต้ม</h2><p>ตอบคำถาม · 1 แต้ม/วัน</p></div>
+  </section>
+  <section class="btn standard small facebook">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path d="M58 88V55h12l3-14H58v-8c0-7 4-11 11-11h7V10c-4-1-9-2-15-2-15 0-25 9-25 26v7H24v14h12v33"/></svg></div>
+    <div class="copy"><h2>Facebook</h2><p>ข่าวสารจากเพจ DK</p></div>
+  </section>
+  <section class="btn standard small website">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/><path d="M10 50h80M50 10c13 12 20 25 20 40S63 78 50 90C37 78 30 65 30 50s7-28 20-40Z"/></svg></div>
+    <div class="copy"><h2>เว็บไซต์ร้าน</h2><p>สินค้า · โปรโมชั่น</p></div>
+  </section>
+</main>
+</body>
+</html>

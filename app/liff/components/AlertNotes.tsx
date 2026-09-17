@@ -24,18 +24,12 @@ import "../styles/alerts.css";
 
 const YEAR_MS = 365 * 86400000;
 const BIRTHDAY_NOTICE_DAYS = 14;
-// แต้มใกล้หมดอายุถือว่า "น้อย" เมื่อต่ำกว่า 100 แต้ม และไม่ถึง 10% ของแต้มที่มี
-// → แสดงเป็นโน้ตเงียบบรรทัดเดียว (ไม่ต้องเร่งลูกค้าด้วยกล่องเหลือง) · เกินเกณฑ์ใดเกณฑ์หนึ่ง = กล่องเหลืองพร้อมปุ่มดูรายการ
-const SMALL_EXPIRING_POINTS = 100;
-const SMALL_EXPIRING_SHARE = 0.1;
-
 type AlertKind = "nearDrop" | "expiring" | "birthday" | "welcome";
 
 export default function AlertNotes({
-  isInactive, isNearDrop, tier, expiry, points, onViewExpiring, expiryUnavailable,
+  isInactive, isNearDrop, tier, expiry, onViewExpiring, expiryUnavailable,
   lastPurchaseAt, justLinked, birthdayIn,
 }: {
-  points: number;
   /** ไม่ได้ใช้แล้ว (คำอธิบายระดับลดชั่วคราวย้ายไปอยู่บนบัตร) — คงไว้ให้ page.tsx ส่งได้เหมือนเดิม */
   totalEarned?: number;
   isInactive: boolean;
@@ -71,7 +65,7 @@ export default function AlertNotes({
     <>
       {kind === "nearDrop" && <NearDrop tier={tier} lastPurchaseAt={lastPurchaseAt!} />}
       {kind === "expiring" && (
-        <Expiring expiry={expiry!} points={points} onView={onViewExpiring} />
+        <Expiring expiry={expiry!} onView={onViewExpiring} />
       )}
       {kind === "birthday" && <Birthday tier={tier} birthdayIn={birthdayIn!} />}
       {kind === "welcome" && <Welcome link={justLinked!} />}
@@ -95,37 +89,19 @@ function NearDrop({ tier, lastPurchaseAt }: { tier: Tier; lastPurchaseAt: string
   );
 }
 
-function Expiring({ expiry, points, onView }: { expiry: Expiry; points: number; onView: () => void }) {
+function Expiring({ expiry, onView }: { expiry: Expiry; onView: () => void }) {
   const pts = expiry.expiring_points ?? 0;
   const exp = expiry.earliest_expiry!;
-  const expDate = formatDate(exp);
+  const expDate = new Date(exp).toLocaleDateString("th-TH", { day: "numeric", month: "short" });
   const daysLeft = Math.ceil((new Date(exp).getTime() - Date.now()) / 86400000);
-  const isSmall = pts < SMALL_EXPIRING_POINTS && pts < points * SMALL_EXPIRING_SHARE;
-
-  if (isSmall) {
-    // จำนวนน้อย → บรรทัดเดียวเงียบ ๆ (รายละเอียดดูได้ในประวัติแต้ม)
-    return (
-      <div className="lf-note lf-al-quiet">
-        <i><Icon name="hourglass" size={18} /></i>
-        <span className="lf-al-txt">
-          <strong className="lf-nw">{pts.toLocaleString()} แต้ม</strong> <span className="lf-nw">หมดอายุ {expDate}</span>
-        </span>
-      </div>
-    );
-  }
-
-  // สีเหลืองอำพันเสมอ — เป็น "คำเตือน" ไม่ใช่ข้อผิดพลาด (ผู้ตรวจ r4: ชมพู/แดงดูเหมือนระบบพัง)
   return (
-    // P: จำนวนแต้ม 20px สีเข้มเป็นหลัก · วันที่ 15px น้ำหนักปกติ · ปุ่มอยู่ขวาบรรทัดเดียวกันทุกจอ (styles/card.css)
-    <div className="lf-note lf-note--warn lf-note--compact lf-cd-exp">
-      <div className="lf-cd-exp-txt">
-        <div className="lf-cd-exp-pts">
-          <span className="lf-nw">{pts.toLocaleString()} แต้ม</span> <span className="lf-nw">จะหมดอายุ</span>
-        </div>
-        <div className="lf-cd-exp-when"><span className="lf-nw">วันที่ {expDate}</span>{daysLeft <= 90 ? <> <span className="lf-nw">(อีก {daysLeft} วัน)</span></> : ""}</div>
-      </div>
-      <button className="lf-link lf-cd-exp-btn" onClick={onView}>ดูรายการ <Icon name="chevron" size={18} /></button>
-    </div>
+    <button type="button" className="lf-note lf-note--warn lf-cd-exp" onClick={onView}>
+      <i><Icon name="hourglass" size={20} /></i>
+      <span className="lf-cd-exp-txt">
+        <strong>{pts.toLocaleString()} แต้ม</strong>หมดอายุ{daysLeft >= 0 ? `ใน ${daysLeft} วัน` : "แล้ว"} <span className="lf-nw">({expDate})</span>
+      </span>
+      <Icon name="chevron" size={20} />
+    </button>
   );
 }
 

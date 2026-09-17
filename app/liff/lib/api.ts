@@ -22,6 +22,10 @@ export type ApiResult<T> = { ok: true; data: T } | { ok: false; problem: Problem
 
 export const SHOP_PHONE = "075-845177";
 export const SHOP_TEL = "tel:075845177";
+/** ลิงก์เปิดหน้าสมาชิกในแอป LINE — ค่าเดียวกับ SHOP.liffUrl ใน lib/line-ui.ts และ scripts/setup-rich-menu.mjs */
+export const SHOP_LIFF_URL = process.env.NEXT_PUBLIC_LIFF_ID
+  ? `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}`
+  : "https://liff.line.me/2010392141-TXmVNdGl";
 
 export function problemOf(code: string | undefined, serverMessage?: string | null): Problem {
   const c = code ?? "SERVER_ERROR";

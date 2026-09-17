@@ -12,8 +12,9 @@ import Icon from "./Icon";
 import "../styles/actions.css";
 
 /** ป้ายเล็กบนปุ่มที่ยังใช้ไม่ได้ */
-function LockTag() {
-  return <em className="lf-ac-tag">หลังยืนยัน</em>;
+function LockTag({ children = "หลังยืนยัน", wide }: { children?: React.ReactNode; wide?: boolean }) {
+  // wide = ข้อความยาวที่อาจขึ้น 2 บรรทัด → ไม่ใช้เม็ดยา (มุมมนเต็มแล้วดูเบี้ยว) ใช้ข้อความรองเฉย ๆ
+  return <em className={`lf-ac-tag${wide ? " lf-ac-tag--text" : ""}`}>{children}</em>;
 }
 
 export default function QuickActions({
@@ -31,12 +32,11 @@ export default function QuickActions({
     <div className={`lf-actions${locked ? " lf-actions--locked" : ""}`}>
       <button
         type="button"
-        className={`lf-action lf-cd-act lf-cd-act--reward${lockCls}`}
-        aria-disabled={locked || undefined}
-        onClick={locked ? undefined : () => (window.location.href = "/liff/rewards" + reviewQS())}
+        className="lf-action lf-cd-act lf-cd-act--reward"
+        onClick={() => (window.location.href = "/liff/rewards" + reviewQS())}
       >
         <i><Icon name="gift" size={28} /></i><b>ของรางวัล</b>
-        {locked && <LockTag />}
+        {locked && <LockTag wide><span className="lf-nw">ดูได้</span> <span className="lf-nw">แลกหลังยืนยัน</span></LockTag>}
       </button>
       <button
         type="button"

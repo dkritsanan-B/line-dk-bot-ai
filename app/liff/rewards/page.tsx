@@ -26,6 +26,54 @@ interface Reward {
   stock: number | null;
 }
 
+interface RewardCopy {
+  detail: string | null;
+  condition: string | null;
+}
+
+/** แยกเฉพาะเงื่อนไขที่อ่านจากข้อความได้แน่นอน ที่เหลือคงเป็นคำอธิบายตามที่ร้านเขียน */
+function rewardCopy(description: string | null): RewardCopy {
+  if (!description) return { detail: null, condition: null };
+  const minimum = description.match(/^ใช้กับบิลตั้งแต่\s*([0-9,]+)\s*บาทขึ้นไป$/);
+  if (minimum) return { detail: null, condition: `บิลขั้นต่ำ ${minimum[1]} บาท` };
+  if (/ไม่มีขั้นต่ำ\s*$/.test(description)) {
+    const detail = description.replace(/[,·]?\s*ไม่มีขั้นต่ำ\s*$/, "").trim();
+    return { detail: detail || null, condition: "ไม่มีขั้นต่ำ" };
+  }
+  return { detail: description, condition: null };
+}
+
+/** แต้มลดลงสั้น ๆ หลังส่งคำขอสำเร็จ และหยุดภาพเคลื่อนไหวเมื่อผู้ใช้ตั้งค่าไว้ */
+function useAnimatedAvailable(value: number): number {
+  const [shown, setShown] = useState(value);
+  const shownRef = useRef(value);
+  const previousTarget = useRef(value);
+
+  useEffect(() => {
+    const from = shownRef.current;
+    const previous = previousTarget.current;
+    previousTarget.current = value;
+    if (value >= previous || typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      shownRef.current = value;
+      setShown(value);
+      return;
+    }
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / 300);
+      const next = Math.round(from + (value - from) * (1 - Math.pow(1 - progress, 3)));
+      shownRef.current = next;
+      setShown(next);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  return shown;
+}
+
 // กติกา — c2 (ผู้ตรวจ c1): เดิมเป็นภาษาทางการ ("คะแนน" "บริษัทขอสงวนสิทธิ์") และขัดกับหน้าอื่น
 // (บอกให้เปิดบัตรตอนสะสม / บอกว่าหักแต้มทันที) · ตอนนี้พูดภาษาเดียวกับทุกหน้า และตรงกับระบบจริง:
 //   สะสม = บอกเบอร์ที่แคชเชียร์ · แลก = กดแล้วแต้ม "ถูกจอง" · หักจริงตอนรับของ · ยกเลิกได้ที่ร้าน
@@ -117,12 +165,14 @@ export default function RewardsPage() {
   const [retrying, setRetrying] = useState(false);
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [redeemMsg, setRedeemMsg]     = useState<{ id: number; ok: boolean; text: string } | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<{ reward: Reward; requestId: number } | null>(null);
   // กดแลกครั้งแรก = เปิดกล่องยืนยัน (ผู้ตรวจ c1: กดครั้งเดียวแต้มโดนจองทันที ไม่มีจังหวะให้คิด)
   const [confirmId, setConfirmId]     = useState<number | null>(null);
   const tokenRef = useRef<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   // id ที่แลกได้ ณ ตอนโหลด — ชิป "แลกได้ตอนนี้" ใช้ชุดนี้ กดแลกแล้วการ์ดยังอยู่ในชิปเดิม (ข้อความยืนยันไม่หายไปต่อหน้า)
   const [canIds, setCanIds] = useState<Set<number>>(() => new Set());
+  const requestsRef = useRef<HTMLElement | null>(null);
 
   /** โหลดของรางวัล + แต้มที่ใช้ได้พร้อมกัน — ถ้าอย่างใดอย่างหนึ่งล้ม ขึ้นจอแจ้งปัญหา (ไม่โชว์ตัวเลขที่ไม่จริง) */
   const loadAll = useCallback(async (tok: string): Promise<boolean> => {
@@ -180,10 +230,13 @@ export default function RewardsPage() {
   }
 
   async function handleRedeem(reward: Reward) {
-    if (!token) { setRedeemMsg({ id: reward.id, ok: false, text: redeemErrorText(problemOf("AUTH_REQUIRED")) }); return; }
+    if (!token) {
+      setConfirmId(null);
+      setRedeemMsg({ id: reward.id, ok: false, text: redeemErrorText(problemOf("AUTH_REQUIRED")) });
+      return;
+    }
     setRedeemingId(reward.id);
     setRedeemMsg(null);
-    setConfirmId(null);
     try {
       const r = await callApi<{ success?: boolean; requestId?: number; available_points?: number }>("/api/liff/redeem" + reviewQS(), {
         method: "POST",
@@ -192,6 +245,7 @@ export default function RewardsPage() {
       });
       if (!r.ok || !r.data.success || typeof r.data.requestId !== "number") {
         const p = r.ok ? problemOf("SERVER_ERROR") : r.problem;
+        setConfirmId(null);
         setRedeemMsg({ id: reward.id, ok: false, text: redeemErrorText(p) });
         // สถานะบนจออาจเก่าแล้ว (มีคนจองตัดหน้า / ขอไว้จากอีกเครื่อง) → ดึงตัวเลขจริงมาใหม่เงียบ ๆ
         if (["NOT_ENOUGH_POINTS", "REWARD_OUT_OF_STOCK", "DUPLICATE_REQUEST", "RACE_LOST", "REWARD_NOT_FOUND"].includes(p.code)) {
@@ -215,7 +269,8 @@ export default function RewardsPage() {
           reserved_by_reward: { ...prev.reserved_by_reward, [key]: (prev.reserved_by_reward[key] ?? 0) + 1 },
         };
       });
-      setRedeemMsg({ id: reward.id, ok: true, text: `ส่งคำขอแล้ว #REQ-${requestId} · แต้มถูกจองไว้ให้ มารับของที่ร้านได้เลย พนักงานหักแต้มตอนรับของ · เปลี่ยนใจแจ้งร้านให้ยกเลิกได้ค่ะ` });
+      setConfirmId(null);
+      setRedeemSuccess({ reward, requestId });
     } finally {
       setRedeemingId(null);
     }
@@ -232,6 +287,9 @@ export default function RewardsPage() {
   const activeFilter: Filter = chips.some(c => c.key === filter) ? filter : "all";
   const shown = rewards.filter(r =>
     activeFilter === "all" ? true : activeFilter === "can" ? canIds.has(r.id) : rewardCat(r.name) === activeFilter);
+  const available = Math.max(0, summary?.available_points ?? 0);
+  const reservedPts = summary?.pending_points ?? 0;
+  const animatedAvailable = useAnimatedAvailable(available);
 
   if (loading) return <Loading />;
 
@@ -240,35 +298,33 @@ export default function RewardsPage() {
     <ProblemScreen sub="ของรางวัล · แลกแต้มสะสม" what="ของรางวัลและแต้มของคุณ" problem={problem} onRetry={retry} retrying={retrying} back={back} />
   );
 
-  const available = Math.max(0, summary?.available_points ?? 0);
-  const reservedPts = summary?.pending_points ?? 0;
+  const confirmReward = confirmId === null ? null : rewards.find(reward => reward.id === confirmId) ?? null;
+  const confirmCopy = confirmReward ? rewardCopy(confirmReward.description) : null;
+
+  function closeSuccess() {
+    setRedeemSuccess(null);
+    requestAnimationFrame(() => requestAnimationFrame(() => requestsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })));
+  }
 
   return (
     <Shell sub="ของรางวัล · แลกแต้มสะสม" back={back} short layout="catalog">
-      {summary && summary.earns_points === false && (
-        <div className="lf-note lf-note--warn" role="status">
-          <b>ยังไม่ได้ยืนยันตัวตน — ซื้อของตอนนี้แต้มยังไม่เข้า</b>
-          ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า &quot;ยืนยันสมาชิก LINE&quot; พร้อมบอกเบอร์ที่สมัครไว้ หลังยืนยันแล้วบิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)
-        </div>
-      )}
       {summary ? (
         <div className="lf-balance">
-          <div className="lf-balance-main">
-            <span>แต้มที่กดแลกได้ตอนนี้</span><b>{available.toLocaleString()}</b>
-            {reservedPts > 0 && (
-              <div className="lf-balance-split">
-                <span className="lf-nw">แต้มทั้งหมด {summary.points.toLocaleString()}</span>
-                <span className="lf-nw lf-balance-held">จองไว้แล้ว {reservedPts.toLocaleString()} แต้ม</span>
-              </div>
-            )}
+          <div className="lf-balance-line">
+            <span>แต้มที่ใช้ได้</span>
+            <b aria-label={`${available.toLocaleString()} แต้ม`}><span aria-hidden="true">{animatedAvailable.toLocaleString()}</span><small>แต้ม</small></b>
           </div>
-          {/* ไอคอนดาวตกแต่งเดิมตัดทิ้ง (17 ก.ย. 69) — กดแล้วไม่ไปไหน และหน้าบัตรยังไม่มีลิงก์เปิดประวัติการแลกโดยตรง */}
+          {reservedPts > 0 && (
+            <div className="lf-balance-reserved">
+              จองไว้แล้ว <b>{reservedPts.toLocaleString()} แต้ม</b> จากทั้งหมด {summary.points.toLocaleString()} แต้ม
+            </div>
+          )}
         </div>
       ) : (
         <div className="lf-balance lf-balance--signup">
           <div className="lf-balance-main">
             <span>ยังไม่ได้สมัครสมาชิก</span>
-            <p>สมัครฟรีก่อน แล้วสะสมแต้มมาแลกของรางวัลได้ค่ะ</p>
+            <p>สมัครฟรีเพื่อสะสมแต้ม</p>
           </div>
           <button type="button" className="lf-btn lf-btn--primary lf-btn--sm lf-balance-cta" onClick={() => (window.location.href = "/liff" + reviewQS())}>
             สมัครสมาชิก <Icon name="chevron" size={18} />
@@ -276,8 +332,15 @@ export default function RewardsPage() {
         </div>
       )}
 
+      {summary && summary.earns_points === false && (
+        <div className="lf-note lf-note--warn" role="status">
+          <b>ยังไม่ได้ยืนยันตัวตน</b>
+          ซื้อของตอนนี้แต้มยังไม่เข้า ครั้งหน้าที่มาร้าน แจ้งพนักงานว่า &quot;ยืนยันสมาชิก LINE&quot; พร้อมบอกเบอร์ที่สมัครไว้ หลังยืนยันแล้วบิลตั้งแต่วันสมัครได้แต้มย้อนหลังอัตโนมัติ (ไม่เกิน {PENDING_POINTS_DAYS} วัน)
+        </div>
+      )}
+
       {summary && summary.pending.length > 0 && (
-        <section className="lf-card lf-reqs" aria-label="คำขอที่รอรับของ">
+        <section ref={requestsRef} className="lf-card lf-reqs" aria-label="คำขอที่รอรับของ">
           <h3><Icon name="hourglass" size={22} /> คำขอที่รอรับของ ({summary.pending.length})</h3>
           <p>เปิดหน้าบัตรสมาชิกให้พนักงานดู พร้อมบอกเลขคำขอ พนักงานหักแต้มตอนรับของ</p>
           <p className="lf-reqs-cancel">เปลี่ยนใจ? แจ้งพนักงานหรือโทร <a className="lf-note-tel" href={SHOP_TEL}>{SHOP_PHONE}</a> ให้ยกเลิก แต้มที่จองไว้คืนครบค่ะ</p>
@@ -300,15 +363,18 @@ export default function RewardsPage() {
         <div className="lf-card lf-center"><i><Icon name="gift" size={40} /></i>ยังไม่มีของรางวัลในขณะนี้</div>
       ) : <>
       {chips.length > 1 && (
-        <div className="lf-rw-chips" role="group" aria-label="กรองของรางวัล">
-          {chips.map(c => (
-            <button key={c.key} type="button" className={`lf-rw-chip${activeFilter === c.key ? " on" : ""}`}
-              aria-pressed={activeFilter === c.key} onClick={() => setFilter(c.key)}>
-              {c.label}<span className="lf-rw-chip-n">{c.count.toLocaleString()}</span>
-            </button>
-          ))}
+        <div className="lf-rw-chips-wrap">
+          <div className="lf-rw-chips" role="group" aria-label="กรองของรางวัล">
+            {chips.map(c => (
+              <button key={c.key} type="button" className={`lf-rw-chip${activeFilter === c.key ? " on" : ""}`}
+                aria-pressed={activeFilter === c.key} onClick={() => setFilter(c.key)}>
+                {c.label}<span className="lf-rw-chip-n">{c.count.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
+      <div className="lf-rw-grid">
       {shown.length === 0 && (() => {
         // ชิปว่าง — บอกว่าอีกนิดเดียวจะแลกอะไรได้ แทนหน้าโล่ง
         const next = rewards
@@ -331,15 +397,12 @@ export default function RewardsPage() {
         const msg = redeemMsg?.id === reward.id ? redeemMsg : null;
         const reserved = summary?.reserved_by_reward[String(reward.id)] ?? 0;
         const left = reward.stock === null ? null : Math.max(0, reward.stock - reserved);
-        const confirming = ok && (confirmId === reward.id || redeemingId === reward.id);
-        const cond = reward.description || "ร้านยังไม่ได้ระบุรายละเอียดเพิ่มเติม";
-        // การ์ดแถวแนวนอน (17 ก.ย. 69) — แลกได้ = ปุ่มกรมท่า "แลก" · แลกไม่ได้ = การ์ดหม่น + ปุ่มเทากดไม่ได้บอกเหตุผล
-        // (ปุ่มเทาอยู่ตำแหน่งเดียวกับปุ่มแลก สูงเท่ากัน → แถวตรงกันทุกการ์ด) · ของหมด/จองครบ มีป้ายที่มุมรูปด้วย
-        const offText = st.kind === "mine" ? "รอรับของ"
-          : st.kind === "lack" ? `ขาดอีก ${st.lacking.toLocaleString()} แต้ม`
-          : st.kind === "out" ? (st.reservedFull ? "จองครบ" : "ของหมด")
-          : st.kind === "signup" ? "สมัครก่อน" : "";
-        const badge = st.kind === "out" ? (st.reservedFull ? "จองครบ" : "หมด") : null;
+        const copy = rewardCopy(reward.description);
+        const showPassiveStatus = Boolean(summary && summary.earns_points !== false);
+        // จองครบ + มีสถานะด้านขวาอยู่แล้ว → ไม่ต้องมีป้ายบนรูปพูดซ้ำ
+        const badge = st.kind === "out" ? (st.reservedFull ? (showPassiveStatus ? null : "หมดชั่วคราว") : "หมด") : null;
+        const progress = st.kind === "lack" && reward.points_required > 0
+          ? Math.min(100, Math.max(0, available / reward.points_required * 100)) : 0;
         return (
           <div key={reward.id} className={`lf-rw-card${ok ? "" : st.kind === "mine" ? " is-mine" : " is-off"}`}>
             <div className="lf-rw-thumb">
@@ -348,54 +411,45 @@ export default function RewardsPage() {
             </div>
             <div className="lf-rw-body">
               <div className="lf-rw-name">{reward.name}</div>
-              <div className="lf-rw-cond" title={cond}>เงื่อนไข: {cond}</div>
+              {(copy.detail || copy.condition) && (
+                <div className="lf-rw-copy">
+                  {copy.detail && <span className="lf-rw-cond" title={copy.detail}>{copy.detail}</span>}
+                  {copy.condition && <span className="lf-rw-condition">{copy.condition}</span>}
+                </div>
+              )}
             </div>
             {/* แถวล่างอยู่นอก .lf-rw-body (17 ก.ย. 69) — มือถือยังอยู่คอลัมน์ขวาเหมือนเดิม
                 เดสก์ท็อปกินเต็มความกว้างการ์ดและติดขอบล่าง → แต้ม/ปุ่มตรงกันทุกใบในแถว */}
             <div className="lf-rw-foot">
               <div className="lf-rw-pts">
                 <b>{reward.points_required.toLocaleString()}<small>แต้ม</small></b>
-                {left !== null && left > 0 && left <= 20 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
+                {left !== null && left > 0 && left <= 10 && <span className="lf-rw-left">เหลือ {left.toLocaleString()} ชิ้น</span>}
               </div>
-              {/* เหตุผลที่แลกไม่ได้ — บอกก่อนกด บนปุ่มเทาที่กดไม่ได้ ตำแหน่งเดียวกับปุ่มแลก */}
-              {ok ? (!confirming && (
+              {ok ? (
                 <button type="button" className="lf-rw-btn" onClick={() => { setRedeemMsg(null); setConfirmId(reward.id); }} disabled={redeemingId !== null}>
                   แลก
                 </button>
-              )) : (
-                <button type="button" disabled
-                  className={`lf-rw-btn lf-rw-btn--off${st.kind === "mine" ? " lf-rw-btn--mine" : ""}`}
-                  title={st.kind === "mine" ? `คำขอ #REQ-${st.req.id}` : undefined}
-                  aria-label={`${reward.name}: แลกไม่ได้ ${offText}`}>
-                  {st.kind === "mine" && <Icon name="hourglass" size={16} />}{offText}
-                </button>
-              )}
+              ) : showPassiveStatus && st.kind === "mine" ? (
+                <div className="lf-rw-status lf-rw-status--mine" title={`คำขอ #REQ-${st.req.id}`}><Icon name="hourglass" size={16} />รอรับของ</div>
+              ) : showPassiveStatus && st.kind === "lack" ? (
+                <div className="lf-rw-status lf-rw-status--lack">
+                  <span>ขาดอีก {st.lacking.toLocaleString()} แต้ม</span>
+                  <span className="lf-rw-progress" aria-label={`มี ${available.toLocaleString()} จาก ${reward.points_required.toLocaleString()} แต้ม`}><i style={{ width: `${progress}%` }} /></span>
+                </div>
+              ) : showPassiveStatus && st.kind === "out" && st.reservedFull ? (
+                <div className="lf-rw-status lf-rw-status--out"><b>หมดชั่วคราว</b><span>มีคนจองครบแล้ว</span></div>
+              ) : null}
             </div>
             {!msg && st.kind === "lack" && reservedPts > 0 && (summary?.points ?? 0) >= reward.points_required && (
               <div className="lf-rw-note">แต้มส่วนหนึ่งถูกจองไว้กับคำขอที่รอรับของ</div>
             )}
-            {(confirming || msg) && <div className="lf-rw-extra">
-              {confirming && (
-                <div className="lf-confirm" role="group" aria-label={`ยืนยันแลก ${reward.name}`}>
-                  <b>ยืนยันแลกชิ้นนี้?</b>
-                  <div className="lf-confirm-math">
-                    <span>ใช้</span><b>{reward.points_required.toLocaleString()} แต้ม</b>
-                    <span>เหลือใช้ได้</span><b>{Math.max(0, available - reward.points_required).toLocaleString()} แต้ม</b>
-                  </div>
-                  <p>แต้มจะถูกจองไว้จนมารับของที่ร้าน · เปลี่ยนใจแจ้งพนักงานให้ยกเลิกได้</p>
-                  <div className="lf-confirm-acts">
-                    <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setConfirmId(null)} disabled={redeemingId !== null}>ยังไม่แลก</button>
-                    <button type="button" className="lf-rw-btn" onClick={() => handleRedeem(reward)} disabled={redeemingId !== null}>
-                      {redeemingId === reward.id ? "กำลังส่งคำขอ…" : "ยืนยันแลก"}
-                    </button>
-                  </div>
-                </div>
-              )}
+            {msg && <div className="lf-rw-extra">
               {msg && <div className={`lf-msg ${msg.ok ? "ok" : "err"}`} role={msg.ok ? "status" : "alert"}><i><Icon name={msg.ok ? "check" : "alert"} size={20} /></i><span>{msg.text}</span></div>}
             </div>}
           </div>
         );
       })}
+      </div>
       </>}
 
       <details className="lf-card lf-rules">
@@ -404,6 +458,51 @@ export default function RewardsPage() {
           {rulesText(rewards.length ? Math.min(...rewards.map(r => r.points_required)) : null, valueExample(rewards)).map((item, i) => <div key={i} className="lf-rule"><i>{i + 1}</i><div>{item}</div></div>)}
         </div>
       </details>
+
+      {confirmReward && !redeemSuccess && (
+        <div className="lf-rw-modal" role="presentation" onMouseDown={event => {
+          if (event.target === event.currentTarget && redeemingId === null) setConfirmId(null);
+        }}>
+          <section className="lf-rw-sheet" role="dialog" aria-modal="true" aria-labelledby="lf-rw-confirm-title">
+            <div className="lf-rw-sheet-handle" aria-hidden="true" />
+            <div className="lf-rw-sheet-item">
+              <div className="lf-rw-sheet-thumb">
+                {confirmReward.image_url ? <img src={confirmReward.image_url} alt="" /> : <Icon name={rewardIcon(confirmReward.name)} size={34} strokeWidth={1.75} />}
+              </div>
+              <div>
+                <span className="lf-rw-sheet-kicker">ยืนยันของรางวัล</span>
+                <h2 id="lf-rw-confirm-title">{confirmReward.name}</h2>
+                {confirmCopy?.detail && <p>{confirmCopy.detail}</p>}
+                {confirmCopy?.condition && <span className="lf-rw-condition">{confirmCopy.condition}</span>}
+              </div>
+            </div>
+            <div className="lf-rw-sheet-math">
+              <span>หักจากแต้มที่ใช้ได้</span><b>−{confirmReward.points_required.toLocaleString()} แต้ม</b>
+              <span>คงเหลือหลังแลก</span><b>{Math.max(0, available - confirmReward.points_required).toLocaleString()} แต้ม</b>
+            </div>
+            <p className="lf-rw-sheet-note">แต้มจะถูกจองไว้จนมารับของที่ร้าน เปลี่ยนใจแจ้งพนักงานให้ยกเลิกได้</p>
+            <div className="lf-rw-sheet-actions">
+              <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setConfirmId(null)} disabled={redeemingId !== null}>ยกเลิก</button>
+              <button type="button" className="lf-rw-btn" onClick={() => handleRedeem(confirmReward)} disabled={redeemingId !== null}>
+                {redeemingId === confirmReward.id ? "กำลังส่งคำขอ…" : "ยืนยันแลก"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {redeemSuccess && (
+        <div className="lf-rw-modal" role="presentation">
+          <section className="lf-rw-sheet lf-rw-sheet--success" role="dialog" aria-modal="true" aria-labelledby="lf-rw-success-title">
+            <div className="lf-rw-sheet-handle" aria-hidden="true" />
+            <i className="lf-rw-success-icon"><Icon name="check" size={34} strokeWidth={2.5} /></i>
+            <h2 id="lf-rw-success-title">ส่งคำขอแล้ว</h2>
+            <div className="lf-rw-success-no">#REQ-{redeemSuccess.requestId}</div>
+            <p>แสดงหน้านี้หรือเลขคำขอกับพนักงานที่ร้าน</p>
+            <button type="button" className="lf-rw-btn" onClick={closeSuccess}>ปิด</button>
+          </section>
+        </div>
+      )}
     </Shell>
   );
 }

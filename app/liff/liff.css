@@ -150,6 +150,8 @@
   line-height: var(--lh);
   -webkit-font-smoothing: antialiased;
   padding-bottom: var(--sp-8);
+  word-break: normal;
+  overflow-wrap: normal;
 }
 .lf-hero {
   background:
@@ -242,6 +244,7 @@
   font: inherit; font-size: var(--fs-lead); font-weight: var(--fw-black); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-4); transition: transform .06s, filter .15s;
+  white-space: nowrap; word-break: keep-all;
 }
 .lf-btn:active { transform: scale(.985); }
 .lf-btn:disabled { opacity: .6; cursor: default; }
@@ -531,6 +534,7 @@
   .lf-brand img { width: var(--sz-logo-lg); height: var(--sz-logo-lg); }
   .lf-brand-name { font-size: var(--fs-h1); }
   .lf-wrap { max-width: var(--w-page-lg); padding: 0 var(--sp-6); gap: var(--sp-4); }
+  .lf-wrap--short { max-width: 720px; }
   .lf-wrap--lift { margin-top: calc(var(--lift-lg) * -1); }
 
   /* บัตรสมาชิก: สองคอลัมน์ บัตรใหญ่ขึ้นจริง ไม่ใช่การ์ดมือถือยืด */
@@ -572,9 +576,11 @@
 .lf-problem-head i { font-style: normal; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: var(--sz-tx-ic); height: var(--sz-tx-ic); border-radius: var(--r-sm); background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn-line); }
 .lf-problem--auth .lf-problem-head i { background: var(--dk-sky); color: var(--dk-blue-strong); border-color: var(--dk-sky-line); }
 .lf-problem-head b { font-size: var(--fs-h2); font-weight: var(--fw-black); line-height: var(--lh-tight); color: var(--ink); }
-.lf-problem-body { margin: var(--sp-3) 0 var(--sp-4); font-size: var(--fs-body); line-height: var(--lh); color: var(--ink-2); }
+.lf-problem-body { margin: var(--sp-3) 0 var(--sp-4); font-size: var(--fs-body); line-height: var(--lh); color: var(--ink-2); word-break: keep-all; overflow-wrap: normal; }
 .lf-problem-acts { display: grid; gap: var(--sp-2); }
 .lf-problem-tel { text-decoration: none; color: var(--dk-blue-strong); box-sizing: border-box; }
+.lf-problem-open-line { text-decoration: none; box-sizing: border-box; }
+.lf-problem-retry-link { min-height: var(--h-tap); border: 0; background: transparent; color: var(--dk-blue-strong); font: inherit; font-weight: var(--fw-black); text-decoration: underline; cursor: pointer; }
 .lf-problem-code { margin-top: var(--sp-3); font-size: var(--fs-label); font-weight: var(--fw-bold); color: var(--ink-3); text-align: center; letter-spacing: .3px; }
 .lf-problem--compact { padding: var(--sp-4) 0 var(--sp-1); }
 .lf-problem--compact .lf-problem-head b { font-size: var(--fs-lead); }
@@ -721,6 +727,12 @@
 .lf-snap-row span { color: var(--ink-2); }
 .lf-snap-row b { font-weight: var(--fw-black); text-align: right; min-width: 0; }
 .lf-snap-num { font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); white-space: nowrap; }
+.lf-snap.lf-snap-card { border: 0; padding: var(--sp-4); color: var(--card-ink); box-shadow: var(--sh-2); }
+.lf-snap.lf-snap-card .lf-snap-head b, .lf-snap.lf-snap-card .lf-snap-head span, .lf-snap.lf-snap-card .lf-snap-row span, .lf-snap.lf-snap-card .lf-snap-row b { color: var(--card-ink); }
+.lf-snap.lf-snap-card .lf-snap-head span { color: var(--card-ink-2); }
+.lf-snap.lf-snap-card .lf-snap-name { margin-top: var(--sp-3); font-size: var(--fs-lead); font-weight: var(--fw-black); }
+.lf-snap.lf-snap-card .lf-snap-phone { font-size: 28px; font-weight: var(--fw-heavy); font-variant-numeric: tabular-nums; letter-spacing: var(--ls-num); white-space: nowrap; }
+.lf-snap.lf-snap-card .lf-snap-row { margin-top: var(--sp-2); border-top-color: var(--card-well-line); }
 
 /* จอแคบจริง 320–390px: เก็บข้อมูลสำคัญครบโดยไม่เบียดหรือตัดกลางคำ */
 @media (max-width: 419px) {
@@ -764,7 +776,7 @@
   .lf-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; }
   .lf-tab { min-height: 48px; padding: 2px; font-size: 14px; }
   .lf-tab { white-space: nowrap; word-break: keep-all; }
-  .lf-date { grid-template-columns: .85fr 1.35fr 1.05fr; gap: var(--sp-1); }
+  .lf-date { grid-template-columns: 1fr 1.6fr 1.2fr; gap: var(--sp-1); }
   .lf-select { padding: 0 var(--sp-1); font-size: var(--fs-lead); }
   .lf-signup-steps { gap: var(--sp-1); }
   .lf-signup-steps > i { width: 8px; }

@@ -1,4 +1,5 @@
 "use client";
+import { Fragment } from "react";
 // ประวัติแต้ม + แท็บกรอง (P5)
 // สีของแต่ละประเภทมาจากคลาสใน liff.css (--ok / --danger) + styles/content.css (lf-ct-*) ไม่ใช่ค่าสีในไฟล์นี้
 //
@@ -22,7 +23,7 @@ export type TxFilter = "all" | "earn" | "redeem" | "expire";
 const EXPIRE_SOON_DAYS = 60;
 
 const KIND: Record<string, { key: string; icon: IconName; label: string; sign: string }> = {
-  earn:   { key: "earn",   icon: "star",      label: "สะสมแต้ม",      sign: "+" },
+  earn:   { key: "earn",   icon: "receipt",   label: "สะสมแต้ม",      sign: "+" },
   redeem: { key: "redeem", icon: "gift",      label: "ใช้แลกของ",     sign: "−" },
   expire: { key: "expire", icon: "hourglass", label: "แต้มหมดอายุ",   sign: "−" },
 };
@@ -52,15 +53,25 @@ function specialNote(note: string): { title: string; ref: string | null } | null
   return null;
 }
 
-function rowText(t: TxItem, k: (typeof KIND)[string]): { title: string; meta: string } {
+function rowText(t: TxItem, k: (typeof KIND)[string]): { title: string; meta: string; bonus: boolean } {
   const date = shortDate(t.created_at);
-  if (k.key === "expire") return { title: k.label, meta: date };
-  if (k.key === "redeem") return { title: t.note || "แลกของรางวัล", meta: date };
+  if (k.key === "expire") return { title: k.label, meta: date, bonus: false };
+  if (k.key === "redeem") {
+    const req = t.note?.match(/^แลก:\s*(.+?)\s*\(#REQ-(\d+)\)$/);
+    return req
+      ? { title: req[1], meta: `${date} · #REQ-${req[2]}`, bonus: false }
+      : { title: t.note || "แลกของรางวัล", meta: date, bonus: false };
+  }
   const sp = t.note ? specialNote(t.note) : null;
   const s = sp ?? (t.note ? splitNote(t.note) : { title: k.label, ref: null });
   const amt = sp ? 0 : Number(t.purchase_amount) || 0;
   const parts = [date, s.ref, amt > 0 ? `${amt.toLocaleString("th-TH", { maximumFractionDigits: 2 })} บาท` : null];
-  return { title: s.title, meta: parts.filter(Boolean).join(" · ") };
+  return { title: s.title, meta: parts.filter(Boolean).join(" · "), bonus: !!sp };
+}
+
+function monthLabel(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("th-TH", { month: "long", year: "numeric" });
 }
 
 export default function HistoryList({
@@ -81,36 +92,46 @@ export default function HistoryList({
     body = <ProblemNotice problem={problem} what="ประวัติแต้ม" onRetry={onRetry} retrying={loading} compact />;
   } else if (loading) {
     body = <div className="lf-empty" aria-live="polite"><div className="lf-spin lf-spin--inline" />กำลังโหลดประวัติแต้ม…</div>;
+  } else if (txList.length === 0) {
+    body = <div className="lf-empty lf-ct-empty"><Icon name="receipt" size={48} /><b>ยังไม่มีบิล</b><span>ซื้อครั้งแรกแล้วบอกเบอร์ แต้มจะขึ้นที่นี่</span></div>;
   } else if (filtered.length === 0) {
     body = <div className="lf-empty">ยังไม่มีรายการในหมวดนี้</div>;
   } else {
+    let previousMonth = "";
     body = filtered.map(t => {
       const k = KIND[t.type] ?? KIND.expire;
-      const { title, meta } = rowText(t, k);
+      const { title, meta, bonus } = rowText(t, k);
       const left = k.key === "earn" && t.expires_at ? new Date(t.expires_at).getTime() - now : NaN;
       const soon = left >= 0 && left <= EXPIRE_SOON_DAYS * 86400000;
+      const month = monthLabel(t.created_at);
+      const showMonth = month !== previousMonth;
+      previousMonth = month;
       return (
-        <div key={t.id} className="lf-tx lf-ct-tx">
-          <div className={`lf-tx-ic lf-tx-ic--${k.key}`}><Icon name={k.icon} size={22} /></div>
-          <div className="lf-ct-tx-main">
-            <div className="lf-ct-tx-head">
-              <b className="lf-ct-tx-title" title={title}>{title}</b>
-              <div className={`lf-tx-amt lf-tx-amt--${k.key}`}>{k.sign}{t.points_earned.toLocaleString()}<small>แต้ม</small></div>
+        <Fragment key={t.id}>
+          {showMonth && <div className="lf-ct-month">{month}</div>}
+          <div className="lf-tx lf-ct-tx">
+            <div className={`lf-tx-ic lf-tx-ic--${k.key}`}><Icon name={bonus ? "star" : k.icon} size={22} /></div>
+            <div className="lf-ct-tx-main">
+              <div className="lf-ct-tx-head">
+                <b className="lf-ct-tx-title" title={title}>{title}</b>
+                <div className={`lf-tx-amt lf-tx-amt--${k.key}`}>{k.sign}{t.points_earned.toLocaleString()}<small>แต้ม</small></div>
+              </div>
+              <span className="lf-ct-tx-meta">{meta}</span>
+              {soon && <span className="lf-ct-tx-soon">ใช้ได้ถึง {formatDate(t.expires_at!)}</span>}
             </div>
-            <span className="lf-ct-tx-meta">{meta}</span>
-            {soon && <span className="lf-ct-tx-soon">ใช้ได้ถึง {formatDate(t.expires_at!)}</span>}
           </div>
-        </div>
+        </Fragment>
       );
     });
   }
+  const showTabs = !problem && !loading && txList.length > 0;
   return (
     <div className="lf-card lf-histcard lf-ct-hist" id={id}>
-      <div className="lf-tabs" role="tablist">
+      {showTabs && <div className="lf-tabs" role="tablist">
         {([{ key: "all", label: "ทั้งหมด" }, { key: "earn", label: "ได้รับ" }, { key: "redeem", label: "ใช้แล้ว" }, { key: "expire", label: "หมดอายุ" }] as const).map(tab => (
           <button key={tab.key} role="tab" aria-selected={txFilter === tab.key} className={`lf-tab${txFilter === tab.key ? " on" : ""}`} onClick={() => onFilter(tab.key)}>{tab.label}</button>
         ))}
-      </div>
+      </div>}
       {body}
       {!problem && !loading && txList.length > 0 && <PointsHowTo />}
     </div>

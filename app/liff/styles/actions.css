@@ -2,10 +2,10 @@
  * ใช้ตัวแปรจาก liff.css เท่านั้น · คลาสใหม่ขึ้นต้น lf-ac-
  * selector ".lf-actions .lf-action.lf-ac-locked" หนักกว่ากฎ .lf-actions .lf-cd-act ใน styles/card.css → ไม่พึ่งลำดับไฟล์ */
 
-/* ปุ่มปิด: พื้นเทาอ่อน + ขอบประ (ยังผ่าน 3:1) → ดูต่างจากปุ่มกดได้ชัด ไม่ใช่แค่จางลง
+/* ปุ่มปิด: พื้นเทาอ่อน + ขอบทึบจาง → ดูต่างจากปุ่มกดได้ชัด
  * ตัวอักษร --ink-2 บน --surface-2 ≈ 9.7:1 · ไอคอน --ink-3 บน --surface-2 ≈ 5.7:1 · ขอบ --line-strong ≈ 3.8:1 */
 .lf-actions .lf-action.lf-ac-locked {
-  background: var(--surface-2); border-style: dashed; border-color: var(--line-strong);
+  background: var(--surface-2); border-style: solid; border-color: var(--line);
   box-shadow: none; cursor: not-allowed;
 }
 .lf-actions .lf-action.lf-ac-locked:active { transform: none; }
@@ -18,11 +18,17 @@
   border: 1px solid var(--line-strong); border-radius: var(--r-pill);
   background: var(--surface); color: var(--ink);
   font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-black); line-height: 1.4;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 /* ปุ่มแถวนี้มีป้ายเพิ่ม 1 บรรทัด → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง (ยังสูงเกิน --h-tap) */
 .lf-actions--locked .lf-action { gap: var(--sp-1); }
 @media (max-width: 359px) {
   .lf-actions .lf-ac-tag { padding: 0 var(--sp-1); }
+}
+
+/* ป้ายยาว "ดูได้ แลกหลังยืนยัน" (ของรางวัล — ปุ่มยังกดเข้าไปดูได้) → ข้อความรองไม่มีกรอบ ตัดบรรทัดตรงช่องว่างเท่านั้น */
+.lf-actions .lf-ac-tag.lf-ac-tag--text {
+  padding: 0; border: 0; background: transparent; color: var(--ink-2);
+  font-size: 14px; font-weight: var(--fw-bold); text-align: center;
 }

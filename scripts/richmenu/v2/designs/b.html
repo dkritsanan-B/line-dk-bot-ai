@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DK Rich Menu — Clean Cards</title>
+  <style>
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUI.ttf") format("truetype");font-weight:400}
+    @font-face{font-family:Leelawadee;src:url("file:///C:/Windows/Fonts/LeelawUIB.ttf") format("truetype");font-weight:700}
+    *{box-sizing:border-box}html,body{margin:0;width:2500px;height:1686px;overflow:hidden}
+    body{font-family:Leelawadee,"Leelawadee UI",Tahoma,sans-serif;color:#0b2d61;background:#eaf4ff}
+    .canvas{position:relative;width:2500px;height:1686px;background:#eef7ff;overflow:hidden}
+    .btn{position:absolute;overflow:hidden;background:#fff;border-right:5px solid #c9ddf2;border-bottom:5px solid #c9ddf2;display:flex;align-items:center;justify-content:center}
+    .btn:after{content:"";position:absolute;inset:22px;border:4px solid #c6d9ee;border-radius:34px;pointer-events:none}
+    .member{left:0;top:0;width:2500px;height:620px;justify-content:flex-start;padding:56px 110px;background:linear-gradient(105deg,#ffd400 0 34%,#ffe76c 34% 36%,#fff6ba 36% 100%);border-bottom:8px solid #0e3a78}
+    .member:before{content:"";position:absolute;right:-120px;top:-300px;width:850px;height:850px;border-radius:50%;border:85px solid rgba(23,71,166,.07)}
+    .member:after{inset:24px;border:5px solid #0e3a78;border-radius:40px}
+    .logo{position:relative;width:190px;height:190px;object-fit:cover;border-radius:30px;box-shadow:0 14px 30px rgba(14,58,120,.22);z-index:1}
+    .member-icon{position:relative;margin-left:62px;width:250px;height:250px;border-radius:50%;background:#0e3a78;display:grid;place-items:center;z-index:1;box-shadow:0 16px 30px rgba(14,58,120,.22)}
+    .member-icon svg{width:145px;height:145px;stroke:#ffd400}
+    .member-copy{position:relative;margin-left:70px;z-index:1}
+    .member h1{font-size:140px;line-height:1;margin:0 0 18px;color:#0b2d61;letter-spacing:-4px}
+    .member p{font-size:60px;margin:0;color:#17436f}
+    .pill{position:relative;margin-left:auto;margin-right:50px;padding:24px 40px 19px;border-radius:999px;background:#0e3a78;color:#fff;font-size:54px;font-weight:700;z-index:1}
+    .card{flex-direction:column;text-align:center;padding:42px 30px 34px;background:#fff}
+    .card .icon{width:150px;height:150px;border-radius:38px;background:#e8f2ff;display:grid;place-items:center;margin-bottom:20px}
+    .card svg{width:90px;height:90px;stroke:#1747a6}
+    .card h2{font-size:92px;line-height:1.06;margin:0;color:#0b2d61;letter-spacing:-2px}
+    .card p{font-size:50px;line-height:1.15;margin:12px 0 0;color:#325a83;white-space:nowrap}
+    .map{left:0;top:620px;width:834px;height:533px}.contact{left:834px;top:620px;width:833px;height:533px}.game{left:1667px;top:620px;width:833px;height:533px;border-right:0}
+    .facebook{left:0;top:1153px;width:1250px;height:533px;border-bottom:0}.website{left:1250px;top:1153px;width:1250px;height:533px;border:0}
+    .wide{flex-direction:row;text-align:left;gap:50px}.wide .icon{margin:0;width:165px;height:165px}.wide .copy{min-width:540px}
+    svg{fill:none;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+  </style>
+</head>
+<body>
+<main class="canvas">
+  <section class="btn member">
+    <img class="logo" src="../../../../public/dk-logo.jpg" alt="DK Steel and Tools">
+    <div class="member-icon"><svg viewBox="0 0 100 100"><rect x="11" y="21" width="78" height="58" rx="8"/><circle cx="33" cy="48" r="10"/><path d="M21 68c3-9 9-14 12-14s9 5 12 14M55 43h22M55 57h17"/></svg></div>
+    <div class="member-copy"><h1>บัตรสมาชิก</h1><p>สมัคร · เช็คแต้ม · แลกของ</p></div>
+    <div class="pill">กดเพื่อเปิด</div>
+  </section>
+  <section class="btn card map">
+    <div class="icon"><svg viewBox="0 0 100 100"><path d="M50 90S20 62 20 38a30 30 0 0 1 60 0c0 24-30 52-30 52Z"/><circle cx="50" cy="38" r="10"/></svg></div>
+    <div class="copy"><h2>แผนที่ร้าน</h2><p>ดูเส้นทาง</p></div>
+  </section>
+  <section class="btn card contact">
+    <div class="icon"><svg viewBox="0 0 100 100"><path d="M24 15h16l8 22-12 8c7 13 14 20 27 27l8-12 22 8v16c0 7-6 12-13 11C43 91 9 57 13 27c1-7 4-12 11-12Z"/></svg></div>
+    <div class="copy"><h2>ติดต่อฝ่ายขาย</h2><p>โทร / LINE พนักงาน</p></div>
+  </section>
+  <section class="btn card game">
+    <div class="icon"><svg viewBox="0 0 100 100"><path d="M30 35h40c12 0 19 10 17 22l-5 27-18-16H36L18 84l-5-27c-2-12 5-22 17-22Z"/><path d="M31 51v16M23 59h16M66 53h.1M76 63h.1"/></svg></div>
+    <div class="copy"><h2>เล่นเกมรับแต้ม</h2><p>รับ 1 แต้ม/วัน</p></div>
+  </section>
+  <section class="btn card wide facebook">
+    <div class="icon"><svg viewBox="0 0 100 100"><path d="M58 88V55h12l3-14H58v-8c0-7 4-11 11-11h7V10c-4-1-9-2-15-2-15 0-25 9-25 26v7H24v14h12v33"/></svg></div>
+    <div class="copy"><h2>Facebook</h2><p>ข่าวสารจากเพจ DK</p></div>
+  </section>
+  <section class="btn card wide website">
+    <div class="icon"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/><path d="M10 50h80M50 10c13 12 20 25 20 40S63 78 50 90C37 78 30 65 30 50s7-28 20-40Z"/></svg></div>
+    <div class="copy"><h2>เว็บไซต์ร้าน</h2><p>สินค้า · โปรโมชั่น</p></div>
+  </section>
+</main>
+</body>
+</html>
