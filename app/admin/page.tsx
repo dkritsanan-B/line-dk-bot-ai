@@ -65,16 +65,18 @@ function NameMatchChip({ state }: { state: "match" | "mismatch" | "unknown" }) {
   return <span className="ad-chip ad-chip--muted ad-name-chip">ไม่มีชื่อให้เทียบ</span>;
 }
 
+// เวลาจาก Supabase เป็น UTC — แสดงเวลาไทยเสมอ ไม่ขึ้นกับโซนเวลาของเครื่องที่เปิด
+const TZ = "Asia/Bangkok";
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
 }
 function formatDateTime(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: TZ }) + " " + d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 function formatBirthday(iso: string | null) {
   if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: TZ });
 }
 const fmtPhone = (p: string) => p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
 
@@ -105,7 +107,7 @@ function exportCSV(users: User[]) {
     u.company ?? "",
     u.birthday ? u.birthday.substring(0, 10) : "",
     u.points,
-    u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH") : "",
+    u.created_at ? new Date(u.created_at).toLocaleDateString("th-TH", { timeZone: TZ }) : "",
   ]);
   const csv = "﻿" + [header, ...rows]
     .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -124,7 +126,7 @@ function backfillStartLabel(createdAt: string | null | undefined): string {
   const signup = createdAt ? new Date(createdAt).getTime() : NaN;
   const floor = Date.now() - 30 * dayMs;
   const start = Number.isFinite(signup) ? Math.max(signup, floor) : floor;
-  return new Date(start).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" });
+  return new Date(start).toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: TZ });
 }
 
 export default function AdminPage() {
@@ -257,7 +259,7 @@ export default function AdminPage() {
       // แต้มถูก "จอง" ตอนลูกค้าขอ และถูก "หักจริง" ตอนพนักงานยืนยัน (app/api/admin/redemptions/logic.ts)
       // ยกเลิก = ปลดการจอง ยอดแต้มลูกค้าไม่เปลี่ยน เพราะยังไม่เคยถูกหัก
       if (action === "confirm") setToast(`ยืนยันรับของ #REQ-${id} แล้ว · หักแต้มลูกค้า ${pts} แต้ม`, "ok");
-      else setToast(`ยกเลิก #REQ-${id} แล้ว · ปลดแต้มที่จองไว้ ${pts} แต้ม (ไม่ได้หัก)`, "neutral");
+      else setToast(`ยกเลิก #REQ-${id} แล้ว (${cancelReason}) · ปลดแต้มที่จองไว้ ${pts} แต้ม (ไม่ได้หัก)`, "neutral");
       fetchRedemptions();
       fetchUsers(savedPw, "");
     } finally { setRedeemAction(prev => ({ ...prev, [id]: false })); }
@@ -581,8 +583,8 @@ export default function AdminPage() {
       return {
         "#": i + 1,
         "ประเภท": isRedeem ? "แลกรางวัล" : "เพิ่มแต้ม",
-        "วันที่": dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
-        "เวลา": dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        "วันที่": dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", timeZone: TZ }),
+        "เวลา": dt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: TZ }),
         "ชื่อลูกค้า": t.first_name ? `${t.first_name} ${t.last_name}` : (t.display_name ?? "-"),
         "เบอร์มือถือ": t.phone,
         "ยอดซื้อ (บาท)": isRedeem ? 0 : t.purchase_amount,
@@ -764,9 +766,12 @@ export default function AdminPage() {
   );
   // แต้มที่ลูกค้าขอแลกแต่พนักงานยังไม่ยืนยัน = จองไว้ ยังอยู่ในยอดแต้มคงเหลือ (หักจริงตอนยืนยัน)
   const reservedPoints = pendingRedeems.reduce((s, r) => s + r.points_required, 0);
-  // API คำขอแลกของส่งมาแค่ 100 รายการล่าสุด — ถ้าครบ 100 แปลว่าอาจมีเก่ากว่านั้น จึงบอกตามจริง
-  const REDEEM_API_LIMIT = 100;
-  const redeemScope = redeemRows.length >= REDEEM_API_LIMIT ? `ใน ${REDEEM_API_LIMIT} คำขอล่าสุด` : "ตั้งแต่เปิดระบบ";
+  // บรรทัดบริบทใต้ KPI = ความเคลื่อนไหว 7 วันล่าสุด คำนวณจากข้อมูลที่หน้านี้โหลดมาแล้ว (created_at / confirmed_at)
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const inLastWeek = (iso: string | null | undefined) => !!iso && new Date(iso).getTime() >= weekAgo;
+  const newMembersWeek = users.filter(u => inLastWeek(u.created_at)).length;
+  const confirmedWeek = redeemRows.filter(r => r.status === "confirmed" && inLastWeek(r.confirmed_at)).length;
+  const weekCaption = (n: number) => `+${n.toLocaleString()} ใน 7 วันล่าสุด`;
   // ผู้ดูอย่างเดียวเรียก API คำขอแลกของไม่ได้ (ต้องเป็นพนักงาน) หรือโหลดพลาด = ไม่รู้ยอดจอง/ยอดแลก ห้ามโชว์ 0 เหมือนรู้จริง
   const redeemKnown = canEdit && redeemLoadOk;
   type WorkRow = { key: string; icon: IconName; tone: "warn" | "neutral"; count: number; text: string; label: string; run: () => void; show: boolean };
@@ -823,10 +828,10 @@ export default function AdminPage() {
           <>
             {/* ตัวเลขสรุปเป็น KPI ดูอย่างเดียว — จุดลงมือมีที่เดียวคือ "งานที่ควรทำ" */}
             <div className="ad-stats">
-              <Kpi icon="users" value={users.length.toLocaleString()} label="สมาชิกทั้งหมด" caption={noLine.length > 0 ? `ณ ตอนนี้ · รวมไม่มี LINE ${noLine.length.toLocaleString()}` : "ณ ตอนนี้"} />
-              <Kpi icon="link" value={linked.length.toLocaleString()} label="ผูกรหัส Hero แล้ว" caption={`${linkedPct}% ของสมาชิก`} />
+              <Kpi icon="users" value={users.length.toLocaleString()} label="สมาชิกทั้งหมด" caption={weekCaption(newMembersWeek)} />
+              <Kpi icon="link" value={linked.length.toLocaleString()} label="ผูกรหัส Hero แล้ว" caption={`${linkedPct}% ของสมาชิกทั้งหมด`} />
               <Kpi icon="star" value={totalPoints.toLocaleString()} label="แต้มคงเหลือรวม" caption={!redeemKnown ? "รวมแต้มที่ลูกค้าขอแลกไว้ (ยังไม่หัก)" : reservedPoints > 0 ? `จองไว้ ${reservedPoints.toLocaleString()} · ยังไม่หัก` : "ไม่มีแต้มที่จองไว้"} tone={redeemKnown && reservedPoints > 0 ? "warn" : undefined} />
-              <Kpi icon="gift" value={redeemKnown ? confirmedRedeems.toLocaleString() : "—"} label="แลกของสำเร็จ" caption={redeemKnown ? redeemScope : !canEdit ? "ดูได้เฉพาะพนักงาน" : redeemLoading ? "กำลังโหลด…" : "โหลดคำขอแลกของไม่ได้"} />
+              <Kpi icon="gift" value={redeemKnown ? confirmedRedeems.toLocaleString() : "—"} label="แลกของสำเร็จ" caption={redeemKnown ? weekCaption(confirmedWeek) : !canEdit ? "ดูได้เฉพาะพนักงาน" : redeemLoading ? "กำลังโหลด…" : "โหลดคำขอแลกของไม่ได้"} />
             </div>
             <div className="ad-card ad-work-card">
               <div className="ad-card-h"><div><h3><Icon name="tasks" size={20} />งานที่ควรทำ</h3><p>สิ่งที่รอพนักงานอยู่ตอนนี้ · เรียงจากเรื่องด่วน</p></div></div>
@@ -845,7 +850,7 @@ export default function AdminPage() {
               <ul className="ad-tier-row">
                 {TIERS.map(t => {
                   const count = tierCount(t.name);
-                  return <li key={t.name}><span className={`ad-tier-count${count === 0 ? " zero" : ""}`}><b>{count.toLocaleString()}</b> คน</span><TierChip name={t.name} /><span className="ad-tier-min">{t.min > 0 ? `${t.min.toLocaleString()}+ แต้ม` : "เริ่มต้น"}</span></li>;
+                  return <li key={t.name} className={count === 0 ? "empty" : undefined}><span className={`ad-tier-count${count === 0 ? " zero" : ""}`}><b>{count.toLocaleString()}</b> คน</span><TierChip name={t.name} /><span className="ad-tier-min">{t.min > 0 ? `${t.min.toLocaleString()}+ แต้ม` : "เริ่มต้น"}</span></li>;
                 })}
               </ul>
             </div>
@@ -857,7 +862,7 @@ export default function AdminPage() {
           <div className="ad-card ad-members-card">
             <div className="ad-card-h">
               <div><h3>สมาชิก <span className="ad-chip ad-chip--muted">ทั้งหมด {users.length.toLocaleString()} คน</span></h3><p>ค้นหาเบอร์ลูกค้าเพื่อยืนยันตัวตนและผูกรหัส Hero</p></div>
-              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost" onClick={() => fetchUsers(savedPw, "")} disabled={loading}><Icon name="refresh" size={16} />{loading ? "กำลังโหลด…" : "รีเฟรช"}</button></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-refresh-btn" onClick={() => fetchUsers(savedPw, "")} disabled={loading} aria-label={loading ? "กำลังโหลดรายชื่อ" : "รีเฟรชรายชื่อ"} title="รีเฟรชรายชื่อ"><Icon name="refresh" size={18} /><span className="ad-refresh-label">{loading ? "กำลังโหลด…" : "รีเฟรช"}</span></button></div>
             </div>
             <div className="ad-member-toolbar">
               <div className="ad-search-wrap"><Icon name="search" size={18} className="ad-search-ic" /><input className="ad-input ad-member-search" type="search" inputMode="search" aria-label="ค้นหาสมาชิก" placeholder="ค้นหาเบอร์ (4 ตัวท้ายพอ) หรือชื่อ" value={search} onChange={e => setSearch(e.target.value)} />
@@ -885,7 +890,7 @@ export default function AdminPage() {
                 </div>
                 <div className="ad-match">
                   <div className="ad-match-side line"><small className="ad-cap"><span className="long">ชื่อที่</span>สมัคร</small><div className="ad-match-body"><strong>{memberName(u)}</strong><span className="ad-match-meta"><span className="ad-mono">{fmtPhone(u.phone)}</span>{u.company && <span className="ad-match-extra">{u.company}</span>}</span><span className="ad-line-alias">ชื่อในไลน์ <b>{u.display_name || "ไม่ระบุ"}</b></span></div></div>
-                  <div className="ad-match-divider" aria-hidden="true"><Icon name="compare" size={18} /></div>
+                  <div className="ad-match-divider" aria-hidden="true" />
                   <div className={`ad-match-side hero${u.suggested_customer_id ? "" : " none"}`}><small className="ad-cap"><span className="long">ลูกค้าใน </span>Hero</small><div className="ad-match-body">{u.suggested_customer_id ? <><strong>{u.suggested_customer_name?.trim() || "ไม่มีชื่อใน Hero"}</strong><span className="ad-match-meta"><span className="ad-mono">{u.suggested_customer_id}</span></span><NameMatchChip state={nameState} /></> : <span className="ad-match-empty">{NOT_FOUND_LABEL}<span className="ad-match-empty-hint"> · ค้นใน Hero แล้วกรอกเอง</span></span>}</div></div>
                 </div>
                 <div className="ad-verify-actions">
@@ -1204,7 +1209,7 @@ export default function AdminPage() {
         </>}
         {!linkIsClear && <div className="ad-confirm-pairs">
           <div><span>ชื่อที่สมัคร</span><b>{linkMemberName}</b><small className="ad-mono">{fmtPhone(linkTarget.phone)}</small></div>
-          <div><span>ลูกค้าใน<br />Hero</span><b>{linkHeroName || (linkMode === "manual" ? "—" : "ไม่มีชื่อใน Hero")}</b><small className="ad-mono">{linkCode || "—"}</small></div>
+          <div><span>Hero</span><b>{linkHeroName || (linkMode === "manual" ? "—" : "ไม่มีชื่อใน Hero")}</b><small className="ad-mono">{linkCode || "—"}</small></div>
         </div>}
         {!linkIsClear && linkHeroName && <div className="ad-name-verdict"><NameMatchChip state={linkNameState} />{linkNameState === "mismatch" && <span>ชื่อสองฝั่งไม่ตรงกัน อาจเป็นคนละคน</span>}</div>}
         {linkNeedsAck && <label className="ad-check ad-check--caution"><input type="checkbox" checked={mismatchAck} onChange={e => setMismatchAck(e.target.checked)} /><span>ถามลูกค้าแล้ว ยืนยันว่าเป็นคนเดียวกัน<small>เช่น ใช้ชื่อร้าน ชื่อเล่น หรือเปลี่ยนนามสกุล — ถ้าไม่แน่ใจ อย่าผูก</small></span></label>}

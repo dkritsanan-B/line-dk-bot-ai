@@ -627,3 +627,46 @@ select.ad-input { padding-right: 28px; }
   .ad-verify-head .ad-backfill { font-size: 12px; }
   .ad-work-row .ad-btn { width: 96px; flex-basis: 96px; }
 }
+
+/* รอบ a10: KPI ชื่อเด่นกว่าบรรทัดบริบท · ระดับที่ว่างจางลง · มือถือ: ระดับเป็นแถวเตี้ย · ตัวกรองขึ้นสองแถว · ปุ่มรีเฟรชเป็นไอคอน · ช่องติ๊กสีเดียว */
+.ad-stat > div > span { color: var(--ad-ink); font-weight: 500; }
+.ad-stat-cap { font-weight: 400; color: var(--ad-muted); }
+.ad-stat-cap.warn { color: var(--ad-warn); font-weight: 600; }
+
+.ad-tier-row li.empty { opacity: .6; }
+.ad-tier-row li.empty .ad-tier-count b { color: var(--ad-muted); font-weight: 500; }
+
+/* การ์ดรอผูก: ตัวแบ่งสองฝั่งเป็นเส้นบาง · ชื่อบริษัทอ่านง่ายขึ้น */
+.ad-match-divider { width: 1px; align-self: stretch; background: var(--ad-line); }
+.ad-match-extra { color: #4A5670; font-size: 13px; }
+
+/* ช่องติ๊กในโมดัลใช้สีเดียว — กรอบสีส้มบอกคำเตือนเอง */
+.ad-check input, .ad-check--caution input { accent-color: var(--ad-navy); }
+
+@media (max-width: 640px) {
+  /* บรรทัด "บิลตั้งแต่…" ลงบรรทัดของตัวเองเสมอ */
+  .ad-verify-head .ad-backfill { flex-basis: 100%; }
+
+  /* ตัวกรอง: ห่อเป็นสองแถว เห็นครบทุกปุ่ม ไม่มีปุ่มโดนตัด */
+  .ad-filters { flex-wrap: wrap; overflow: visible; margin: 10px 0 2px; padding: 0; -webkit-mask-image: none; mask-image: none; }
+
+  /* ปุ่มรีเฟรชหัวการ์ดสมาชิก: ไอคอนอย่างเดียว */
+  .ad-members-card > .ad-card-h { flex-wrap: nowrap; }
+  .ad-members-card > .ad-card-h > div:first-child { min-width: 0; flex: 1; }
+  .ad-refresh-btn { position: relative; width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .ad-refresh-btn .ad-ic { margin: 0; }
+  .ad-refresh-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .ad-confirm-pairs > div { grid-template-columns: 84px 1fr; }
+}
+
+@media (max-width: 480px) {
+  /* ระดับสมาชิก: แถวเตี้ยแถวละระดับ (จุด+ชื่อ · เกณฑ์ · จำนวนชิดขวา) */
+  .ad-tier-row { grid-template-columns: 1fr; gap: 0; border: 1px solid var(--ad-line); border-radius: 12px; overflow: hidden; }
+  .ad-tier-row li { grid-template-columns: 100px minmax(0, 1fr) auto; grid-template-areas: "chip min count"; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border: 0; border-radius: 0; }
+  .ad-tier-row li + li { border-top: 1px solid var(--ad-line); }
+  .ad-tier-row li > .ad-chip { grid-area: chip; }
+  .ad-tier-row .ad-tier-min { grid-area: min; font-size: 12px; }
+  .ad-tier-row .ad-tier-count { grid-area: count; text-align: right; font-size: 12.5px; }
+  .ad-tier-row .ad-tier-count b { font-size: 16px; }
+}
