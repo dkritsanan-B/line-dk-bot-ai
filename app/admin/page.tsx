@@ -776,9 +776,9 @@ export default function AdminPage() {
   const redeemKnown = canEdit && redeemLoadOk;
   type WorkRow = { key: string; icon: IconName; tone: "warn" | "neutral"; count: number; text: string; label: string; run: () => void; show: boolean };
   const workRows: WorkRow[] = ([
-    { key: "redeem", icon: "gift", tone: "warn", count: pending, text: "คำขอแลกของรอยืนยัน", label: "ไปยืนยัน", run: () => go("redeem"), show: canEdit },
-    { key: "suggested", icon: "link", tone: "warn", count: suggested.length, text: `คน ${SUGGESTED_LABEL}`, label: "ตรวจและผูก", run: () => { setMemberFilter("suggested"); go("members"); }, show: canEdit },
-    { key: "notfound", icon: "search", tone: "neutral", count: notFound.length, text: `คน ${NOT_FOUND_LABEL}`, label: "ดูรายชื่อ", run: () => { setMemberFilter("unlinked"); go("members"); }, show: true },
+    { key: "redeem", icon: "gift", tone: "warn", count: pending, text: "คำขอรอยืนยัน", label: "ไปยืนยัน", run: () => go("redeem"), show: canEdit },
+    { key: "suggested", icon: "link", tone: "warn", count: suggested.length, text: "รอตรวจรหัส", label: "ตรวจและผูก", run: () => { setMemberFilter("suggested"); go("members"); }, show: canEdit },
+    { key: "notfound", icon: "search", tone: "neutral", count: notFound.length, text: "ยังไม่พบรหัส", label: "ดูรายชื่อ", run: () => { setMemberFilter("unlinked"); go("members"); }, show: true },
   ] as WorkRow[]).filter(r => r.count > 0);
   const primaryWorkKey = workRows.find(r => r.show)?.key;
 
@@ -830,7 +830,7 @@ export default function AdminPage() {
             <div className="ad-stats">
               <Kpi icon="users" value={users.length.toLocaleString()} label="สมาชิกทั้งหมด" caption={weekCaption(newMembersWeek)} />
               <Kpi icon="link" value={linked.length.toLocaleString()} label="ผูกรหัส Hero แล้ว" caption={`${linkedPct}% ของสมาชิกทั้งหมด`} />
-              <Kpi icon="star" value={totalPoints.toLocaleString()} label="แต้มคงเหลือรวม" caption={!redeemKnown ? "รวมแต้มที่ลูกค้าขอแลกไว้ (ยังไม่หัก)" : reservedPoints > 0 ? `จองไว้ ${reservedPoints.toLocaleString()} · ยังไม่หัก` : "ไม่มีแต้มที่จองไว้"} tone={redeemKnown && reservedPoints > 0 ? "warn" : undefined} />
+              <Kpi icon="star" value={totalPoints.toLocaleString()} label="แต้มคงเหลือรวม" caption={!redeemKnown ? "รวมแต้มที่ลูกค้าขอแลกไว้ (ยังไม่หัก)" : reservedPoints > 0 ? `จองไว้ ${reservedPoints.toLocaleString()} · หักเมื่อยืนยัน` : "ไม่มีแต้มที่จองไว้"} tone={redeemKnown && reservedPoints > 0 ? "warn" : undefined} />
               <Kpi icon="gift" value={redeemKnown ? confirmedRedeems.toLocaleString() : "—"} label="แลกของสำเร็จ" caption={redeemKnown ? weekCaption(confirmedWeek) : !canEdit ? "ดูได้เฉพาะพนักงาน" : redeemLoading ? "กำลังโหลด…" : "โหลดคำขอแลกของไม่ได้"} />
             </div>
             <div className="ad-card ad-work-card">
@@ -845,7 +845,7 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="ad-card ad-tier-card">
-              <div className="ad-card-h"><div><h3><Icon name="award" size={20} />สมาชิกแยกตามระดับ</h3><p>นับจากแต้มคงเหลือ</p></div><button className="ad-help-link" aria-expanded={earnHelpOpen} aria-controls="earn-help" onClick={() => setEarnHelpOpen(v => !v)}><Icon name="info" size={16} />วิธีได้แต้ม <span aria-hidden="true">{earnHelpOpen ? "▴" : "▾"}</span></button></div>
+              <div className="ad-card-h"><div><h3><Icon name="award" size={20} />สมาชิกตามระดับ</h3><p>นับจากแต้มคงเหลือ</p></div><button className="ad-help-link" aria-expanded={earnHelpOpen} aria-controls="earn-help" onClick={() => setEarnHelpOpen(v => !v)}><Icon name="info" size={16} />วิธีได้แต้ม <span aria-hidden="true">{earnHelpOpen ? "▴" : "▾"}</span></button></div>
               {earnHelpOpen && <p id="earn-help" className="ad-help-text">ลูกค้าสมัครใน LINE → ผูกรหัส Hero ที่แท็บสมาชิก → บิลขายสด/โอนจะกลายเป็นแต้มภายใน 1–2 นาที (บิลเชื่อ K1/K2 และลูกค้าเครดิตไม่นับ) · ระดับคิดจากแต้มคงเหลือ</p>}
               <ul className="ad-tier-row">
                 {TIERS.map(t => {
@@ -945,11 +945,11 @@ export default function AdminPage() {
           <div className="ad-card">
             <div className="ad-card-h ad-card-h--tight">
               <div><h3>คำขอแลกของรางวัล {pending > 0 && <span className="ad-badge">{pending} รอยืนยัน</span>}</h3><p>ตรวจเลขคำขอและส่งมอบของ<span className="ad-nowrap">ก่อนยืนยัน</span></p></div>
-              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost" onClick={() => fetchRedemptions()} disabled={redeemLoading}><Icon name="refresh" size={16} />{redeemLoading ? "กำลังโหลด…" : "รีเฟรช"}</button></div>
+              <div className="ad-h-actions"><button className="ad-btn ad-btn--ghost ad-refresh-btn" onClick={() => fetchRedemptions()} disabled={redeemLoading} aria-label={redeemLoading ? "กำลังโหลดคำขอแลกของ" : "รีเฟรชคำขอแลกของ"} title="รีเฟรชคำขอแลกของ"><Icon name="refresh" size={18} /><span className="ad-refresh-label">{redeemLoading ? "กำลังโหลด…" : "รีเฟรช"}</span></button></div>
             </div>
             {redeemError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{redeemError}</div>}
             {pendingRedeems.length === 0 ? <div className="ad-empty ad-redeem-empty"><Icon name="checkCircle" size={30} />ไม่มีคำขอรอรับของ</div> : <>
-              <div className="ad-safety ad-redeem-safety"><Icon name="shield" size={18} /><span><b>ก่อนยืนยัน</b> ดูเลขคำขอในบัตรสมาชิก LINE ของลูกค้าให้ตรงกับการ์ด · แต้มที่จองไว้จะถูกหักตอนกดยืนยัน</span></div>
+              <div className="ad-safety ad-redeem-safety"><Icon name="shield" size={18} /><span><b>ก่อนยืนยัน</b> ดูเลขคำขอในบัตรสมาชิก LINE ของลูกค้าให้ตรงกับการ์ด · หักแต้มที่จองไว้เมื่อยืนยัน · <span className="ad-nowrap">ยกเลิก = ปลดแต้มที่จอง</span></span></div>
               <div className="ad-redeem-grid">
                 {pendingRedeems.map(r => {
                   const name = r.first_name ? `${r.first_name} ${r.last_name ?? ""}` : (r.display_name ?? "-");
@@ -959,7 +959,7 @@ export default function AdminPage() {
                     <div className="ad-redeem-top"><span className={`ad-chip ${age.overdue ? "ad-chip--danger" : "ad-chip--warn"}`}>{age.label}</span><b className="ad-req-number">#REQ-{r.id}</b><time dateTime={r.created_at}>{formatDateTime(r.created_at)}</time></div>
                     <div className="ad-reward-name">{r.reward_name}</div>
                     <div className="ad-redeem-person"><div className="ad-redeem-who"><b>{name}</b><span className="ad-mono">{fmtPhone(r.phone)}</span></div><div className="ad-reserved"><small>จองไว้</small><b>{r.points_required.toLocaleString()} <span>แต้ม</span></b></div></div>
-                    <div className="ad-redeem-actions"><button className="ad-cancel-text" onClick={() => { setRedeemModal({ row: r, action: "cancel" }); setCancelReason("ลูกค้าไม่มารับ"); }} disabled={busy}>ยกเลิกคำขอ</button><button className="ad-btn ad-btn--ok ad-redeem-confirm" onClick={() => { setRedeemModal({ row: r, action: "confirm" }); setHandoffChecked(false); }} disabled={busy}>{busy ? "กำลังบันทึก…" : "ยืนยันรับของ"}</button></div>
+                    <div className="ad-redeem-actions"><button className="ad-cancel-text" onClick={() => { setRedeemModal({ row: r, action: "cancel" }); setCancelReason("ลูกค้าไม่มารับ"); }} disabled={busy}>ยกเลิกและปลดจอง</button><button className="ad-btn ad-btn--ok ad-redeem-confirm" onClick={() => { setRedeemModal({ row: r, action: "confirm" }); setHandoffChecked(false); }} disabled={busy}>{busy ? "กำลังบันทึก…" : "ยืนยันรับของ"}</button></div>
                   </article>;
                 })}
               </div>
