@@ -1,0 +1,73 @@
+/* นโยบายความเป็นส่วนตัว (PDPA · 18 ก.ย. 69) — หน้า /privacy + กล่องอ่านนโยบาย/ช่องติ๊กยอมรับในฟอร์มสมัคร
+ * ใช้ตัวแปรสีจาก app/liff/liff.css เท่านั้น (ไม่มีค่าสีลอย) · ข้อความไทย ≥ 16px · พื้นที่กด ≥ 44px
+ * แยกไฟล์ไว้ ไม่แก้ liff.css (ไฟล์กลางของระบบดีไซน์) */
+
+/* ── เนื้อหานโยบาย ── */
+.pv-doc { color: var(--ink); font-size: var(--fs-body); line-height: var(--lh); overflow-wrap: anywhere; }
+.pv-doc .pv-title { margin: 0; font-size: var(--fs-h1); font-weight: var(--fw-black); line-height: var(--lh-tight); color: var(--ink); }
+.pv-doc .pv-meta { margin: var(--sp-2) 0 var(--sp-4); color: var(--ink-3); font-weight: var(--fw-bold); }
+.pv-doc p { margin: 0 0 var(--sp-3); }
+.pv-doc section { margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.pv-doc h3 { margin: 0 0 var(--sp-3); font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--dk-navy); line-height: var(--lh-tight); }
+.pv-doc ul { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); display: grid; gap: var(--sp-2); }
+.pv-doc li { padding-left: var(--sp-1); }
+.pv-doc a { color: var(--dk-blue); font-weight: var(--fw-bold); text-decoration: underline; text-underline-offset: 3px; }
+/* ช่องที่เจ้าของร้านต้องเติม — เห็นชัด (--warn บน --warn-tint ผ่าน AA) */
+.pv-fill {
+  background: var(--warn-tint); color: var(--warn); font-weight: var(--fw-bold);
+  border: 1px dashed var(--warn-line); border-radius: 6px; padding: 0 var(--sp-1);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+
+/* ── หน้า /privacy ── */
+.pv-card { padding: var(--sp-6) var(--sp-4); }
+.pv-foot { text-align: center; color: var(--ink-3); margin: var(--sp-2) 0 0; }
+@media (min-width: 900px) {
+  .pv-card { padding: var(--sp-7) var(--sp-8); }
+}
+
+/* ── ช่องติ๊กยอมรับนโยบายในฟอร์มสมัคร ── */
+.pv-consent {
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  min-height: 44px; padding: var(--sp-2) var(--sp-3); box-sizing: border-box;
+  border: var(--bw) solid var(--line); border-radius: var(--r-sm); background: var(--surface-2);
+  cursor: pointer; color: var(--ink); font-size: var(--fs-body); line-height: 1.45;
+}
+.pv-consent--bad { border-color: var(--danger); background: var(--danger-tint); }
+.pv-consent input {
+  flex-shrink: 0; width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--dk-blue); cursor: pointer;
+}
+.pv-consent span { padding-top: 1px; }
+.pv-consent a { color: var(--dk-blue); font-weight: var(--fw-bold); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── กล่องอ่านนโยบาย (bottom sheet บนมือถือ · กล่องกลางจอบนเดสก์ท็อป) — ฟอร์มสมัครไม่หาย ── */
+.pv-modal {
+  position: fixed; z-index: 30; inset: 0; padding: var(--sp-4) 0 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: color-mix(in srgb, var(--dk-navy) 64%, transparent);
+}
+.pv-sheet {
+  width: min(100%, 640px); max-height: calc(100dvh - var(--sp-7)); box-sizing: border-box;
+  display: flex; flex-direction: column;
+  border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--surface); box-shadow: var(--sh-3);
+  font-family: var(--font);
+}
+.pv-sheet-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line);
+}
+.pv-sheet-head b { font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--ink); }
+.pv-sheet-x {
+  min-width: var(--h-tap); min-height: var(--h-tap); border: none; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink-2); cursor: pointer; display: grid; place-items: center;
+}
+.pv-sheet-body { overflow-y: auto; padding: var(--sp-4); -webkit-overflow-scrolling: touch; }
+.pv-sheet-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line);
+}
+.pv-sheet :is(button, a):focus-visible { outline: 3px solid var(--dk-blue); outline-offset: 2px; }
+@media (min-width: 900px) {
+  .pv-modal { align-items: center; padding: var(--sp-6); }
+  .pv-sheet { border-radius: var(--r-lg); max-height: calc(100dvh - 2 * var(--sp-6)); }
+}

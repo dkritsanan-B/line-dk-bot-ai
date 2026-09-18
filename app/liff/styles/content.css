@@ -115,8 +115,9 @@
   bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 0 0 4px var(--surface), var(--sh-3);
 }
-/* :has กับเฉพาะช่องกรอก — ถ้าใช้ :focus-within ตอนแตะปุ่มเอง ปุ่มจะกระโดดกลับที่เดิมระหว่างกด แล้วการกดหลุด */
-.lf-form:has(input:focus, select:focus) .lf-ct-sticky { position: static; box-shadow: var(--sh-2); }
+/* :has กับเฉพาะช่องกรอก — ถ้าใช้ :focus-within ตอนแตะปุ่มเอง ปุ่มจะกระโดดกลับที่เดิมระหว่างกด แล้วการกดหลุด
+ * ช่องติ๊กยอมรับนโยบาย (PDPA) ไม่นับ — ติ๊กแล้วกดสมัครต่อทันที ปุ่มต้องไม่กระโดด */
+.lf-form:has(input:not([type="checkbox"]):focus, select:focus) .lf-ct-sticky { position: static; box-shadow: var(--sh-2); }
 
 /* จอสำเร็จหลังสมัคร: ยืนยันผลก่อนพาไปบัตรรอพนักงาน */
 .lf-signup-done { text-align: center; }

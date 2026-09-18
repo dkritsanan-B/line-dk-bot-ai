@@ -22,6 +22,7 @@ export const API_ERROR_CODES = [
   "BAD_REQUEST",         // ข้อมูลที่ส่งมาไม่ครบ/ไม่ใช่ JSON
   "INVALID_PHONE",       // เบอร์มือถือผิดรูปแบบ
   "PHONE_TAKEN",         // เบอร์นี้เป็นของสมาชิกท่านอื่น / ผูก LINE อื่นอยู่
+  "CONSENT_REQUIRED",    // สมัครโดยไม่ได้ติ๊กยอมรับนโยบายความเป็นส่วนตัว (PDPA · 18 ก.ย. 69)
   "REWARD_NOT_FOUND",    // ไม่พบของรางวัล (ถูกปิด/ลบไปแล้ว)
   "REWARD_OUT_OF_STOCK", // ของรางวัลหมดชั่วคราว
   "NOT_ENOUGH_POINTS",   // แต้มไม่พอ
@@ -40,6 +41,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   BAD_REQUEST: 400,
   INVALID_PHONE: 400,
   PHONE_TAKEN: 409,
+  CONSENT_REQUIRED: 400,
   REWARD_NOT_FOUND: 404,
   REWARD_OUT_OF_STOCK: 400,
   NOT_ENOUGH_POINTS: 400,
@@ -57,6 +59,7 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   BAD_REQUEST: "ข้อมูลที่ส่งมาไม่ครบ กรุณาลองใหม่",
   INVALID_PHONE: "เบอร์มือถือไม่ถูกต้อง (10 หลัก)",
   PHONE_TAKEN: "เบอร์นี้เป็นของสมาชิกท่านอื่นแล้ว กรุณาติดต่อพนักงานที่ร้านค่ะ",
+  CONSENT_REQUIRED: "กรุณาติ๊กยอมรับนโยบายความเป็นส่วนตัวก่อนสมัครสมาชิกค่ะ",
   REWARD_NOT_FOUND: "ไม่พบของรางวัล",
   REWARD_OUT_OF_STOCK: "ของรางวัลหมดชั่วคราว",
   NOT_ENOUGH_POINTS: "แต้มไม่พอ",

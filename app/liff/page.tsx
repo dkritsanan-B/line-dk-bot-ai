@@ -7,7 +7,7 @@ import type { ClientLink, Expiry, Member, MemberResponse, Profile, RedeemSummary
 import { callApi, problemOf, SHOP_PHONE, type Problem } from "./lib/api";
 import SignupCard from "./components/SignupCard";
 import SignupSuccess from "./components/SignupSuccess";
-import MemberForm from "./components/MemberForm";
+import MemberForm, { CONSENT_ERROR } from "./components/MemberForm";
 import MemberCard from "./components/MemberCard";
 import AlertNotes from "./components/AlertNotes";
 import QuickActions from "./components/QuickActions";
@@ -28,6 +28,7 @@ const HISTORY_ID = "lf-history";
 const DEFAULT_REVIEW_PROFILE: Profile = { userId: "review", displayName: "ผู้ตรวจ", pictureUrl: "" };
 
 function registerErrorText(p: Problem): string {
+  if (p.code === "CONSENT_REQUIRED") return CONSENT_ERROR;   // ข้อความเดียวกับฝั่งหน้าเว็บ → ช่องติ๊กขึ้นกรอบแดงด้วย
   if (["PHONE_TAKEN", "INVALID_PHONE", "BAD_REQUEST"].includes(p.code) && p.serverMessage) return p.serverMessage;
   if (p.kind === "auth") return "หมดเวลาใช้งาน กรุณาปิดหน้านี้แล้วเปิดใหม่จาก LINE";
   if (p.kind === "offline") return "ส่งข้อมูลไม่ได้ อินเทอร์เน็ตอาจหลุด เช็คสัญญาณแล้วกดใหม่อีกครั้ง";
@@ -47,6 +48,7 @@ export default function LiffPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName]   = useState("");
   const [company, setCompany]     = useState("");
+  const [consent, setConsent]     = useState(false);   // PDPA: ติ๊กยอมรับนโยบายความเป็นส่วนตัว (เฉพาะตอนสมัคร)
   const [birthday, setBirthday]   = useState("");
   const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -202,6 +204,7 @@ export default function LiffPage() {
     if (!lastName.trim())           { setError("กรุณากรอกนามสกุล"); return; }
     if (!/^0\d{9}$/.test(phone))    { setError("เบอร์มือถือไม่ถูกต้อง (10 หลัก)"); return; }
     if (!birthday)                  { setError("กรุณาเลือกวันเกิด"); return; }
+    if (!registered && !consent)    { setError(CONSENT_ERROR); return; }
     setSubmitting(true); setError("");
     try {
       const r = await callApi<{ success?: boolean; user?: Member; link?: ClientLink | null }>("/api/member" + reviewQS(), {
@@ -214,6 +217,8 @@ export default function LiffPage() {
           lastName: lastName.trim(),
           company: company.trim() || null,
           birthday,
+          // PDPA: ส่งเฉพาะตอนสมัคร — เซิร์ฟเวอร์บันทึกเวลาที่ยอมรับ + ฉบับนโยบาย (จอแก้ไขข้อมูลไม่ต้องส่ง)
+          ...(registered ? {} : { consent }),
         }),
       });
       if (!r.ok) { setError(registerErrorText(r.problem)); return; }
@@ -238,6 +243,8 @@ export default function LiffPage() {
     onPhone: setPhone,
     onBirthday: setBirthday,
     onCompany: setCompany,
+    consent,
+    onConsent: (v: boolean) => { setConsent(v); if (v) setError(e => (e === CONSENT_ERROR ? "" : e)); },
     error, submitting,
     onSubmit: handleRegister,
     onCancel: () => { setEditing(false); setError(""); },

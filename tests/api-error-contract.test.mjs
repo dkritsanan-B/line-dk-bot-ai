@@ -132,7 +132,7 @@ test("GET /api/member · อ่านตัวสมาชิกได้ แต
 // ══════════════════════════════════════════════════════════════════════════
 // POST /api/member — สมัคร / แก้ไขข้อมูล
 // ══════════════════════════════════════════════════════════════════════════
-const GOOD = { phone: "0812345678", displayName: "ช่างสมชาย", firstName: "สมชาย", lastName: "ใจดี", company: null, birthday: "1983-04-01" };
+const GOOD = { phone: "0812345678", displayName: "ช่างสมชาย", firstName: "สมชาย", lastName: "ใจดี", company: null, birthday: "1983-04-01", consent: true };
 
 test("POST /api/member · body ไม่ใช่ JSON → 400 BAD_REQUEST (เดิม throw เป็น 500 ที่ parse ไม่ได้)", async () => {
   fresh();

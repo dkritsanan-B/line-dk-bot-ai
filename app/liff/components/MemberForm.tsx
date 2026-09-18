@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Field } from "../ui";
 import Icon from "./Icon";
 import BirthdayField from "./BirthdayField";
+import PolicyContent from "@/app/privacy/PolicyContent";
+import "@/app/privacy/privacy.css";
+
+/** ข้อความเตือนตอนกดสมัครโดยยังไม่ติ๊กยอมรับนโยบาย — page.tsx ใช้ตัวเดียวกัน ช่องติ๊กจึงรู้ว่าต้องขึ้นกรอบแดง */
+export const CONSENT_ERROR = "กรุณาติ๊ก “ยอมรับ นโยบายความเป็นส่วนตัว” ก่อนสมัครค่ะ";
 
 export interface MemberFormProps {
   isEdit: boolean;
@@ -17,6 +22,9 @@ export interface MemberFormProps {
   onPhone: (v: string) => void;
   onBirthday: (v: string) => void;
   onCompany: (v: string) => void;
+  /** PDPA (18 ก.ย. 69): ติ๊กยอมรับนโยบายความเป็นส่วนตัว — บังคับเฉพาะตอนสมัคร (จอแก้ไขไม่มีช่องนี้) */
+  consent?: boolean;
+  onConsent?: (v: boolean) => void;
   error: string;
   submitting: boolean;
   onSubmit: () => void;
@@ -25,7 +33,7 @@ export interface MemberFormProps {
 
 export default function MemberForm({
   isEdit, firstName, lastName, phone, birthday, company,
-  onFirstName, onLastName, onPhone, onBirthday, onCompany,
+  onFirstName, onLastName, onPhone, onBirthday, onCompany, consent = false, onConsent,
   error, submitting, onSubmit, onCancel,
 }: MemberFormProps) {
   // ปุ่มสมัครติดขอบล่างจอ กดได้ตั้งแต่ยังเลื่อนไม่ถึงท้ายฟอร์ม → ข้อความผิดพลาดต้องเลื่อนมาให้เห็นเสมอ
@@ -36,6 +44,18 @@ export default function MemberForm({
   // r5: ตรวจเบอร์ทันทีที่ออกจากช่อง (ไม่ต้องรอกดสมัคร) · กติกาเดียวกับ handleRegister ใน page.tsx
   const [phoneTouched, setPhoneTouched] = useState(false);
   const phoneBad = !isEdit && phoneTouched && phone.length > 0 && !/^0\d{9}$/.test(phone);
+  // PDPA: อ่านนโยบายในกล่องบนหน้าเดิม (ไม่เปลี่ยนหน้า) → ข้อมูลที่กรอกไว้ไม่หาย
+  // ลิงก์ยังชี้ /privacy จริง เผื่อกดค้างเปิดแท็บใหม่
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const consentBad = !isEdit && !consent && error === CONSENT_ERROR;
+  useEffect(() => {
+    if (!policyOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPolicyOpen(false); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [policyOpen]);
   return (
     <div className="lf-form">
       {/* r5: บอกครั้งเดียวว่าช่องไหนบังคับ — ช่องที่ไม่บังคับมีคำว่า (ถ้ามี) กำกับ */}
@@ -65,7 +85,29 @@ export default function MemberForm({
       <Field label="บริษัท / ร้านค้า" optional>
         <input className="lf-input" type="text" value={company} onChange={e => onCompany(e.target.value)} placeholder="เช่น หจก. ก่อสร้างดี" autoComplete="organization" />
       </Field>
-      {error && <div ref={errRef} role="alert" className="lf-alert lf-alert--err"><i><Icon name="alert" size={20} /></i><span>{error}</span></div>}
+      {!isEdit && (
+        <label className={`pv-consent${consentBad ? " pv-consent--bad" : ""}`}>
+          <input type="checkbox" checked={consent} onChange={e => onConsent?.(e.target.checked)}
+            aria-invalid={consentBad || undefined} aria-describedby={consentBad ? "lf-consent-err" : undefined} />
+          <span>ยอมรับ <a href="/privacy" onClick={e => { e.preventDefault(); setPolicyOpen(true); }}>นโยบายความเป็นส่วนตัว</a></span>
+        </label>
+      )}
+      {policyOpen && (
+        <div className="pv-modal" onClick={e => { if (e.target === e.currentTarget) setPolicyOpen(false); }}>
+          <div className="pv-sheet" role="dialog" aria-modal="true" aria-label="นโยบายความเป็นส่วนตัว">
+            <div className="pv-sheet-head">
+              <b>นโยบายความเป็นส่วนตัว</b>
+              <button type="button" className="pv-sheet-x" onClick={() => setPolicyOpen(false)} autoFocus>ปิด</button>
+            </div>
+            <div className="pv-sheet-body"><PolicyContent headingLevel={2} /></div>
+            <div className="pv-sheet-actions">
+              <button type="button" className="lf-btn lf-btn--ghost lf-btn--sm" onClick={() => setPolicyOpen(false)}>ปิด</button>
+              <button type="button" className="lf-btn lf-btn--primary lf-btn--sm" onClick={() => { onConsent?.(true); setPolicyOpen(false); }}>ยอมรับ</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {error && <div ref={errRef} id={consentBad ? "lf-consent-err" : undefined} role="alert" className="lf-alert lf-alert--err"><i><Icon name="alert" size={20} /></i><span>{error}</span></div>}
       <button className={`lf-btn lf-btn--primary${isEdit ? "" : " lf-ct-sticky"}`} onClick={onSubmit} disabled={submitting}>
         {submitting ? "กำลังบันทึก…" : isEdit ? "บันทึกข้อมูล" : "สมัครสมาชิกฟรี"}
       </button>

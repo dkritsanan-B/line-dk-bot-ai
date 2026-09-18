@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { getUserByLineId, registerUser, migrateDB, RegisterError, getExpiringSummary, buildLinkState, getLinkState, toClientLink, toClientUser } from "@/lib/points";
+import { getUserByLineId, registerUser, migrateDB, RegisterError, ConsentError, getExpiringSummary, buildLinkState, getLinkState, toClientLink, toClientUser } from "@/lib/points";
 import { verifyLiffUser, isAuthError } from "@/lib/liff-auth";
 import { reviewScenarioFrom, REVIEW_ENABLED_NOTE, REVIEW_SCENARIOS } from "@/lib/review-mode";
 import { apiError, apiOk, authError, dbError, reviewFaultResponse } from "@/app/api/_lib/api-error";
@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const tel = String(body.phone ?? "0812345678").replace(/\D/g, "");
     if (!/^0\d{9}$/.test(tel)) return apiError("INVALID_PHONE");
+    // PDPA: จำลองกติกาเดียวกับของจริง — คนที่ยังไม่สมัครต้องติ๊กยอมรับนโยบายก่อน (สมาชิกแก้ข้อมูลตัวเองไม่ต้อง)
+    if (!rvPost.registered && body.consent !== true) return apiError("CONSENT_REQUIRED");
     const base = REVIEW_SCENARIOS.pending.member!;
     // สมัครเสร็จยังไม่ได้แต้ม จนกว่าพนักงานจะผูกรหัสลูกค้า Hero ให้ — ส่งสถานะไปด้วย หน้าเว็บจะได้ขึ้นจอ "รอผูกรหัส" ต่อได้เลย
     const fresh = { ...base, phone: tel, first_name: body.firstName ?? base.first_name, last_name: body.lastName ?? base.last_name, company: body.company ?? null, birthday: body.birthday ?? base.birthday };
@@ -91,6 +93,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") return apiError("BAD_REQUEST", { message: "ข้อมูลที่ส่งมาไม่ถูกต้อง กรุณาลองใหม่" });
   const { phone, displayName, firstName, lastName, company, birthday } = body as Record<string, string | null | undefined>;
+  // PDPA (18 ก.ย. 69): ต้องเป็น true จริง ๆ เท่านั้น (true/1 ไม่นับ) — สมาชิกเดิมที่แก้ข้อมูลตัวเองไม่ต้องส่ง (ตัดสินใน registerUser)
+  const consent = (body as Record<string, unknown>).consent === true;
   if (!phone || !firstName || !lastName || !birthday) {
     return apiError("BAD_REQUEST", { message: "กรอกข้อมูลไม่ครบ กรุณาใส่ชื่อ นามสกุล เบอร์มือถือ และวันเกิด" });
   }
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await migrateDB();
-    const result = await registerUser(who.userId, tel, displayName ?? undefined, firstName, lastName, company ?? undefined, birthday);
+    const result = await registerUser(who.userId, tel, displayName ?? undefined, firstName, lastName, company ?? undefined, birthday, { consent });
     const user = await getUserByLineId(who.userId);
     // สมัครผ่านแล้วแต่อ่านกลับไม่เจอ = ผิดปกติ อย่าคืน success พร้อม user:null (หน้าเว็บจะเรนเดอร์บัตรเปล่า)
     if (!user) return apiError("SERVER_ERROR", { message: "บันทึกข้อมูลแล้ว แต่โหลดบัตรสมาชิกไม่ได้ กรุณาเปิดหน้านี้ใหม่อีกครั้ง" });
@@ -109,6 +113,7 @@ export async function POST(req: NextRequest) {
     return apiOk({ success: true, isNew: result.isNew, user: toClientUser(user as unknown as Record<string, unknown>), link_status: link?.status ?? null, link });
   } catch (e) {
     // เบอร์ชนกับสมาชิกท่านอื่น / เบอร์ผูก LINE อื่นอยู่ — ข้อความเดิมจาก lib/points.ts พูดกับลูกค้าได้ตรงกว่า
+    if (e instanceof ConsentError) return apiError("CONSENT_REQUIRED");
     if (e instanceof RegisterError) return apiError("PHONE_TAKEN", { message: e.message });
     return dbError(e, "POST /api/member → registerUser");
   }

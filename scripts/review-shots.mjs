@@ -145,6 +145,8 @@ for (const view of VIEWS) {
             if (vals.length) await sels.nth(i).selectOption(vals[Math.min(5, vals.length - 1)]);
           }
         }
+        // PDPA (18 ก.ย. 69): ต้องติ๊กยอมรับนโยบายความเป็นส่วนตัวก่อน ปุ่มสมัครถึงจะผ่าน
+        await page.getByRole("checkbox", { name: /นโยบายความเป็นส่วนตัว/ }).check();
         await page.getByRole("button", { name: /สมัครสมาชิกฟรี/ }).click();
         await page.waitForTimeout(1200);
       },
@@ -161,15 +163,44 @@ for (const view of VIEWS) {
           const vals = await sels.nth(i).locator("option").evaluateAll(os => os.map(o => o.value).filter(Boolean));
           if (vals.length) await sels.nth(i).selectOption(vals[Math.min(5, vals.length - 1)]);
         }
+        // PDPA (18 ก.ย. 69): ต้องติ๊กยอมรับนโยบายความเป็นส่วนตัวก่อน ปุ่มสมัครถึงจะผ่าน
+        await page.getByRole("checkbox", { name: /นโยบายความเป็นส่วนตัว/ }).check();
         await page.getByRole("button", { name: /สมัครสมาชิกฟรี/ }).click();
         await page.getByRole("button", { name: /เข้าใจแล้ว/ }).click({ timeout: 5000 });
         await page.waitForTimeout(600);
       },
     },
+    // PDPA: กดสมัครโดยยังไม่ติ๊กยอมรับนโยบาย → ช่องติ๊กขึ้นกรอบแดง + ข้อความเตือน (ยังไม่ส่งอะไรไปเซิร์ฟเวอร์)
+    {
+      key: "x_signup_consent", scenario: "new", path: "/liff", viewportOnly: true,
+      after: async page => {
+        await page.getByPlaceholder("สมชาย").fill("สมชาย");
+        await page.getByPlaceholder("ใจดี").fill("ใจดี");
+        await page.getByPlaceholder("08X XXX XXXX").fill("0812345678");
+        const sels = page.locator(".lf-date select");
+        for (let i = 0; i < await sels.count(); i++) {
+          const vals = await sels.nth(i).locator("option").evaluateAll(os => os.map(o => o.value).filter(Boolean));
+          if (vals.length) await sels.nth(i).selectOption(vals[Math.min(5, vals.length - 1)]);
+        }
+        await page.getByRole("button", { name: /สมัครสมาชิกฟรี/ }).click();
+        await page.waitForTimeout(600);
+      },
+    },
+    // PDPA: กดลิงก์นโยบายในฟอร์มสมัคร → กล่องอ่านนโยบายบนหน้าเดิม (ฟอร์มไม่หาย)
+    {
+      key: "x_signup_policy", scenario: "new", path: "/liff", viewportOnly: true,
+      after: async page => {
+        await page.getByRole("link", { name: "นโยบายความเป็นส่วนตัว" }).click();
+        await page.getByRole("dialog").waitFor({ timeout: 5000 });
+        await page.waitForTimeout(300);
+      },
+    },
+    // PDPA: หน้านโยบายความเป็นส่วนตัว (สาธารณะ ไม่ต้องล็อกอิน)
+    { key: "x_privacy", scenario: "new", path: "/privacy", pageKey: "privacy" },
   ];
   for (const x of extras) {
     if (!pick(x.key)) continue;
-    const pgKey = x.path.endsWith("rewards") ? "rewards" : "liff";
+    const pgKey = x.pageKey ?? (x.path.endsWith("rewards") ? "rewards" : "liff");
     if (ONLY && pgKey !== ONLY) continue;
     const page = await ctx.newPage();
     try {

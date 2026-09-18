@@ -112,7 +112,7 @@ test("POST สมัครสมาชิก (โหมดรีวิว): ต�
   const { POST } = await import("../app/api/member/route.ts");
   const req = new NextRequest("http://localhost:3100/api/member?review=dkreview2569&as=new", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ phone: "0898887777", firstName: "วิชัย", lastName: "มั่นคง", birthday: "1985-05-05" }),
+    body: JSON.stringify({ phone: "0898887777", firstName: "วิชัย", lastName: "มั่นคง", birthday: "1985-05-05", consent: true }),
   });
   const d = await (await POST(req)).json();
   eq(d.success, true);
@@ -129,7 +129,7 @@ test("POST สมัครสมาชิก (ของจริง): สมา�
   onQuery("FROM users WHERE line_user_id", [{ id: 99, phone: "0898887777", points: 0, total_earned: 0, customer_id: null, suggested_customer_id: null, created_at: new Date().toISOString() }]);
   const req = new NextRequest("http://localhost:3100/api/member", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ phone: "0898887777", firstName: "วิชัย", lastName: "มั่นคง", birthday: "1985-05-05" }),
+    body: JSON.stringify({ phone: "0898887777", firstName: "วิชัย", lastName: "มั่นคง", birthday: "1985-05-05", consent: true }),
   });
   const d = await (await POST(req)).json();
   eq(d.success, true);

@@ -1,5 +1,6 @@
 import { sql, db as defaultDb, type Db } from "./db";
 import { viewLedger, ledgerViewFor, type LedgerRow, type LedgerView } from "./points-ledger";
+import { PDPA_VERSION } from "./pdpa";
 
 const POINTS_PER_BAHT = 100;
 
@@ -42,6 +43,9 @@ export interface User {
   total_earned: number;
   last_purchase_at: string | null;
   created_at: string;
+  /** PDPA: เวลาที่ติ๊กยอมรับนโยบาย (NULL = สมาชิกเก่าที่สมัครก่อนมีระบบนี้) */
+  pdpa_consent_at?: string | null;
+  pdpa_version?: string | null;
 }
 
 export async function migrateDB() {
@@ -56,6 +60,10 @@ export async function migrateDB() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_earned           INT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_purchase_at       TIMESTAMPTZ`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notified_inactive_11m  BOOLEAN NOT NULL DEFAULT FALSE`;
+  // PDPA (18 ก.ย. 69): เวลาที่สมาชิกติ๊กยอมรับนโยบายความเป็นส่วนตัว + ฉบับของนโยบาย (lib/pdpa.ts)
+  // สมาชิกที่สมัครก่อนมีช่องนี้ = NULL ใช้งานต่อได้ตามปกติ (ไม่บล็อก)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pdpa_consent_at        TIMESTAMPTZ`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pdpa_version           TEXT`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type        TEXT NOT NULL DEFAULT 'earn'`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note        TEXT`;
@@ -143,39 +151,54 @@ export async function registerUser(
   lastName?: string,
   company?: string,
   birthday?: string,
+  opts: { consent?: boolean; database?: Db } = {},
 ): Promise<{ isNew: boolean }> {
   // กติกาตัวตน (14 ก.ย. 69): 1 คน = 1 บัญชี LINE = 1 เบอร์
   //  - LINE นี้เคยสมัครแล้ว → แก้ข้อมูล/เปลี่ยนเบอร์ของตัวเองได้ (เบอร์ใหม่ต้องไม่ซ้ำคนอื่น)
   //  - เบอร์นี้มีเจ้าของที่ผูก LINE อื่นอยู่ → ปฏิเสธ (เดิมเขียนทับ line_user_id = ใครรู้เบอร์ก็ยึดบัญชี/แต้มคนอื่นได้) → ให้พนักงานปลด LINE เก่าในหน้าแอดมินก่อน
   //  - เบอร์นี้มีในระบบแต่ยังไม่ผูก LINE (พนักงานสร้างให้/ถูกปลด) → รับ LINE นี้เข้าไป (เปลี่ยนเครื่อง/เปลี่ยน LINE ทำแบบนี้)
-  const mine = await getUserByLineId(lineUserId);
-  const byPhone = await getUserByPhone(phone);
+  // PDPA (18 ก.ย. 69): การสมัคร (สร้างใหม่ / รับ LINE เข้าเบอร์เดิม) ต้องมี consent:true เสมอ → บันทึกเวลา + ฉบับนโยบาย
+  //  สมาชิกที่สมัครแล้วแก้ข้อมูลตัวเอง ไม่ต้องติ๊กซ้ำ (สมาชิกเก่าก่อนมีระบบนี้ต้องใช้งานต่อได้)
+  const database = opts.database ?? defaultDb;
+  const consent = opts.consent === true;
+  const [mine] = (await database.query(`SELECT * FROM users WHERE line_user_id = $1 LIMIT 1`, [lineUserId])) as unknown as User[];
+  const [byPhone] = (await database.query(`SELECT * FROM users WHERE phone = $1 LIMIT 1`, [phone])) as unknown as User[];
+  const common = [displayName ?? null, firstName ?? null, lastName ?? null, company ?? null, birthday ?? null];
   if (mine) {
     if (byPhone && byPhone.id !== mine.id) throw new RegisterError("เบอร์นี้เป็นของสมาชิกท่านอื่นแล้ว กรุณาติดต่อพนักงานที่ร้านค่ะ");
-    await sql`
-      UPDATE users SET phone = ${phone}, display_name = ${displayName ?? null}, first_name = ${firstName ?? null},
-        last_name = ${lastName ?? null}, company = ${company ?? null}, birthday = ${birthday ?? null}
-      WHERE id = ${mine.id}
-    `;
+    await database.query(
+      `UPDATE users SET phone = $1, display_name = $2, first_name = $3, last_name = $4, company = $5, birthday = $6,
+         pdpa_consent_at = CASE WHEN $7::boolean THEN NOW() ELSE pdpa_consent_at END,
+         pdpa_version    = CASE WHEN $7::boolean THEN $8 ELSE pdpa_version END
+       WHERE id = $9`,
+      [phone, ...common, consent, PDPA_VERSION, mine.id],
+    );
     return { isNew: false };
   }
+  if (!consent) throw new ConsentError();
   if (byPhone) {
     if (byPhone.line_user_id && byPhone.line_user_id !== lineUserId) throw new RegisterError("เบอร์นี้ผูกกับบัญชี LINE อื่นอยู่แล้ว ถ้าเปลี่ยน LINE ใหม่ กรุณาแจ้งพนักงานที่ร้านให้ปลดบัญชีเดิมก่อนค่ะ");
-    await sql`
-      UPDATE users SET line_user_id = ${lineUserId}, display_name = ${displayName ?? null}, first_name = ${firstName ?? null},
-        last_name = ${lastName ?? null}, company = ${company ?? null}, birthday = ${birthday ?? null}
-      WHERE id = ${byPhone.id}
-    `;
+    await database.query(
+      `UPDATE users SET line_user_id = $1, display_name = $2, first_name = $3, last_name = $4, company = $5, birthday = $6,
+         pdpa_consent_at = NOW(), pdpa_version = $7
+       WHERE id = $8`,
+      [lineUserId, ...common, PDPA_VERSION, byPhone.id],
+    );
     return { isNew: false };
   }
-  await sql`
-    INSERT INTO users (line_user_id, phone, display_name, first_name, last_name, company, birthday)
-    VALUES (${lineUserId}, ${phone}, ${displayName ?? null}, ${firstName ?? null}, ${lastName ?? null}, ${company ?? null}, ${birthday ?? null})
-  `;
+  await database.query(
+    `INSERT INTO users (line_user_id, phone, display_name, first_name, last_name, company, birthday, pdpa_consent_at, pdpa_version)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)`,
+    [lineUserId, phone, ...common, PDPA_VERSION],
+  );
   return { isNew: true };
 }
 
 export class RegisterError extends Error {}
+/** สมัครโดยไม่ได้ติ๊กยอมรับนโยบายความเป็นส่วนตัว — route ตอบ 400 CONSENT_REQUIRED */
+export class ConsentError extends Error {
+  constructor() { super("ต้องยอมรับนโยบายความเป็นส่วนตัวก่อนสมัครสมาชิก"); }
+}
 
 // ให้แต้ม / หักแต้ม — คำสั่งเดียว ปรับยอดกับลงประวัติต้องเกิดคู่กันเสมอ (16 ก.ย. 69)
 // เดิมเป็น 2 คำสั่งแยกกัน ถ้าคำสั่งที่สองล้ม ยอดแต้มจะเปลี่ยนโดยไม่มีประวัติ (และตัวตัดแต้มหมดอายุไม่รู้ว่าแต้มก้อนนั้นอยู่ไหน)
