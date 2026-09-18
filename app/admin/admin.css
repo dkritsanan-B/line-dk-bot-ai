@@ -178,10 +178,6 @@ select.ad-input { padding-right: 28px; }
 
 .ad-work-list { display: grid; gap: 10px; }
 .ad-work-row { min-height: 56px; display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 14px; border-radius: 12px; }
-.ad-work-row.warn { background: var(--ad-warn-bg); color: #7A4900; }
-.ad-work-row.info { background: var(--ad-sky); color: var(--ad-navy); }
-.ad-work-row > span { flex: 1; font-size: 14px; }
-.ad-work-row > span b { margin-right: 3px; font-size: 18px; color: var(--ad-ink); }
 .ad-work-row .ad-btn { width: 116px; height: 40px; flex: 0 0 116px; }
 .ad-disclosure { margin-top: 12px; border-top: 1px solid var(--ad-line); padding-top: 8px; }
 .ad-disclosure summary { min-height: 40px; display: flex; align-items: center; color: var(--ad-blue); font-weight: 800; cursor: pointer; }
@@ -283,7 +279,6 @@ select.ad-input { padding-right: 28px; }
 
 /* ตารางผูกแล้ว: คอลัมน์ชื่อกินที่ว่าง คอลัมน์อื่นชิดกันทางขวา */
 .ad-member-table .ad-table th, .ad-member-table .ad-table td { padding-left: 12px; padding-right: 12px; }
-.ad-line-state { margin-top: 3px; }
 .ad-points-cell b { font-size: 15px; }
 .ad-manage-btn { height: 36px; padding: 0 12px; gap: 4px; }
 .ad-manage-btn span { font-size: 10px; color: var(--ad-muted); }
@@ -368,7 +363,6 @@ select.ad-input { padding-right: 28px; }
   .ad-stat b { font-size: 18px; }
   .ad-stat span { font-size: 12px; line-height: 1.35; }
   .ad-work-row { min-height: 64px; gap: 8px; padding-left: 11px; }
-  .ad-work-row > span { line-height: 1.5; }
   .ad-work-row .ad-btn { width: 106px; flex-basis: 106px; padding: 0 9px; font-size: 13px; }
 
   .ad-members-card { padding-top: 14px; }
@@ -446,7 +440,7 @@ select.ad-input { padding-right: 28px; }
 
 /* รอบ a8: ไอคอนเส้นชุดเดียว · KPI ดูอย่างเดียว · แถวระดับเต็มกว้าง · การ์ดเทียบชื่อ · ค่าแต้มที่จอง */
 .ad-ic { display: inline-block; flex-shrink: 0; vertical-align: middle; }
-.ad-card-h h3 .ad-ic, .ad-work-row > .ad-ic, .ad-empty .ad-ic, .ad-drop .ad-ic, .ad-alert--info .ad-ic { color: var(--ad-navy); }
+.ad-card-h h3 .ad-ic, .ad-empty .ad-ic, .ad-drop .ad-ic, .ad-alert--info .ad-ic { color: var(--ad-navy); }
 .ad-btn .ad-ic { margin-left: -2px; }
 .ad-empty .ad-ic { display: block; margin: 0 auto 8px; opacity: .85; }
 .ad-drop i { display: block; margin-bottom: 6px; font-style: normal; }
@@ -460,10 +454,8 @@ select.ad-input { padding-right: 28px; }
 .ad-stats { grid-auto-rows: auto; }
 .ad-stat { min-height: 76px; border: 1px solid transparent; }
 .ad-stat b { color: var(--ad-ink); }
-.ad-stat span small { color: var(--ad-muted); font-size: inherit; font-weight: 700; }
 
 /* งานที่ควรทำ (เต็มกว้าง) */
-.ad-work-row > span { min-width: 0; }
 .ad-empty--ok { padding: 22px 12px; }
 
 /* สมาชิกแยกตามระดับ: แถวเดียวเต็มกว้าง */
@@ -487,8 +479,6 @@ select.ad-input { padding-right: 28px; }
 .ad-member-toolbar { grid-template-columns: minmax(280px, 1fr) auto; }
 
 /* การ์ดรอผูกรหัส */
-.ad-line-name small { display: block; color: var(--ad-muted); font-size: 11.5px; font-weight: 700; line-height: 1.3; }
-.ad-line-name b { display: block; font-size: 17px; line-height: 1.35; overflow-wrap: anywhere; }
 .ad-match { grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); }
 .ad-match-side { align-content: start; }
 .ad-match-side strong { font-size: 16px; font-weight: 800; color: var(--ad-ink); line-height: 1.4; overflow-wrap: anywhere; }
@@ -509,7 +499,6 @@ select.ad-input { padding-right: 28px; }
 .ad-table--fixed .w-manage { width: 120px; }
 .ad-name { display: block; min-width: 0; }
 .ad-name b, .ad-name span { overflow: hidden; text-overflow: ellipsis; }
-.ad-line-state .ad-chip { gap: 3px; }
 .ad-line-ok { display: inline-flex; align-items: center; gap: 2px; color: var(--ad-ok); font-weight: 700; }
 
 /* คำขอแลกของ: แต้มที่จองเป็นค่าเด่นชิดขวา */
@@ -549,11 +538,92 @@ select.ad-input { padding-right: 28px; }
   .ad-redeem-actions { margin-top: 12px; padding-top: 0; }
   /* ปุ่มยกเลิกสูง 44px (พื้นที่กด) มีที่ว่างใต้ตัวอักษรอยู่แล้ว — ลดขอบล่างให้ดูเท่าขอบบน */
   .ad-redeem-card { padding-bottom: 4px; }
-  .ad-work-row > .ad-ic { display: none; }
   .ad-table .ad-col-gap { padding-left: 24px; }
 }
 
 @media (max-width: 360px) {
   .ad-stat i { display: none; }
   .ad-tier-min { font-size: 11.5px; }
+}
+
+/* รอบ a9: KPI มีบริบท · งานที่ควรทำพื้นเดียวกัน ปุ่มหลักปุ่มเดียว · การ์ดระดับขึ้นจำนวนก่อน · การ์ดรอผูกเอาชื่อที่สมัครเป็นหลัก · ชื่อไม่ตรงไม่ใช้ปุ่มเขียว */
+.ad-nowrap { white-space: nowrap; }
+.ad-stat > div { min-width: 0; }
+.ad-stat-cap { display: block; margin-top: 3px; color: var(--ad-muted); font-size: 12px; font-weight: 600; line-height: 1.35; }
+.ad-stat-cap.warn { color: var(--ad-warn); font-weight: 700; }
+
+.ad-work-row { background: #F7F9FC; border: 1px solid var(--ad-line); color: var(--ad-ink); }
+.ad-work-ic { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; display: grid; place-items: center; }
+.ad-work-ic.warn { background: var(--ad-warn-bg); color: var(--ad-warn); box-shadow: inset 0 0 0 1px #F3D9A6; }
+.ad-work-ic.neutral { background: #EAEEF4; color: var(--ad-muted); }
+.ad-work-text { flex: 1; min-width: 0; font-size: 14px; }
+.ad-work-text b { margin-right: 3px; font-size: 18px; font-variant-numeric: tabular-nums; }
+.ad-work-text b.warn { color: var(--ad-warn); }
+.ad-work-text b.neutral { color: var(--ad-ink); }
+
+.ad-help-link { display: inline-flex; align-items: center; gap: 5px; }
+.ad-help-link > span { font-size: 10px; }
+
+.ad-tier-row li { grid-template-columns: 1fr; gap: 6px; align-content: start; }
+.ad-tier-count { text-align: left; color: var(--ad-muted); font-size: 13px; }
+.ad-tier-count b { font-size: 22px; line-height: 1.1; }
+.ad-tier-count.zero b { color: var(--ad-muted); font-weight: 700; }
+.ad-tier-row li > .ad-chip { grid-column: auto; }
+
+/* การ์ดรอผูก: แถวบน = สถานะ · แถวล่าง = แผงเทียบ + ปุ่ม */
+.ad-verify-card { grid-template-columns: minmax(0, 1fr) 172px; grid-template-areas: "head head" "match actions"; row-gap: 10px; }
+.ad-verify-head { grid-area: head; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.ad-match { grid-area: match; }
+.ad-verify-actions { grid-area: actions; align-self: center; }
+.ad-match-side { grid-template-columns: 1fr; }
+.ad-match-body { display: grid; gap: 2px; min-width: 0; }
+.ad-match-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.ad-match-meta .ad-mono { font-size: 14px; font-weight: 700; color: var(--ad-ink); }
+.ad-line-alias { color: var(--ad-muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.ad-line-alias b { font-weight: 600; color: #34415A; }
+.ad-btn--caution { background: #fff; color: #8A5200; border: 1.5px solid #E0A33A; }
+.ad-btn--caution:hover { background: var(--ad-warn-bg); filter: none; }
+.ad-btn--caution-solid { background: #B26A00; color: #fff; }
+.ad-check--caution { border-color: #E0A33A; background: #FFF8EA; }
+.ad-check--caution input { accent-color: #B26A00; }
+.ad-check > span { min-width: 0; }
+.ad-check small { display: block; margin-top: 1px; color: var(--ad-muted); font-size: 12.5px; font-weight: 500; line-height: 1.5; }
+
+/* ตารางผูกแล้ว: เบอร์กับสถานะ LINE บรรทัดเดียว · คอลัมน์จัดการมีหัว */
+.ad-phone-line { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
+.ad-chip--sm { padding: 1px 7px; font-size: 11.5px; gap: 3px; }
+.ad-points-used small { font: 600 12px/1 "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif; }
+
+@media (max-width: 900px) {
+  .ad-verify-card { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "match" "actions"; }
+  .ad-verify-actions { grid-template-columns: 220px; }
+}
+
+@media (max-width: 640px) {
+  .ad-work-row { gap: 10px; padding-left: 10px; }
+  .ad-work-ic { width: 34px; height: 34px; flex-basis: 34px; }
+  .ad-work-text { font-size: 13.5px; line-height: 1.45; }
+
+  /* ตัวกรองสมาชิก: แถวเดียวเลื่อนแนวนอน + ขอบจางบอกว่ามีต่อ */
+  .ad-filters { flex-wrap: nowrap; overflow-x: auto; margin: 10px -14px 2px; padding: 0 28px 2px 14px; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+  .ad-filters::-webkit-scrollbar { display: none; }
+  .ad-filter { flex: 0 0 auto; white-space: nowrap; }
+
+  .ad-verify-card { display: block; }
+  .ad-verify-head { display: flex; }
+  .ad-match-side { grid-template-columns: 44px minmax(0, 1fr); column-gap: 8px; }
+  .ad-match-side .ad-cap { grid-row: auto; margin-top: 4px; }
+  .ad-match-side .ad-match-body { grid-column: 2; }
+  .ad-match-side .ad-match-body > * { grid-column: auto; }
+  .ad-match-side .ad-name-chip { grid-column: auto; margin-top: 2px; }
+  .ad-match-side .ad-match-empty { grid-column: auto; }
+  .ad-verify-actions { grid-template-columns: 1fr; }
+
+  .ad-tier-count b { font-size: 20px; }
+  .ad-phone-line { flex-wrap: wrap; }
+}
+
+@media (max-width: 360px) {
+  .ad-verify-head .ad-backfill { font-size: 12px; }
+  .ad-work-row .ad-btn { width: 96px; flex-basis: 96px; }
 }
