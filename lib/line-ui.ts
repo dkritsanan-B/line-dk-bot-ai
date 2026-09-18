@@ -66,14 +66,14 @@ export const TIER_TEXT: Record<string, string> = {
   Diamond: "#FFFFFF", Platinum: "#FFFFFF", Gold: BRAND.navy, Silver: BRAND.navy, Bronze: "#FFFFFF", Welcome: "#FFFFFF",
 };
 
-// ชุดสีต่อระดับ: bg = พื้นหัวการ์ด (Silver ใช้เงินสว่าง #CFD8DC — #78909C กับน้ำเงินคอนทราสต์ไม่ถึง 4.5 และ #B0BEC5 ดูเป็นการ์ดปิดใช้งาน)
+// ชุดสีต่อระดับ: bg = พื้นหัวการ์ด (Silver ใช้เงินโลหะ #B8C4CC — #78909C กับน้ำเงินคอนทราสต์ไม่ถึง 4.5, #CFD8DC ซีดจนดูเป็นการ์ดปิดใช้งาน)
 // ink = สีตัวอักษรระดับบนพื้นขาว/tint · tint = พื้นป้ายระดับในเนื้อการ์ด · bar = สีแถบความคืบหน้า (สีสว่างใช้น้ำเงินเข้มแทน)
 // ทุกคู่ตัวอักษร/พื้นตรวจคอนทราสต์ ≥ 4.5:1 ใน scripts/validate-line-messages.mjs
 export const TIER_THEME: Record<string, { bg: string; text: string; ink: string; tint: string; bar: string }> = {
   Diamond:  { bg: TIER_COLOR.Diamond,  text: "#FFFFFF", ink: "#1565C0", tint: "#E3EEFB", bar: TIER_COLOR.Diamond },
   Platinum: { bg: TIER_COLOR.Platinum, text: "#FFFFFF", ink: "#455A64", tint: "#ECEFF1", bar: TIER_COLOR.Platinum },
   Gold:     { bg: TIER_COLOR.Gold,     text: BRAND.navy, ink: "#7A4F00", tint: "#FFF3D6", bar: BRAND.navy },
-  Silver:   { bg: "#CFD8DC",           text: BRAND.navy, ink: "#455A64", tint: "#ECEFF1", bar: BRAND.navy },
+  Silver:   { bg: "#B8C4CC",           text: BRAND.navy, ink: "#455A64", tint: "#ECEFF1", bar: BRAND.navy },
   Bronze:   { bg: TIER_COLOR.Bronze,   text: "#FFFFFF", ink: "#6D4C41", tint: "#F3ECE9", bar: TIER_COLOR.Bronze },
   Welcome:  { bg: TIER_COLOR.Welcome,  text: "#FFFFFF", ink: "#2B5FB8", tint: "#E8F0FC", bar: TIER_COLOR.Welcome },
 };
@@ -240,10 +240,11 @@ const progressBar = (pct: number, fill: string): Msg => ({
   contents: [{ type: "box", layout: "vertical", backgroundColor: fill, cornerRadius: "6px", height: "8px", width: `${pct}%`, contents: [] }],
 });
 
-const progressBlock = (totalEarned: number, next: NextTier, fill: string = BRAND.blue): Msg[] => [
+// label: การ์ดแจ้งแต้มเข้าใช้ "สะสมเลื่อนระดับ" (ผ่านรีวิวแล้ว) · บัตรเช็คแต้มใช้ "แต้มสะสม" ให้ตรงหน้าบัตร LIFF
+const progressBlock = (totalEarned: number, next: NextTier, fill: string = BRAND.blue, label = "สะสมเลื่อนระดับ"): Msg[] => [
   { type: "text", text: progressText(Math.max(0, next.min - totalEarned), next), size: "sm", weight: "bold", color: BRAND.ink, wrap: true },
   progressBar(progressPct(totalEarned, next.min), fill),
-  { type: "text", text: `สะสมเลื่อนระดับ ${fmt(totalEarned)} / ${fmt(next.min)}`, size: "xs", color: BRAND.muted, wrap: true },
+  { type: "text", text: `${label} ${fmt(totalEarned)} / ${fmt(next.min)}`, size: "xs", color: BRAND.muted, wrap: true },
 ];
 
 export function pointsEarnedFlex(o: {
@@ -294,23 +295,23 @@ const benefitText = {
 };
 type BenefitKey = keyof typeof benefitText;
 const BENEFIT_KEYS: BenefitKey[] = ["discount", "steelBonus", "birthday"];
-// รูปย่อสำหรับบรรทัด "ระดับถัดไปได้…" ให้จบในบรรทัดเดียวหรือสองบรรทัด
-const benefitShort: Record<BenefitKey, (v: number) => string> = {
-  discount: (v) => `ส่วนลด ${fmtRate(v)}%`,
-  steelBonus: (v) => `คืนเหล็ก ${fmtRate(v)}%`,
-  birthday: (v) => `วันเกิด ${fmt(v)} แต้ม`,
-};
 
 function tierBenefitLines(tierName: string): string[] {
   const b = MEMBER_BENEFITS[tierName] ?? MEMBER_BENEFITS.Welcome;
   return BENEFIT_KEYS.filter((k) => b[k] > 0).map((k) => benefitText[k](b[k]));
 }
-// สิ่งที่ระดับถัดไปให้เพิ่ม (เฉพาะรายการที่ค่าสูงขึ้น) — ใช้แสดง "ระดับถัดไป" บนการ์ดเลื่อนระดับ
-function nextTierGains(tierName: string, nextName: string): string[] {
-  const cur = MEMBER_BENEFITS[tierName] ?? MEMBER_BENEFITS.Welcome;
-  const nxt = MEMBER_BENEFITS[nextName];
-  if (!nxt) return [];
-  return BENEFIT_KEYS.filter((k) => nxt[k] > cur[k]).map((k) => benefitShort[k](nxt[k]));
+// สิทธิ์ที่จะเสียถ้าระดับตก (คำนวณจาก MEMBER_BENEFITS เท่านั้น) — ใช้บนการ์ดใกล้ลดระดับ
+const lossLabel: Record<BenefitKey, string> = { discount: "ส่วนลด", steelBonus: "แต้มคืนเหล็ก", birthday: "แต้มวันเกิด" };
+const lossValue: Record<BenefitKey, (v: number) => string> = {
+  discount: (v) => v > 0 ? `${fmtRate(v)}%` : "ไม่มี",
+  steelBonus: (v) => v > 0 ? `${fmtRate(v)}%` : "ไม่มี",
+  birthday: (v) => v > 0 ? fmt(v) : "ไม่มี",  // หน่วยอยู่ในป้าย "แต้มวันเกิด" ค่าไม่ตกบรรทัด
+};
+function tierLossRows(from: string, to: string): NoticeRow[] {
+  const a = MEMBER_BENEFITS[from], b = MEMBER_BENEFITS[to];
+  if (!a || !b) return [];
+  return BENEFIT_KEYS.filter((k) => b[k] < a[k])
+    .map((k) => ({ label: lossLabel[k], value: `${lossValue[k](a[k])} → ${lossValue[k](b[k])}`, color: BRAND.warn }));
 }
 
 const checkRow = (line: string): Msg => ({
@@ -327,13 +328,12 @@ export function tierUpFlex(o: { name: string; tierName: string; tierEmoji: strin
   const theme = tierTheme(o.tierName);
   const benefits = tierBenefitLines(o.tierName);
   const next = nextTierOf(o.tierName);
-  const gains = next ? nextTierGains(o.tierName, next) : [];
   const rank = TIER_ASC.indexOf(o.tierName);
   return memberNoticeFlex({
     altText: `🎉 เลื่อนเป็น ${o.tierName} แล้ว · ดูสิทธิ์สมาชิกใหม่`,
     eyebrow: "DK MEMBER · ยินดีด้วย",
-    // ไม่มี "แล้ว" เพื่อให้ทุกระดับ (ยาวสุด Platinum = 16 ตัว) อยู่ขนาด xl บรรทัดเดียว
-    title: `เลื่อนเป็น ${o.tierName}`,
+    // หัวข้อกลาง ๆ — ชื่อระดับอยู่ที่ป้ายใหญ่ในเนื้อการ์ดที่เดียว
+    title: "เลื่อนระดับแล้ว",
     header: { background: theme.bg, eyebrow: theme.text, title: theme.text },
     lead: [{
       type: "box", layout: "vertical", backgroundColor: theme.tint, cornerRadius: "md", paddingAll: "12px", spacing: "xs",
@@ -344,12 +344,12 @@ export function tierUpFlex(o: { name: string; tierName: string; tierEmoji: strin
     }],
     message: benefits.length ? `${who(o.name)}ได้รับสิทธิ์เหล่านี้แล้วค่ะ` : `${who(o.name)}สะสมแต้มต่อเพื่อปลดล็อกสิทธิ์ค่ะ`,
     bodyExtra: benefits.length ? [{ type: "box", layout: "vertical", spacing: "sm", contents: benefits.map(checkRow) }] : undefined,
-    rows: next ? [{ label: "ระดับถัดไป", value: next }] : undefined,
-    // สิทธิ์ระดับถัดไปเป็นบรรทัดเทาบรรทัดเดียว (ไม่แข่งกับรายการ ✓ ของสิทธิ์ที่ได้แล้ว)
-    panelExtra: next && gains.length ? [
-      { type: "text", text: `สะสมครบ ${fmt(TIER_MIN[next])} แต้ม ได้เพิ่ม`, size: "xs", color: BRAND.muted, wrap: true },
-      { type: "text", text: gains.join(" · "), size: "xs", color: BRAND.muted, wrap: true },
-    ] : undefined,
+    // ระดับถัดไปเหลือบรรทัดเดียว (ไม่ไล่สิทธิ์ถัดไปซ้ำ การ์ดจึงไม่ยาวเกินการ์ดอื่น)
+    panelExtra: next ? [{ type: "text", size: "xs", wrap: true, contents: [
+      { type: "span", text: "ถัดไป ", color: BRAND.muted },
+      { type: "span", text: next, weight: "bold", color: BRAND.navy },
+      { type: "span", text: ` · ครบ ${fmt(TIER_MIN[next])} แต้ม`, color: BRAND.muted },
+    ] }] : undefined,
     note: `บิล ${o.billNo} · +${fmt(o.earned)} แต้ม`,
     buttons: [{ label: "💳 ดูบัตรสมาชิกของฉัน", action: { type: "uri", uri: SHOP.liffUrl } }],
   });
@@ -361,9 +361,10 @@ export function birthdayGiftFlex(o: { name: string; tierName: string; tierEmoji:
     altText: `🎂 +${fmt(o.points)} แต้มวันเกิด · ใช้แลกของรางวัล`,
     eyebrow: "DK MEMBER · วันเกิด",
     title: "สุขสันต์วันเกิด",
-    message: `${who(o.name)} ขอให้ปีนี้งานเข้าไม่ขาดสาย ขอบคุณที่อยู่กับ DK ค่ะ`,
     tone: "birthday",
-    metric: { value: `+${fmt(o.points)}`, unit: "แต้ม", caption: `ของขวัญวันเกิดสมาชิก ${o.tierName} · เข้าบัญชีแล้ว`, color: BRAND.success },
+    // คำอวยพรมาก่อนตัวเลข (การ์ดฉลอง ไม่ใช่ใบเสร็จ) · ตัวเลขใช้สีวันเกิด ไม่ใช่เขียวแบบแต้มจากบิล
+    lead: [{ type: "text", text: `${who(o.name)} ขอให้ปีนี้งานเข้าไม่ขาดสาย ขอบคุณที่อยู่กับ DK ค่ะ`, size: "sm", color: BRAND.ink, wrap: true }],
+    metric: { value: `+${fmt(o.points)}`, unit: "แต้ม", caption: `ของขวัญวันเกิดสมาชิก ${o.tierName} · เข้าบัญชีแล้ว`, color: TONE_STYLE.birthday.eyebrow },
     rows: o.balance == null ? undefined : [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }],
     buttons: [{ label: "🎁 ใช้แต้มแลกของรางวัล", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
@@ -391,16 +392,17 @@ export function pointsExpiredFlex(o: { name: string; points: number; balance: nu
     altText: `🔔 ${fmt(o.points)} แต้มหมดอายุ · คงเหลือ ${fmt(o.balance)} แต้ม`,
     eyebrow: "DK MEMBER · แจ้งผลแต้ม",
     title: hasBalance ? "แต้มบางส่วนหมดอายุ" : "แต้มหมดอายุแล้ว",
+    // ยอดที่ยังใช้ได้อยู่ในบล็อกตัวเลขแล้ว ข้อความจึงไม่พูดตัวเลขซ้ำ
     message: hasBalance
-      ? `${who(o.name)} แต้มมีอายุ 1 ปี แลกแต้มที่เหลือได้เลยค่ะ`
-      : `${who(o.name)} แต้มมีอายุ 1 ปี ซื้อครั้งถัดไปรับแต้มใหม่ทุก 100 บาทค่ะ`,
+      ? `${who(o.name)} แต้มมีอายุ 1 ปีค่ะ ใช้แต้มที่เหลือแลกของรางวัลได้เลย`
+      : `${who(o.name)} แต้มมีอายุ 1 ปีค่ะ ซื้อครั้งถัดไปรับแต้มใหม่ทุก 100 บาทค่ะ`,
     tone: "neutral",
     // ตัวเลขขีดฆ่า = แต้มที่หมดอายุ (ไม่ต้องมีป้ายซ้ำ) · ถ้ายังมีแต้ม ยอดที่ใช้ได้อยู่ในบล็อกเดียวกันเป็นสีน้ำเงิน
+    // ยอดเหลือ 0 ไม่ต้องมีกล่องข้อมูล — บอกในคำอธิบายใต้ตัวเลขบรรทัดเดียว
     metric: {
-      value: fmt(o.points), unit: "แต้ม", caption: "ตัดออกจากบัญชีแล้ว", color: BRAND.muted, strike: true,
+      value: fmt(o.points), unit: "แต้ม", caption: hasBalance ? "ตัดออกจากบัญชีแล้ว" : `ตัดออกจากบัญชีแล้ว · คงเหลือ ${fmt(Math.max(0, o.balance))} แต้ม`, color: BRAND.muted, strike: true,
       ...(hasBalance ? { follow: { text: `ยังใช้ได้ ${fmt(o.balance)} แต้ม` } } : {}),
     },
-    rows: hasBalance ? undefined : [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }],
     buttons: [{ label: hasBalance ? "🎁 แลกของรางวัล" : "🎁 ดูของรางวัล", action: { type: "uri", uri: SHOP.rewardsUrl } }],
   });
 }
@@ -449,13 +451,15 @@ export function redemptionCancelledFlex(o: { rewardName: string; points: number;
     altText: `❌ #REQ-${o.requestId} ยกเลิกแล้ว · แต้มไม่ถูกหัก ใช้แลกได้ตามเดิม`,
     eyebrow: "DK MEMBER · ของรางวัล",
     title: "ยกเลิกคำขอแล้ว",
-    // เหตุผล (ถ้ามี) ขึ้นเป็นข้อความหลัก · "ไม่ถูกหัก" พูดครั้งเดียวที่คำอธิบายใต้ตัวเลข
-    message: o.reason ? `ยกเลิกเพราะ: ${o.reason}\nขออภัยในความไม่สะดวกค่ะ` : "ขออภัยในความไม่สะดวกค่ะ",
+    // เหตุผล (ถ้ามี) เป็นแถวแรกในกล่องข้อมูล · "ไม่ถูกหัก" พูดครั้งเดียวเป็นบรรทัดสีเขียวใต้ตัวเลข
+    message: "ขออภัยในความไม่สะดวกค่ะ",
     tone: "neutral",
     // คำขอแค่ "จอง" แต้มไว้ — แต้มถูกหักตอนพนักงานยืนยันเท่านั้น ยกเลิกแล้วยอดแต้มจึงเท่าเดิม (app/api/admin/redemptions/logic.ts)
-    // จึงห้ามใช้คำว่า "คืน" · ตัวเลขขนาด xxl ไม่มีเครื่องหมาย + (ไม่ใช่แต้มที่ได้เพิ่ม)
-    metric: { label: "แต้มของคำขอนี้", value: fmt(o.points), unit: "แต้ม", size: "xxl", caption: "ไม่ถูกหัก ยังใช้แลกได้ตามเดิม", color: BRAND.navy },
+    // จึงห้ามใช้คำว่า "คืน" · ตัวเลขขนาด xl ไม่มีเครื่องหมาย + (ไม่ใช่แต้มที่ได้เพิ่ม) ให้คำยืนยันสีเขียวเด่นกว่าตัวเลข
+    metric: { label: "แต้มของคำขอนี้", value: fmt(o.points), unit: "แต้ม", size: "xl", color: BRAND.navy,
+      follow: { text: "✓ ไม่ถูกหัก ยังใช้แลกได้ตามเดิม", color: BRAND.success } },
     rows: [
+      ...(o.reason ? [{ label: "เหตุผล", value: o.reason }] : []),
       { label: "ของรางวัล", value: o.rewardName },
       ...(o.balance != null ? [{ label: "แต้มคงเหลือ", value: `${fmt(o.balance)} แต้ม` }] : []),
     ],
@@ -470,9 +474,12 @@ export function redemptionCancelledFlex(o: { rewardName: string; points: number;
 export function tierExpiryWarningFlex(o: { name: string; tierName?: string; deadline?: string; lastPurchaseDate?: string; points?: number }): Msg {
   const fallback = o.points != null ? tierFromPoints(o.points) : null;
   const drops = !!(o.tierName && fallback && TIER_RANK(fallback) < TIER_RANK(o.tierName));
-  const consequence = drops
-    ? `ถ้าไม่มีบิลใหม่ ระดับ ${o.tierName} จะกลับเป็น ${fallback}`
-    : "ถ้าไม่มีบิลใหม่ ระดับอาจลดลง";
+  // รู้ระดับที่จะตก → ทักชื่อ + บอกระดับ + แถวสิทธิ์ที่จะเสีย (จาก MEMBER_BENEFITS) · ไม่รู้ → ประโยคสั้นไม่ทักชื่อ ("ค่ะ" ไม่ตกบรรทัดเดี่ยว)
+  const message = drops
+    ? `${who(o.name)} ถ้าไม่มีบิลใหม่ ระดับ ${o.tierName} จะกลับเป็น ${fallback} ค่ะ`  // เว้นวรรคหลังชื่อระดับภาษาอังกฤษ
+    : "ถ้าไม่มีบิลใหม่ ระดับอาจลดลงค่ะ";
+  const lastRow: NoticeRow[] = o.lastPurchaseDate ? [{ label: "ซื้อล่าสุด", value: o.lastPurchaseDate }] : [];
+  const loss = drops ? tierLossRows(o.tierName!, fallback!).slice(0, 2) : [];  // สูงสุด 2 แถว การ์ดไม่ยาวเกิน
 
   return memberNoticeFlex({
     altText: `📌 ${o.tierName ? `ระดับ ${o.tierName} ` : "ระดับสมาชิก"}ใกล้หมดอายุ · ซื้อ 1 บิล${o.deadline ? `ภายใน ${o.deadline}` : "เพื่อคงระดับ"}`,
@@ -485,12 +492,10 @@ export function tierExpiryWarningFlex(o: { name: string; tierName?: string; dead
           { type: "span", text: "ซื้อสินค้า 1 บิล", weight: "bold", color: BRAND.warn },
           { type: "span", text: " ภายใน 365 วันนับจากบิลล่าสุด เพื่อคงระดับไว้" },
         ] }] }),
-    message: `${who(o.name)} ${consequence}${drops ? " " : ""}ค่ะ`,  // เว้นวรรคหลังชื่อระดับภาษาอังกฤษ
-    rows: o.lastPurchaseDate ? [{ label: "ซื้อล่าสุด", value: o.lastPurchaseDate }] : undefined,
-    buttons: [
-      { label: "💳 ดูระดับและเงื่อนไข", action: { type: "uri", uri: SHOP.liffUrl } },
-      { label: "📞 ติดต่อฝ่ายขาย", action: { type: "message", text: "ติดต่อฝ่ายขาย" }, style: "secondary" },
-    ],
+    message,
+    rows: [...loss, ...lastRow],
+    // ปุ่มเดียว — ติดต่อฝ่ายขายอยู่ในแถบปุ่มลัด (quick reply) แล้ว
+    buttons: [{ label: "💳 ดูระดับและเงื่อนไข", action: { type: "uri", uri: SHOP.liffUrl } }],
   });
 }
 
@@ -509,12 +514,13 @@ export function welcomeFlex(): Msg {
       body: {
         type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", paddingBottom: "8px",
         contents: [
-          { type: "text", text: "ยินดีต้อนรับสู่ DK 👋", weight: "bold", size: "xl", color: BRAND.ink },
+          { type: "text", text: "ยินดีต้อนรับสู่ DK", weight: "bold", size: "xl", color: BRAND.ink },
           { type: "text", text: "สมัครฟรี ใช้ได้ทันทีที่ร้าน DK", size: "sm", color: BRAND.muted, wrap: true },
+          // ผู้ติดตามใหม่ยังไม่รู้จักชื่อระดับ → บอกเงื่อนไขเป็นจำนวนแต้มสะสม (จาก TIER_MIN) · แถวละสิทธิ์เดียว
           ...[
-            ["★", "สะสมแต้ม", "ทุก 100 บาท = 1 แต้ม เข้าอัตโนมัติจากบิล"],
-            ["%", "ส่วนลดหน้าร้าน", `สินค้าปลีกลด ${discountRange} เริ่มที่ระดับ ${discountFrom}`],
-            ["✦", "ของรางวัล + วันเกิด", `แลกของรางวัล · แต้มวันเกิด ${firstTierWith("birthday")}+`],
+            ["★", "สะสมแต้มทุกบิล", "ทุก 100 บาท = 1 แต้ม ใช้แลกของรางวัลได้"],
+            ["%", "ส่วนลดสินค้าปลีก", `ลด ${discountRange} เริ่มเมื่อสะสมครบ ${fmt(TIER_MIN[discountFrom])} แต้ม`],
+            ["✦", "แต้มวันเกิดทุกปี", `เมื่อสะสมครบ ${fmt(TIER_MIN[firstTierWith("birthday")])} แต้ม`],
           ].map(([ic, t, d], i) => ({
             type: "box", layout: "horizontal", spacing: "md", alignItems: "center", ...(i === 0 ? { margin: "lg" } : {}),
             contents: [
@@ -548,15 +554,31 @@ export function welcomeFlex(): Msg {
 // ติดต่อฝ่ายขาย: ใบแรกเป็นใบร้าน (แบนเนอร์ DK + เวลาทำการ + โทรร้าน/แผนที่) แล้วตามด้วยการ์ดพนักงาน 4 ใบ
 // การ์ดพนักงานคงดีไซน์ที่เจ้าของชอบ (รูปใหญ่ + โทร/เพิ่มเพื่อน) แต่ตัดแบนเนอร์ซ้ำ/บรรทัดเวลาซ้ำออก ใช้หัวน้ำเงินบางแทน
 export function contactFlex(): Msg {
+  // ใบร้านไม่ใช้แบนเนอร์ (ตัวหนังสือเล็กในแบนเนอร์อ่านไม่ออกที่ kilo) → หัวน้ำเงินกับโลโก้ DK
+  // เนื้อการ์ด space-between: กล่องเวลาทำการชิดล่าง ปุ่มจึงอยู่ระดับเดียวกับการ์ดพนักงานตอนปัด
   const intro: Msg = {
     type: "bubble", size: "kilo",
-    hero: { type: "image", url: `${SHOP.base}/herobanner2.png`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
-    body: {
-      type: "box", layout: "vertical", paddingAll: "16px", spacing: "sm",
+    header: {
+      type: "box", layout: "horizontal", backgroundColor: BRAND.navy, paddingAll: "16px", spacing: "md", alignItems: "center",
       contents: [
-        { type: "text", text: "ฝ่ายขาย DK", size: "xl", weight: "bold", color: BRAND.ink },
-        { type: "text", text: "ปัดขวาเพื่อดูพนักงานขาย →", size: "sm", color: BRAND.muted, wrap: true },
-        { type: "box", layout: "vertical", spacing: "sm", margin: "md", backgroundColor: BRAND.panel, cornerRadius: "md", paddingAll: "12px",
+        { type: "box", layout: "vertical", flex: 0, width: "56px", height: "56px", cornerRadius: "md", contents: [
+          { type: "image", url: `${SHOP.base}/dk-logo.jpg`, size: "full", aspectRatio: "1:1", aspectMode: "cover" },
+        ] },
+        { type: "box", layout: "vertical", flex: 1, contents: [
+          { type: "text", text: "DK STEEL AND TOOLS", size: "xs", weight: "bold", color: TIER_COLOR.Gold, wrap: true },
+          { type: "text", text: "ฝ่ายขาย DK", size: "xl", weight: "bold", color: "#FFFFFF" },
+        ] },
+      ],
+    },
+    body: {
+      type: "box", layout: "vertical", paddingAll: "16px", spacing: "sm", justifyContent: "space-between",
+      contents: [
+        { type: "box", layout: "vertical", spacing: "sm", contents: [
+          // ป้าย "พนักงานขาย" ครั้งเดียวที่ใบนี้ (การ์ดพนักงานมีแค่ชื่อ ไม่แต่งความถนัดขึ้นเอง)
+          { type: "text", text: `พนักงานขาย ${SALES_STAFF.length} คน`, size: "md", weight: "bold", color: BRAND.ink },
+          { type: "text", text: "ปัดขวาเพื่อโทรหรือแอด LINE →", size: "sm", color: BRAND.muted, wrap: true },
+        ] },
+        { type: "box", layout: "vertical", spacing: "sm", margin: "lg", backgroundColor: BRAND.panel, cornerRadius: "md", paddingAll: "12px",
           contents: [
             { type: "text", text: "เวลาทำการ", size: "xs", color: BRAND.muted },
             { type: "text", text: SHOP.hours, size: "sm", weight: "bold", color: BRAND.navy, margin: "none" },
@@ -582,16 +604,15 @@ export function contactFlex(): Msg {
         { type: "box", layout: "vertical", cornerRadius: "md", contents: [
           { type: "image", url: s.photo, size: "full", aspectRatio: "5:6", aspectMode: "cover" },
         ] },
-        { type: "text", text: s.name, size: "lg", weight: "bold", color: BRAND.ink, align: "center", margin: "sm" },
-        // ป้ายตำแหน่งอย่างเดียว (ไม่แต่งความถนัดขึ้นเอง) · เบอร์อยู่ที่ปุ่มโทรแล้ว · คำใบ้ปัดอยู่ที่ใบร้าน
-        { type: "text", text: "พนักงานขาย", size: "xs", color: BRAND.muted, align: "center" },
+        // ชื่ออย่างเดียว — ป้าย "พนักงานขาย" อยู่ที่ใบร้านครั้งเดียว (ไม่มีข้อมูลความถนัดจริง จึงไม่แต่งขึ้นเอง) · เบอร์อยู่ที่ปุ่มโทรแล้ว
+        { type: "text", text: s.name, size: "lg", weight: "bold", color: BRAND.ink, align: "center", margin: "md" },
       ],
     },
     footer: {
       type: "box", layout: "vertical", spacing: "sm", paddingAll: "12px",
       contents: [
         { type: "button", style: "primary", height: "sm", color: BRAND.blue, action: { type: "uri", label: `📞 โทรหา${s.name}`, uri: `tel:${s.tel}` } },
-        { type: "button", style: "secondary", height: "sm", action: { type: "uri", label: "💬 เพิ่มเพื่อน LINE", uri: `https://line.me/ti/p/~${s.lineId}` } },
+        { type: "button", style: "secondary", height: "sm", action: { type: "uri", label: `💬 LINE ${s.name}`, uri: `https://line.me/ti/p/~${s.lineId}` } },
       ],
     },
   }));
@@ -607,6 +628,8 @@ export function pointsFlex(o: { name: string; tierName: string; tierEmoji: strin
   const theme = tierTheme(o.tierName, o.tierColor);
   // ระดับพักอยู่ (ไม่มีบิลเกิน 1 ปี): แต้มสะสมเกินเกณฑ์ระดับถัดไปแล้ว หลอดจะหลอกตา → แสดงกล่องเตือนแทนหลอด
   const showProgress = !!o.next && !o.inactiveRealTier;
+  // จุดเรียกส่งมาเป็น "🥇 Gold" → ตัดอีโมจิออก (ไอคอนในเนื้อการ์ดเป็นตัวอักษร/ป้ายสีเท่านั้น)
+  const realTier = (o.inactiveRealTier ?? "").replace(/[\p{Extended_Pictographic}️]/gu, "").trim();
   return {
     type: "flex",
     altText: `⭐ ${fmt(o.points)} แต้ม · เปิดดูบัตร ${o.tierName}`,
@@ -627,15 +650,21 @@ export function pointsFlex(o: { name: string; tierName: string; tierEmoji: strin
       body: {
         type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", paddingBottom: "12px",
         contents: [
-          ...(showProgress ? progressBlock(o.totalEarned, o.next!, theme.bar) : []),
+          ...(showProgress ? progressBlock(o.totalEarned, o.next!, theme.bar, "แต้มสะสม") : []),
           ...(!o.next ? [
-            { type: "text", text: "🏆 ระดับสูงสุดแล้ว ขอบคุณที่ไว้วางใจ DK ค่ะ", size: "sm", color: BRAND.ink, wrap: true },
+            { type: "text", text: "★ ระดับสูงสุด ขอบคุณที่ไว้ใจ DK ค่ะ", size: "sm", color: BRAND.ink, wrap: true },
             progressBar(100, theme.bar),
           ] : []),
           ...(o.inactiveRealTier ? [{
             type: "box", layout: "vertical", backgroundColor: BRAND.warnBg, cornerRadius: "md", paddingAll: "10px", spacing: "xs",
             contents: [
-              { type: "text", text: `⚠️ ระดับสะสมของคุณคือ ${o.inactiveRealTier}`, size: "sm", weight: "bold", color: BRAND.warn, wrap: true },
+              // ป้ายสีแบบเดียวกับ "อีก 30 วัน" แทนอีโมจิ ⚠️
+              { type: "box", layout: "horizontal", spacing: "sm", alignItems: "center", contents: [
+                { type: "box", layout: "vertical", flex: 0, backgroundColor: BRAND.warn, cornerRadius: "xxl",
+                  paddingTop: "2px", paddingBottom: "2px", paddingStart: "8px", paddingEnd: "8px",
+                  contents: [{ type: "text", text: "พักระดับ", size: "xs", weight: "bold", color: "#FFFFFF" }] },
+                { type: "text", text: `ระดับสะสม ${realTier}`, size: "sm", weight: "bold", color: BRAND.warn, wrap: true, flex: 1 },
+              ] },
               { type: "text", text: "ซื้อสินค้า 1 บิล เพื่อกลับสู่ระดับเดิม", size: "xs", color: BRAND.ink, wrap: true },
             ],
           }] : []),
@@ -645,8 +674,9 @@ export function pointsFlex(o: { name: string; tierName: string; tierEmoji: strin
       footer: {
         type: "box", layout: "horizontal", spacing: "sm", paddingAll: "12px",
         contents: [
-          btn("💳 เปิดบัตร", { type: "uri", uri: SHOP.liffUrl }, BRAND.blue, "primary", "sm"),
-          btn("🎁 ของรางวัล", { type: "uri", uri: SHOP.rewardsUrl }, BRAND.blue, "secondary", "sm"),
+          // ปุ่มสูง md เท่าการ์ดแจ้งเตือนทุกใบ
+          btn("💳 เปิดบัตร", { type: "uri", uri: SHOP.liffUrl }, BRAND.blue, "primary", "md"),
+          btn("🎁 ของรางวัล", { type: "uri", uri: SHOP.rewardsUrl }, BRAND.blue, "secondary", "md"),
         ],
       },
     },
