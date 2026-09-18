@@ -266,7 +266,7 @@ console.log("✓ หลอดความคืบหน้า · สีระ�
   const tiers = tierOrder.filter((t) => MEMBER_BENEFITS[t].discount > 0);
   const lo = MEMBER_BENEFITS[tiers[0]].discount, hi = Math.max(...tiers.map((t) => MEMBER_BENEFITS[t].discount));
   const pts = (t) => TIER_MIN[t].toLocaleString("en-US");
-  assert(w.includes(`${lo}–${hi}% เมื่อสะสมครบ ${pts(tiers[0])} แต้ม`), `welcomeFlex: ต้องบอกส่วนลด ${lo}–${hi}% เมื่อสะสมครบ ${pts(tiers[0])} แต้ม`);
+  assert(w.includes(`${lo}–${hi}% เริ่มเมื่อสะสมครบ ${pts(tiers[0])} แต้ม`), `welcomeFlex: ต้องบอกส่วนลด ${lo}–${hi}% เริ่มเมื่อสะสมครบ ${pts(tiers[0])} แต้ม`);
   // ผู้ติดตามใหม่ยังไม่รู้จักชื่อระดับ → ไม่พูดชื่อระดับ/ศัพท์ "Bronze+" · แถวละสิทธิ์เดียว (ไม่มี " + ")
   assert(!tierOrder.some((t) => w.includes(t)) && !w.includes(" + "), "welcomeFlex: ห้ามใช้ชื่อระดับหรือรวมสองสิทธิ์ในแถวเดียว");
   assert(!/ลดสูงสุด/.test(w), "welcomeFlex: ห้ามเขียน 'ลดสูงสุด' ลอย ๆ (ส่วนลดเริ่มที่ Silver)");
