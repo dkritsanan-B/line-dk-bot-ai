@@ -14,6 +14,9 @@ const ROOT = path.resolve(DIR, "../../..");
 const DRY = process.argv.includes("--dry-run");
 const ROLLBACK = process.argv.includes("--rollback");
 const PREV_FILE = path.join(DIR, "out", "previous-default.json");
+const designArg = process.argv.indexOf("--design");
+const DESIGN = designArg >= 0 ? process.argv[designArg + 1] : "a";
+if (!/^[a-z0-9_-]+$/i.test(DESIGN)) throw new Error("--design ไม่ถูกต้อง");
 
 // ปุ่มเรียงตาม id ใน a.areas.json · action เดิมของเมนูที่ใช้อยู่ (setup-rich-menu.mjs / upload-rich-menu-image.mjs)
 const ACTIONS = {
@@ -25,8 +28,11 @@ const ACTIONS = {
   6: { type: "uri", label: "เว็บไซต์ร้าน", uri: "https://line-dk-bot-ai.vercel.app" },
 };
 
-const areasJson = JSON.parse(fs.readFileSync(path.join(DIR, "designs", "a.areas.json"), "utf8"));
-if (areasJson.length !== 6) throw new Error("a.areas.json ต้องมี 6 ปุ่ม");
+const areasFile = path.join(DIR, "designs", `${DESIGN}.areas.json`);
+const imageFile = path.join(DIR, "out", `${DESIGN}.jpg`);
+if (!fs.existsSync(areasFile) || !fs.existsSync(imageFile)) throw new Error(`ไม่พบไฟล์ของแบบ ${DESIGN}`);
+const areasJson = JSON.parse(fs.readFileSync(areasFile, "utf8"));
+if (areasJson.length !== 6) throw new Error(`${DESIGN}.areas.json ต้องมี 6 ปุ่ม`);
 const areas = areasJson.map(a => {
   const action = ACTIONS[a.id];
   if (!action) throw new Error(`ไม่มี action ของปุ่ม id ${a.id}`);
@@ -35,17 +41,17 @@ const areas = areasJson.map(a => {
 const body = {
   size: { width: 2500, height: 1686 },
   selected: true,
-  name: "DK Menu v2-A",
+  name: `DK Menu v2-${DESIGN.toUpperCase()}`,
   chatBarText: "เมนู",
   areas,
 };
 
-const image = fs.readFileSync(path.join(DIR, "out", "a.jpg"));
-if (image.length > 1024 * 1024) throw new Error(`a.jpg ใหญ่เกิน 1 MB (${image.length} bytes)`);
+const image = fs.readFileSync(imageFile);
+if (image.length > 1024 * 1024) throw new Error(`${DESIGN}.jpg ใหญ่เกิน 1 MB (${image.length} bytes)`);
 
 if (DRY) {
   console.log(JSON.stringify(body, null, 2));
-  console.log(`ภาพ out/a.jpg ${(image.length / 1024).toFixed(0)} KB — dry run ไม่ได้เรียก LINE`);
+  console.log(`ภาพ out/${DESIGN}.jpg ${(image.length / 1024).toFixed(0)} KB — dry run ไม่ได้เรียก LINE`);
   process.exit(0);
 }
 

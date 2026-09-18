@@ -12,7 +12,12 @@ await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 2500, height: 1686 }, deviceScaleFactor: 1 });
-  for (const name of ['a', 'b', 'c']) {
+  const designArg = process.argv.indexOf('--design');
+  const names = designArg >= 0 ? [process.argv[designArg + 1]] : ['a', 'b', 'c', 'd'];
+  if (names.some(name => !['a', 'b', 'c', 'd'].includes(name))) {
+    throw new Error('Use --design a, b, c, or d');
+  }
+  for (const name of names) {
     await page.goto(pathToFileURL(path.join(designsDir, `${name}.html`)).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
     const areas = JSON.parse(await readFile(path.join(designsDir, `${name}.areas.json`), 'utf8'));
@@ -27,6 +32,20 @@ try {
       for (const key of ['x', 'y', 'width', 'height']) {
         if (expected[key] !== actual[key]) throw new Error(`${name}: button ${index + 1} ${key} is ${actual[key]}, expected ${expected[key]}`);
       }
+    }
+    if (name === 'd') {
+      const textIssues = await page.locator('h2, .action').evaluateAll(nodes => nodes.flatMap(node => {
+        const size = Number.parseFloat(getComputedStyle(node).fontSize);
+        const button = node.closest('.btn').getBoundingClientRect();
+        const box = node.getBoundingClientRect();
+        const issues = [];
+        if (size < 80) issues.push(`${node.textContent.trim()}: ${size}px is below 80px`);
+        if (box.left < button.left || box.right > button.right || node.scrollWidth > node.clientWidth) {
+          issues.push(`${node.textContent.trim()}: text exceeds its button`);
+        }
+        return issues;
+      }));
+      if (textIssues.length) throw new Error(`d: ${textIssues.join('; ')}`);
     }
     const areaSum = areas.reduce((sum, area) => sum + area.width * area.height, 0);
     if (areaSum !== 2500 * 1686) throw new Error(`${name}: areas do not cover the full image`);
@@ -64,4 +83,4 @@ try {
   await browser.close();
 }
 
-console.log('Rendered a, b, c at 2500×1686 plus 400px phone previews.');
+console.log('Rendered requested designs at 2500×1686 plus 400px phone previews.');

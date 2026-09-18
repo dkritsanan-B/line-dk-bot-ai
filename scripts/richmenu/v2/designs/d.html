@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DK Rich Menu — Equal 3 by 2</title>
+  <style>
+    @font-face{font-family:"DK Thai";src:url("../fonts/NotoSansThai-Regular.ttf") format("truetype");font-weight:400}
+    @font-face{font-family:"DK Thai";src:url("../fonts/NotoSansThai-Bold.ttf") format("truetype");font-weight:700}
+    @font-face{font-family:"DK Latin";src:url("../fonts/NotoSans-Regular.ttf") format("truetype");font-weight:400}
+    @font-face{font-family:"DK Latin";src:url("../fonts/NotoSans-Bold.ttf") format("truetype");font-weight:700}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:2500px;height:1686px;overflow:hidden}
+    body{font-family:"DK Thai","DK Latin",sans-serif;background:#061530;color:#fff}
+    .canvas{position:relative;width:2500px;height:1686px;overflow:hidden;background:#061530}
+    .btn{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;isolation:isolate;padding:54px 34px 48px;text-align:center;--tile:#ffd400;--top:#173b72;--bot:#091d3c;background:radial-gradient(circle at 50% 28%,var(--glow),transparent 48%),linear-gradient(155deg,var(--top) 0%,var(--bot) 100%)}
+    .btn::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(132deg,rgba(255,255,255,.055),transparent 34%)}
+    .btn>*{position:relative;z-index:1}
+    .edge-right{box-shadow:inset -7px 0 #061530}
+    .edge-bottom{box-shadow:inset 0 -7px #061530}
+    .edge-right.edge-bottom{box-shadow:inset -7px 0 #061530,inset 0 -7px #061530}
+
+    .icon-wrap{width:232px;height:232px;flex:none;display:grid;place-items:center;border-radius:32px;background:var(--tile);box-shadow:14px 15px 0 #061530}
+    .icon-wrap svg{width:142px;height:142px;fill:none;stroke:#0b2d61;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+    .icon-wrap svg .solid{fill:#0b2d61;stroke:none}
+    .icon-wrap svg .cutout{fill:var(--tile);stroke:none}
+    .copy{width:100%;margin-top:48px}
+    h2{margin:0;font-size:101px;line-height:1.05;font-weight:700;letter-spacing:-2px;white-space:nowrap;text-shadow:0 5px 0 rgba(6,21,48,.42)}
+    .action{margin-top:22px;font-size:80px;line-height:1.08;font-weight:700;color:#ffd400;white-space:nowrap}
+    .chev{display:inline-block;width:.39em;height:.62em;margin-left:.16em;vertical-align:-.02em;overflow:visible;fill:none;stroke:currentColor!important;stroke-width:14!important;stroke-linecap:round;stroke-linejoin:round}
+
+    .member{left:0;top:0;width:833px;height:843px;--glow:rgba(118,195,255,.5);--top:#347ff0;--bot:#1548a8}
+    .map{left:833px;top:0;width:833px;height:843px;--tile:#ff795e;--glow:rgba(255,121,94,.25);--top:#363269;--bot:#1b193d}
+    .contact{left:1666px;top:0;width:834px;height:843px;--tile:#3ddc84;--glow:rgba(61,220,132,.22);--top:#16526a;--bot:#082e41}
+    .game{left:0;top:843px;width:833px;height:843px;--tile:#ffa23a;--glow:rgba(255,162,58,.2);--top:#41395f;--bot:#211b35}
+    .facebook{left:833px;top:843px;width:833px;height:843px;--tile:#6fa8ff;--glow:rgba(111,168,255,.26);--top:#1d4d8c;--bot:#0d294f}
+    .website{left:1666px;top:843px;width:834px;height:843px;--tile:#3fd9b4;--glow:rgba(63,217,180,.23);--top:#155575;--bot:#092f47}
+
+    .member-card{width:394px;height:232px;flex:none;display:grid;grid-template-columns:118px 1fr;grid-template-rows:1fr 1fr;align-items:center;column-gap:24px;padding:28px 28px 26px;border-radius:30px;background:linear-gradient(135deg,#ffdb72 0%,#ffc12f 47%,#efa30a 100%);color:#2b1a0b;box-shadow:14px 15px 0 #061530;transform:rotate(-2deg)}
+    .card-logo{grid-row:1/3;width:118px;height:100px;border-radius:12px;background:url("../../../../public/dk-logo.jpg") no-repeat;background-size:153px 153px;background-position:-17px -23px;box-shadow:0 0 0 4px #0b2d61}
+    .card-tier{justify-self:end;align-self:start;font-family:"DK Latin",sans-serif;font-size:46px;line-height:1;font-weight:700;color:#ffd400;background:#0b2d61;padding:9px 22px 11px;border-radius:28px}
+    .card-line{align-self:end;height:18px;border-radius:10px;background:rgba(43,26,11,.18);overflow:hidden}
+    .card-line::after{content:"";display:block;width:56%;height:100%;border-radius:10px;background:#0b2d61}
+    .member .copy{margin-top:42px;padding:0 4px}
+    .member h2{font-size:103px}
+    .member .action{font-size:80px;letter-spacing:-3px}
+
+    .game h2{font-size:98px}
+    .game .action{letter-spacing:-1.5px}
+    .contact h2{font-size:98px}
+    .website h2{font-size:99px}
+  </style>
+</head>
+<body>
+<main class="canvas">
+  <section class="btn member edge-right edge-bottom">
+    <div class="member-card" aria-hidden="true"><span class="card-logo"></span><span class="card-tier">Gold</span><span class="card-line"></span></div>
+    <div class="copy"><h2>บัตรสมาชิก</h2><div class="action">ทุก 100 บาท = 1 แต้ม <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+  <section class="btn map edge-right edge-bottom">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path class="solid" d="M50 5C30 5 14 21 14 41c0 27 36 55 36 55s36-28 36-55C86 21 70 5 50 5Z"/><circle class="cutout" cx="50" cy="40" r="12"/></svg></div>
+    <div class="copy"><h2>แผนที่ร้าน</h2><div class="action">ดูเส้นทางมาร้าน <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+  <section class="btn contact edge-bottom">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path class="solid" d="M24 7h17l10 25-13 10c8 16 14 22 30 30l10-13 25 10v17c0 8-7 14-15 13C48 94 7 53 11 18 12 11 17 7 24 7Z"/></svg></div>
+    <div class="copy"><h2>ติดต่อฝ่ายขาย</h2><div class="action">โทร / LINE <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+  <section class="btn game edge-right">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path d="M30 30h40c14 0 22 11 19 25l-6 31-20-18H37L17 86l-6-31c-3-14 5-25 19-25Z"/><path d="M31 47v18M22 56h18"/><circle class="solid" cx="66" cy="49" r="6"/><circle class="solid" cx="78" cy="62" r="6"/></svg></div>
+    <div class="copy"><h2>เล่นเกมรับแต้ม</h2><div class="action">ตอบถูก +1 แต้ม/วัน <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+  <section class="btn facebook edge-right">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><path class="solid" d="M61 98V59h14l4-17H61V32c0-8 4-13 14-13h8V4c-5-1-12-2-20-2-20 0-33 12-33 34v6H17v17h13v39Z"/></svg></div>
+    <div class="copy"><h2>Facebook</h2><div class="action">ข่าวสาร DK <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+  <section class="btn website">
+    <div class="icon-wrap"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/><path d="M10 50h80M50 10c13 12 20 25 20 40S63 78 50 90C37 78 30 65 30 50s7-28 20-40Z"/></svg></div>
+    <div class="copy"><h2>เว็บไซต์ร้าน</h2><div class="action">ดูสินค้า <svg class="chev" viewBox="0 0 40 64"><path d="M9 7l24 25-24 25"/></svg></div></div>
+  </section>
+</main>
+</body>
+</html>
