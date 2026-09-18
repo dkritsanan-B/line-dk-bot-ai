@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       VALUES (${u.id as number}, 0, ${pts}, 'earn', ${`${tag} — คูปองวันเกิดระดับ ${tier.name}`}, NOW() + INTERVAL '1 year')
     `;
     const pushed = u.line_user_id
-      ? await push(u.line_user_id as string, birthdayGiftFlex({ name, tierName: tier.name, tierEmoji: tier.emoji, points: pts }))
+      ? await push(u.line_user_id as string, birthdayGiftFlex({ name, tierName: tier.name, tierEmoji: tier.emoji, points: pts, balance: Number(u.points ?? 0) + pts }))
       : false;
     out.push({ id: u.id as number, name, tier: tier.name, points: pts, pushed });
   }

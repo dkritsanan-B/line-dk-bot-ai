@@ -23,6 +23,7 @@ export const examples = [
   ["เลื่อนระดับ Diamond", tierUpFlex({ name: "สมชาย", tierName: "Diamond", tierEmoji: "💎", points: 9800, earned: 700, billNo: "IV-690005" })],
   ["เลื่อนระดับ Platinum", tierUpFlex({ name: "สมชาย", tierName: "Platinum", tierEmoji: "🔱", points: 5200, earned: 400, billNo: "IV-690003" })],
   ["ของขวัญวันเกิด", birthdayGiftFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", points: 500 })],
+  ["ของขวัญวันเกิด (มียอดคงเหลือ)", birthdayGiftFlex({ name: "คุณสมชาย", tierName: "Gold", tierEmoji: "🥇", points: 500, balance: 2950 })],
   ["แต้มใกล้หมดอายุ (ข้อมูลเดิม)", pointsExpiringFlex({ name: "คุณสมชาย", points: 300, daysLeft: 30, expiryDate: "16 ตุลาคม 2569" })],
   ["แต้มใกล้หมดอายุ (มียอดคงเหลือ)", pointsExpiringFlex({ name: "คุณสมชาย", points: 300, daysLeft: 30, expiryDate: "16 ตุลาคม 2569", balance: 2450 })],
   ["แต้มหมดอายุ", pointsExpiredFlex({ name: "คุณสมชาย", points: 300, balance: 2150 })],
@@ -32,6 +33,7 @@ export const examples = [
   ["รับของรางวัล (มีเลขคำขอ)", redemptionConfirmedFlex({ rewardName: "สว่านไร้สาย", points: 1500, balance: 950, requestId: 88 })],
   ["ยกเลิกคำขอ (ข้อมูลเดิม)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88 })],
   ["ยกเลิกคำขอ (มีเหตุผล)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, reason: "สินค้าหมด" })],
+  ["ยกเลิกคำขอ (มีเหตุผลและยอด)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, reason: "สินค้าหมด", balance: 2450 })],
   ["ยกเลิกคำขอ (มียอด)", redemptionCancelledFlex({ rewardName: "สว่านไร้สาย", points: 1500, requestId: 88, balance: 2450 })],
   ["รักษาระดับ (ข้อมูลเดิม)", tierExpiryWarningFlex({ name: "คุณสมชาย" })],
   ["รักษาระดับ (คำนวณระดับที่จะตก)", tierExpiryWarningFlex({ name: "สมชาย", tierName: "Gold", points: 800 })],
@@ -149,6 +151,8 @@ assert(JSON.stringify(inactive).includes(BRAND.warnBg), "ระดับพั�
   const contact = examples.find(([name]) => name === "ติดต่อฝ่ายขาย")[1];
   const [intro, ...staff] = contact.contents.contents;
   assert(intro.hero, "contactFlex: ใบแรกต้องเป็นใบร้านที่มีแบนเนอร์");
+  assert.equal(intro.footer.layout, "vertical", "contactFlex: ปุ่มใบร้านต้องซ้อนเต็มความกว้างเหมือนการ์ดพนักงาน (ขอบล่างตรงกัน)");
+  assert(!JSON.stringify(intro).includes(SHOP.lineId), "contactFlex: ไม่ต้องมีแถว LINE ร้าน (ลูกค้าคุยอยู่ในบัญชีนี้แล้ว)");
   assert.equal(JSON.stringify(intro).split(SHOP.hours).length - 1, 1, "contactFlex: ใบร้านต้องแสดงเวลาทำการบรรทัดเดียว");
   assert.equal(staff.length, 4, "contactFlex: ต้องมีการ์ดพนักงาน 4 ใบ");
   for (const bubble of staff) {
@@ -160,12 +164,14 @@ assert(JSON.stringify(inactive).includes(BRAND.warnBg), "ระดับพั�
     assert.equal(call.style, "primary", "contactFlex: ปุ่มโทรเป็นปุ่มหลัก");
     assert.equal(line.style, "secondary", "contactFlex: ปุ่ม LINE เป็นปุ่มรอง");
     assert(!/🟢/u.test(line.action.label), "contactFlex: ปุ่ม LINE ไม่ใช้อีโมจิ 🟢");
+    assert(/^💬 /u.test(line.action.label) && /^📞 /u.test(call.action.label), "contactFlex: ปุ่มคู่ต้องมีไอคอนทั้งสองปุ่ม (📞/💬)");
+    assert.equal(bubble.footer.layout, "vertical", "contactFlex: ปุ่มพนักงานซ้อนเต็มความกว้าง");
   }
   // ห้ามแต่งความเชี่ยวชาญพนักงานขึ้นเอง: ข้อความในการ์ดพนักงานมีแค่ชื่อ เบอร์ และหัวการ์ด
   for (const [i, bubble] of staff.entries()) {
     const texts = [];
     walk(bubble.body, (n) => { if (n && n.type === "text") texts.push(n.text); });
-    assert.deepEqual(texts, [SALES_STAFF[i].name, `พนักงานขาย · ${i + 1}/${staff.length}`], "contactFlex: การ์ดพนักงานมีข้อความเกินชื่อ/ตำแหน่ง");
+    assert.deepEqual(texts, [SALES_STAFF[i].name, "พนักงานขาย"], "contactFlex: การ์ดพนักงานมีข้อความเกินชื่อ/ตำแหน่ง");
   }
 }
 
@@ -259,7 +265,7 @@ console.log("✓ หลอดความคืบหน้า · สีระ�
   assert(w.includes(`${lo}–${hi}%`) && w.includes(`เริ่มที่ระดับ ${tiers[0]}`), `welcomeFlex: ต้องบอกส่วนลด ${lo}–${hi}% เริ่มที่ ${tiers[0]}`);
   assert(!/ลดสูงสุด/.test(w), "welcomeFlex: ห้ามเขียน 'ลดสูงสุด' ลอย ๆ (ส่วนลดเริ่มที่ Silver)");
   const bdFrom = tierOrder.find((t) => MEMBER_BENEFITS[t].birthday > 0);
-  assert(w.includes(`วันเกิดทุกปี ตั้งแต่ระดับ ${bdFrom}`), `welcomeFlex: แต้มวันเกิดต้องบอกว่าเริ่มที่ ${bdFrom}`);
+  assert(w.includes(`แต้มวันเกิด ${bdFrom}+`), `welcomeFlex: แต้มวันเกิดต้องบอกว่าเริ่มที่ ${bdFrom}`);
 }
 
 // ---------- เลื่อนระดับ: ไม่ใช้เหรียญ ไม่เคลมสิทธิ์เกินกติกา บอกระดับถัดไป ----------
@@ -295,11 +301,15 @@ for (const [name, message] of examples.filter(([n]) => n.startsWith("ยกเ�
   // หมดอายุทั้งหมด → หัวข้อต้องไม่พูดว่า "บางส่วน"
   const allGone = examples.find(([n]) => n === "แต้มหมดอายุ (ไม่เหลือแต้ม)")[1];
   assert(!allGone.contents.header.contents[1].text.includes("บางส่วน"), "pointsExpiredFlex: ยอดเหลือ 0 ห้ามใช้หัวข้อ 'บางส่วน'");
-  assert(find("แต้มหมดอายุ").includes('"text":"หมดอายุ"'), "pointsExpiredFlex: ต้องมีป้าย 'หมดอายุ' ข้างตัวเลข");
+  assert(!find("แต้มหมดอายุ").includes('"text":"หมดอายุ"'), "pointsExpiredFlex: ตัวเลขขีดฆ่าบอกแล้ว ไม่ต้องมีป้าย 'หมดอายุ' ซ้ำ");
+  assert(find("แต้มหมดอายุ").includes("ยังใช้ได้ 2,150 แต้ม"), "pointsExpiredFlex: มียอดเหลือต้องบอก 'ยังใช้ได้ X แต้ม' ในบล็อกตัวเลข");
+  for (const n of ["แต้มหมดอายุ", "แต้มหมดอายุ (ไม่เหลือแต้ม)"]) assert.equal(find(n).split("1 ปี").length - 1, 1, `${n}: พูด '1 ปี' ครั้งเดียว`);
   assert(find("แต้มใกล้หมดอายุ (ข้อมูลเดิม)").includes('"text":"อีก 30 วัน"'), "pointsExpiringFlex: จำนวนวันต้องเป็นป้ายแยก");
   for (const n of ["แต้มใกล้หมดอายุ (ข้อมูลเดิม)", "แต้มหมดอายุ"]) assert(find(n).includes("คุณสมชาย"), `${n}: ต้องทักชื่อ`);
   // วันเกิดใช้ชื่อระดับ
   assert(find("ของขวัญวันเกิด").includes("ของขวัญวันเกิดสมาชิก Gold"), "birthdayGiftFlex: ต้องบอกว่าเป็นของขวัญตามระดับ");
+  assert(find("ของขวัญวันเกิด (มียอดคงเหลือ)").includes("2,950 แต้ม"), "birthdayGiftFlex: ส่ง balance แล้วต้องมีแถวแต้มคงเหลือ");
+  assert(!/\p{Extended_Pictographic}/u.test(examples.find(([n]) => n === "ของขวัญวันเกิด")[1].contents.header.contents[0].text), "birthdayGiftFlex: eyebrow ไม่ใช้อีโมจิ");
   // รับของแล้วใช้โทนสำเร็จ
   const conf = examples.find(([n]) => n === "รับของรางวัล")[1];
   assert.equal(conf.contents.header.backgroundColor, TONE_STYLE.success.background, "redemptionConfirmedFlex: หัวต้องเป็นโทนสำเร็จ");
@@ -307,19 +317,43 @@ for (const [name, message] of examples.filter(([n]) => n.startsWith("ยกเ�
   assert(find("จองของรางวัล").includes("#\u200AR\u200AE"), "ticketCode: ต้องเว้นด้วย U+200A");
   // ยกเลิก: มีป้ายเหนือตัวเลข + ประโยคขออภัยเสมอ
   const cancel = find("ยกเลิกคำขอ (ข้อมูลเดิม)");
-  assert(cancel.includes("แต้มที่ใช้แลกได้ตามเดิม") && cancel.includes("ขออภัย"), "redemptionCancelledFlex: ต้องมีป้ายเหนือตัวเลขและประโยคขออภัย");
+  assert(cancel.includes("แต้มของคำขอนี้") && cancel.includes("ขออภัย"), "redemptionCancelledFlex: ต้องมีป้ายเหนือตัวเลขและประโยคขออภัย");
+  assert.equal(cancel.split("1,500").length - 1, 1, "redemptionCancelledFlex: ตัวเลขแต้มของคำขอต้องปรากฏครั้งเดียว");
+  assert(find("ยกเลิกคำขอ (มีเหตุผล)").includes("ยกเลิกเพราะ: สินค้าหมด"), "redemptionCancelledFlex: เหตุผลต้องเป็นข้อความหลัก");
+  assert(find("ยกเลิกคำขอ (มีเหตุผลและยอด)").includes("แต้มคงเหลือ"), "redemptionCancelledFlex: มีเหตุผลแล้วต้องยังโชว์แต้มคงเหลือ");
+  assert(!/"text":"หมายเลขคำขอ"/.test(cancel) && cancel.includes("หมายเลขคำขอ #REQ-88"), "redemptionCancelledFlex: หมายเลขคำขอเป็นหมายเหตุท้ายการ์ด ไม่ใช่แถว");
   assert(!/ปลด|จองไว้/.test(cancel), "redemptionCancelledFlex: ห้ามใช้คำระบบ ปลด/จองไว้");
   // เลื่อนระดับ: ชื่อระดับไม่ซ้ำในหัวข้อ/ปุ่ม
   const up = examples.find(([n]) => n === "เลื่อนระดับ")[1];
-  assert(!up.contents.header.contents[1].text.includes("Gold") && !JSON.stringify(up.contents.footer).includes("Gold"), "tierUpFlex: ชื่อระดับอยู่ที่ป้ายใหญ่ที่เดียว");
+  assert(up.contents.header.contents[1].text.includes("Gold") && !JSON.stringify(up.contents.footer).includes("Gold"), "tierUpFlex: หัวข้อบอกระดับใหม่ ปุ่มไม่ซ้ำชื่อระดับ");
+  for (const t of tierOrder.slice(1)) {
+    const h = tierUpFlex({ name: "ก", tierName: t, tierEmoji: "", points: 1, earned: 1, billNo: "X" }).contents.header.contents[1];
+    assert.equal(h.size, "xl", `tierUpFlex ${t}: หัวข้อต้องเป็น xl (${h.text})`);
+  }
+  const upJson = JSON.stringify(up);
+  assert(!upJson.includes("\\n"), "tierUpFlex: สิทธิ์ระดับถัดไปเป็นบรรทัดเดียว ไม่ซ้อนหลายบรรทัด");
+  assert(!upJson.includes('"size":"xxs"'), "tierUpFlex: หมายเหตุบิลต้องไม่เล็กกว่า xs");
   // ใกล้ลดระดับ: ป้ายอยู่เหนือวันที่ ค่าใหญ่เป็นวันที่อย่างเดียว
   const exp = find("รักษาระดับ (ข้อมูลครบ)");
   assert(exp.includes('"text":"ซื้อสินค้า 1 บิลภายใน"') && exp.includes('"text":"16 ตุลาคม 2569"'), "tierExpiryWarningFlex: ป้ายเหนือวันที่");
+  assert(exp.includes("DK MEMBER · ระดับ Platinum"), "tierExpiryWarningFlex: eyebrow ต้องบอกระดับที่กำลังจะหมดอายุ");
+  assert(!JSON.stringify(examples.filter(([n]) => n.startsWith("รักษาระดับ"))).includes("คิดจากแต้มคงเหลือ"), "tierExpiryWarningFlex: ห้ามใช้ศัพท์ระบบ 'คิดจากแต้มคงเหลือ'");
   // ต้อนรับ: ซับไตเติลไม่ซ้ำแบนเนอร์ + ไอคอนชุดเดียว
   const w = welcomeFlex();
   assert(!JSON.stringify(w).includes("ครบจบที่เดียว"), "welcomeFlex: ซับไตเติลต้องเป็นเหตุผลที่ควรสมัคร");
-  assert(!/[⭐🏷🎁]/u.test(JSON.stringify(w.contents.body)), "welcomeFlex: ไอคอนแถวใช้ชุดเดียวกัน ไม่ใช้อีโมจิ");
+  assert(!/[⭐🏷🎁♥]/u.test(JSON.stringify(w.contents.body)), "welcomeFlex: ไอคอนแถวใช้ชุดเดียวกัน ไม่ใช้อีโมจิ/หัวใจ");
+  assert(!JSON.stringify(w.contents.body).includes("\\n"), "welcomeFlex: คำอธิบายแถวสิทธิ์ต้องไม่ขึ้นบรรทัดใหม่เอง");
+  assert(!JSON.stringify(w.contents.body.contents[1]).includes("แลกของรางวัล"), "welcomeFlex: ซับไตเติลไม่ซ้ำกับแถวของรางวัล");
 }
-console.log("✓ ตัวเลขตัวอย่างเป็นไปได้ · ข้อความต้อนรับ/เลื่อนระดับ/ยกเลิกตรงกติกา · รายการรีวิวรอบ 6");
+// ---------- รอบรีวิว 7: ไม่ใช้ 🎴 (ไพ่ฮานาฟุดะ) เป็นไอคอนบัตรสมาชิก · ไม่ใช้เหรียญระดับบนหัวเช็คแต้ม/eyebrow ----------
+{
+  for (const [name, message] of examples) assert(!JSON.stringify(message).includes("🎴"), `${name}: ใช้ 💳 แทน 🎴`);
+  assert(!/[🥇🥈🥉]/u.test(JSON.stringify(gold.contents.header)), "pointsFlex: หัวบัตรไม่ใช้เหรียญระดับ");
+  assert(!/[🥇🥈🥉]/u.test(JSON.stringify(examples.find(([n]) => n === "ได้แต้มจากบิล (มีระดับ)")[1].contents.header)), "pointsEarnedFlex: eyebrow ไม่ใช้เหรียญระดับ");
+  assert.equal(silver.contents.header.backgroundColor, "#CFD8DC", "pointsFlex Silver: พื้นเงินสว่าง ไม่ใช่เทาปิดใช้งาน");
+  assert(gold.contents.footer.contents.every((b) => b.height === "sm"), "pointsFlex: ปุ่มคู่ท้ายบัตรใช้ height sm");
+  assert(JSON.stringify(examples.find(([n]) => n === "จองของรางวัล")[1]).includes('"text":"แต้มคงเหลือ"'), "redemptionRequestedFlex: ใช้ป้าย 'แต้มคงเหลือ' ให้ตรงการ์ดอื่น");
+}
+console.log("✓ ตัวเลขตัวอย่างเป็นไปได้ · ข้อความต้อนรับ/เลื่อนระดับ/ยกเลิกตรงกติกา · รายการรีวิวรอบ 6–7");
 
 console.log(`ตรวจโครงสร้างและเนื้อหาผ่าน ${examples.length}/${examples.length} ตัวอย่าง (local only · ไม่เรียก LINE API)`);
