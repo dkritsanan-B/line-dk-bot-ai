@@ -554,7 +554,7 @@ export function welcomeFlex(): Msg {
 // ติดต่อฝ่ายขาย: ใบแรกเป็นใบร้าน (แบนเนอร์ DK + เวลาทำการ + โทรร้าน/แผนที่) แล้วตามด้วยการ์ดพนักงาน 4 ใบ
 // การ์ดพนักงานคงดีไซน์ที่เจ้าของชอบ (รูปใหญ่ + โทร/เพิ่มเพื่อน) แต่ตัดแบนเนอร์ซ้ำ/บรรทัดเวลาซ้ำออก ใช้หัวน้ำเงินบางแทน
 export function contactFlex(): Msg {
-  // ใบร้านไม่ใช้แบนเนอร์ (ตัวหนังสือเล็กในแบนเนอร์อ่านไม่ออกที่ kilo) → หัวน้ำเงินกับโลโก้ DK
+  // หัวใบร้านเป็นน้ำเงินกับโลโก้ DK · ภาพสินค้าอยู่กลางใบ (เป็นภาพประกอบ ตัวหนังสือในภาพไม่ต้องอ่านออก)
   // เนื้อการ์ด space-between: กล่องเวลาทำการชิดล่าง ปุ่มจึงอยู่ระดับเดียวกับการ์ดพนักงานตอนปัด
   const intro: Msg = {
     type: "bubble", size: "kilo",
@@ -577,6 +577,10 @@ export function contactFlex(): Msg {
           // ป้าย "พนักงานขาย" ครั้งเดียวที่ใบนี้ (การ์ดพนักงานมีแค่ชื่อ ไม่แต่งความถนัดขึ้นเอง)
           { type: "text", text: `พนักงานขาย ${SALES_STAFF.length} คน`, size: "md", weight: "bold", color: BRAND.ink },
           { type: "text", text: "ปัดขวาเพื่อโทรหรือแอด LINE →", size: "sm", color: BRAND.muted, wrap: true },
+          // ภาพสินค้าร้านเติมช่องว่างกลางใบ (เจ้าของขอ 18 ก.ย. 69) — สัดส่วนตามไฟล์ 1555×1012
+          { type: "box", layout: "vertical", cornerRadius: "md", margin: "md", contents: [
+            { type: "image", url: `${SHOP.base}/herobanner2.png`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
+          ] },
         ] },
         { type: "box", layout: "vertical", spacing: "sm", margin: "lg", backgroundColor: BRAND.panel, cornerRadius: "md", paddingAll: "12px",
           contents: [
