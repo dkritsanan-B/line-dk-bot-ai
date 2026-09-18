@@ -510,7 +510,7 @@ export function welcomeFlex(): Msg {
     contents: {
       type: "bubble",
       size: "mega",
-      hero: { type: "image", url: `${SHOP.base}/herobanner2.png`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
+      hero: { type: "image", url: `${SHOP.base}/contact-banner.jpg`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
       body: {
         type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", paddingBottom: "8px",
         contents: [
@@ -577,9 +577,9 @@ export function contactFlex(): Msg {
           // ป้าย "พนักงานขาย" ครั้งเดียวที่ใบนี้ (การ์ดพนักงานมีแค่ชื่อ ไม่แต่งความถนัดขึ้นเอง)
           { type: "text", text: `พนักงานขาย ${SALES_STAFF.length} คน`, size: "md", weight: "bold", color: BRAND.ink },
           { type: "text", text: "ปัดขวาเพื่อโทรหรือแอด LINE →", size: "sm", color: BRAND.muted, wrap: true },
-          // ภาพสินค้าร้านเติมช่องว่างกลางใบ (เจ้าของขอ 18 ก.ย. 69) — สัดส่วนตามไฟล์ 1555×1012
+          // ภาพสินค้าร้านเติมช่องว่างกลางใบ (เจ้าของขอ 18 ก.ย. 69) — public/contact-banner.jpg (ย่อจาก herobanner2.png ให้โหลดเร็วบนมือถือ)
           { type: "box", layout: "vertical", cornerRadius: "md", margin: "md", contents: [
-            { type: "image", url: `${SHOP.base}/herobanner2.png`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
+            { type: "image", url: `${SHOP.base}/contact-banner.jpg`, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
           ] },
         ] },
         { type: "box", layout: "vertical", spacing: "sm", margin: "lg", backgroundColor: BRAND.panel, cornerRadius: "md", paddingAll: "12px",
