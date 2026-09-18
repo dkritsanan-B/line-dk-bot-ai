@@ -323,6 +323,19 @@
   .lf-rw-sheet { border-radius: var(--r-lg); padding: var(--sp-4) var(--sp-5) var(--sp-5); }
 }
 
+/* r7b (ผู้ตรวจ ข้อ 9): กรอบหน้ากว้าง 1120px → ≥1200px การ์ด 3 ใบต่อแถว
+ * ช่วง 2 ใบต่อแถว (900–1199px) ใบสุดท้ายที่เหลือเดี่ยว ๆ กินเต็มแถว ไม่เหลือช่องว่างครึ่งแถว
+ * กติกาท้ายหน้า: ขอบซ้าย/ขวาของข้อความตรงกับขอบตาราง (เดิมเยื้องเข้า 8px) */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .lf-rw-grid > .lf-rw-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 1200px) {
+  .lf-rw-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) {
+  .lf-wrap .lf-rules { padding-left: 0; padding-right: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lf-rw-btn { transition: none; }
 }

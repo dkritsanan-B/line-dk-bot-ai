@@ -8,8 +8,6 @@ import { ProblemScreen } from "../components/ProblemNotice";
 import { callApi, problemOf, redeemErrorText, SHOP_PHONE, SHOP_TEL, type Problem } from "../lib/api";
 import { formatDate, getEffectiveTier, getTierFromPoints, type Tier } from "../lib/tiers";
 import type { MemberResponse, PendingRedemption, RedeemSummary } from "../lib/types";
-import TierMark from "../components/TierMark";
-import { ReactivateRule } from "../components/MemberCard";
 import "../styles/rewards.css";
 
 // หน้าของรางวัล — ตัวตน = LIFF access token · สไตล์อยู่ ../liff.css
@@ -384,9 +382,9 @@ export default function RewardsPage() {
 
       {summary && paused && (
         <div className="lf-rw-paused" role="status">
+          {/* r7 (ผู้ตรวจ): ไอคอนเดียว (หยุดชั่วคราว) + ข้อความบรรทัดเดียว · กติกาเต็มอยู่บนบัตรและตารางสิทธิ์ */}
           <Icon name="pause" size={20} />
-          <TierMark tier={paused} />
-          <span><b className="lf-nw">ระดับ {paused.name} พักไว้</b> <ReactivateRule /> <span className="lf-nw">กลับมาทันที</span></span>
+          <span><b className="lf-nw">{paused.name} พักไว้</b> · <span className="lf-nw">{reactivateText()[0]} กลับมาทันที</span></span>
         </div>
       )}
 
@@ -470,6 +468,7 @@ export default function RewardsPage() {
                   {copy.detail && <span className="lf-rw-cond" title={copy.detail}>{copy.detail}</span>}
                   {copy.condition && <span className="lf-rw-condition">{copy.condition}</span>}
                   {outReason && <span className="lf-rw-reason">{outReason}</span>}
+                  {/* r7b: ไม่จองแถวป้ายเปล่าแล้ว (มือถือเหลือช่องว่าง) — เดสก์ท็อปการ์ดในแถวสูงเท่ากันและแถวแต้ม/ปุ่มติดขอบล่าง (styles/rewards.css) */}
                 </div>
               )}
             </div>

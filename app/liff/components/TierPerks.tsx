@@ -16,12 +16,16 @@ import { useState } from "react";
 //   - "เหล็กเส้น" ไม่ใช่สิทธิ์ → ย้ายออกจากแถวสิทธิ์ เป็นบรรทัดหมายเหตุเบา ๆ ใต้กลุ่มแต้มเพิ่ม
 //   - pending (สมัครแล้ว ยังไม่ยืนยันที่ร้าน) → หัวการ์ดไม่สัญญาสิทธิ์ก่อนยืนยัน
 //     และไม่ขึ้น "ตอนนี้คุณได้แล้ว" (ยังไม่ได้แต้มจนกว่าจะยืนยัน)
+// r7 (ผู้ตรวจ):
+//   - pending: ยังไม่ยืนยันก็อ่านเรื่องระดับ 3 ระดับไม่ไหว → เหลือกล่องเขียว + ประโยคเดียว "สะสม N แต้ม ได้ส่วนลด X%"
+//     (X อ่านจาก RULES ของระดับแรกที่มีส่วนลด — ตอนนี้ Silver ลด 1% ห้ามเขียนช่วงของระดับสูงกว่า)
+//     ตารางสิทธิ์ทั้งหมดซ่อนหลังปุ่ม "ดูสิทธิ์ทั้งหมด"
+//   - พักระดับ: หัวข้อก่อน → กล่องเขียว "ตอนนี้ได้" → ตารางที่พักไว้ · กติกาคืนระดับอยู่บนบัตร + ป้ายในตารางเท่านั้น
 import { TIERS, type Tier } from "../lib/tiers";
 import { BAHT_PER_POINT, bahtFor, birthdayPointsOf, perksOf, reactivateText, VIA_HEAD, type PerkVia } from "../lib/perks";
 import { BONUS_BAHT_PER_POINT, RULES, tierIndex, type RuleKey } from "@/lib/tierRules";
 import Icon from "./Icon";
 import TierMark from "./TierMark";
-import { ReactivateRule } from "./MemberCard";
 
 /** แต้มปกติต่อยอดซื้อ 100 บาท (หน่วย "/100 บาท" ของแถวสิทธิ์) */
 const NORMAL_PER_100 = 100 / BAHT_PER_POINT;
@@ -34,6 +38,16 @@ function totalNote(key: RuleKey, tierName: string): string {
     return `รวมเป็น ${fmtN(NORMAL_PER_100 + extra)} แต้ม/100 บาท`;
   }
   return "เพิ่มจากแต้มปกติ";
+}
+
+/** ส่วนลดหน้าร้านของระดับนี้ (ค่าน้อยสุด–มากสุดของหมวดที่ลดหน้าร้าน) — อ่านจาก RULES ตรง ๆ */
+function discountRange(tierName: string): { lo: number; hi: number } | null {
+  const i = tierIndex(tierName);
+  const ns = (Object.keys(RULES) as RuleKey[])
+    .filter(k => RULES[k].via === "discount" && RULES[k].mode === "pct")
+    .map(k => RULES[k].byTier[i] ?? 0)
+    .filter(n => n > 0);
+  return ns.length ? { lo: Math.min(...ns), hi: Math.max(...ns) } : null;
 }
 
 /** กติกาการคิดแต้มทั้งหมด — พับไว้ เปิดดูเมื่อสงสัย */
@@ -90,7 +104,6 @@ export default function TierPerks({ tier, currentTier, nextTier, restore, hideOn
   //     ถ้าระดับถัดไปยังไม่มีส่วนลด ให้บอกตรง ๆ แล้วค่อยโชว์สิทธิ์ของระดับแรกที่มีส่วนลด
   const next = mine.length ? null : (nextTier ?? upper[0] ?? null);
   const bridge = next && target && next.name !== target.name ? next : null;
-  const goal = bridge ?? target;
   const paused = !!restore && mine.length > 0 && !pending;
   const groups = (["discount", "points"] as PerkVia[])
     .map(via => ({ via, rows: lines.filter(l => l.via === via) }))
@@ -98,8 +111,12 @@ export default function TierPerks({ tier, currentTier, nextTier, restore, hideOn
   const shownTier = mine.length ? tier.name : target!.name;
   const bdShown = mine.length ? myBirthday : target ? birthdayPointsOf(target.name) : 0;
   // นับเป็นจำนวนแถวสิทธิ์ที่ซ่อนอยู่ (กลุ่มที่ 2 เป็นต้นไป + คูปองวันเกิด)
-  const hiddenCount = groups.slice(1).reduce((n, g) => n + g.rows.length, 0) + (bdShown > 0 ? 1 : 0);
-  const visibleGroups = expanded ? groups : groups.slice(0, 1);
+  // pending + ยังไม่มีสิทธิ์ของตัวเอง: ซ่อนตารางทั้งหมดจนกว่าจะกด (r7)
+  const pendTeaser = !!pending && !mine.length && !!target;
+  const hiddenFrom = pendTeaser ? 0 : 1;
+  const hiddenCount = groups.slice(hiddenFrom).reduce((n, g) => n + g.rows.length, 0) + (bdShown > 0 ? 1 : 0);
+  const visibleGroups = expanded ? groups : groups.slice(0, hiddenFrom);
+  const teaserDisc = pendTeaser ? discountRange(target!.name) : null;
   const activeBirthday = currentTier ? birthdayPointsOf(currentTier.name) : 0;
   return (
     <section className={`lf-card lf-perkcard${hideOnMobile ? " lf-hide-sm" : ""}${paused ? " lf-perkcard--paused" : ""}`}>
@@ -113,26 +130,27 @@ export default function TierPerks({ tier, currentTier, nextTier, restore, hideOn
           </div>
           {mine.length ? (
             <p>ระดับ <TierMark tier={tier} /> <b>{tier.name}</b></p>
+          ) : teaserDisc ? (
+            <p className="lf-ct-teaser">
+              <span className="lf-nw">สะสม <b>{target!.min.toLocaleString()}</b> แต้ม</span>
+              {" "}<span className="lf-nw">ได้ส่วนลดหน้าร้าน <b>{teaserDisc.lo === teaserDisc.hi ? `${fmtN(teaserDisc.hi)}%` : `${fmtN(teaserDisc.lo)}–${fmtN(teaserDisc.hi)}%`}</b></span>
+              {" "}<span className="lf-nw">(ระดับ <TierMark tier={target!} /> {target!.name})</span>
+            </p>
           ) : (
-            <>
-              <p>
-                <span className="lf-ct-bridge-line">เป้าหมายถัดไป: <TierMark tier={goal!} /> <b>{goal!.name}</b></span>
-                <span className="lf-ct-bridge-line"><span className="lf-nw">สะสมครบ <b>{goal!.min.toLocaleString()}</b> แต้ม</span>
-                {" "}<span className="lf-nw">(ซื้อรวมราว {bahtFor(goal!.min)} บาท)</span></span>
-              </p>
-              {bridge && <BridgeNote next={bridge} target={target!} />}
-            </>
+            <p>
+              <span className="lf-nw">สะสมครบ <b>{target!.min.toLocaleString()}</b> แต้ม</span>
+              {" "}<span className="lf-nw">ได้สิทธิ์ระดับ <TierMark tier={target!} /> {target!.name}</span>
+            </p>
           )}
         </>
       ) : restore && mine.length ? (
         <>
+          {/* r7: หัวข้อก่อน → ตอนนี้ได้อะไร → ตารางที่พักไว้ (ป้าย "พักไว้" ในหัวตารางบอกทางกลับ ไม่พูดซ้ำใต้หัวข้อ) */}
+          <h3><Icon name="tag" size={22} /> สิทธิ์ระดับ <TierMark tier={tier} /> {tier.name}</h3>
           <div className="lf-perknow lf-perknow--current">
             <b>ตอนนี้ได้</b>
             <span>สะสมแต้มทุกบิล{activeBirthday > 0 ? <> · คูปองวันเกิด <strong>{activeBirthday.toLocaleString()} แต้ม</strong></> : ""}</span>
           </div>
-          {/* r5: ป้าย "พักระดับ" มีบนบัตรที่เดียว · แถวสิทธิ์ตัวเต็มคอนทราสต์ บอกสถานะด้วยประโยคใต้หัวข้อ */}
-          <h3><Icon name="tag" size={22} /> สิทธิ์ระดับ <TierMark tier={tier} /> {tier.name}</h3>
-          <p><span className="lf-nw">ตอนนี้พักไว้</span> <ReactivateRule /> <span className="lf-nw">สิทธิ์เหล่านี้กลับมาทันที</span></p>
         </>
       ) : mine.length ? (
         <>
@@ -164,7 +182,7 @@ export default function TierPerks({ tier, currentTier, nextTier, restore, hideOn
           )}
         </>
       )}
-      {bridge && <div className="lf-ct-target">สิทธิ์เมื่อถึง <TierMark tier={target!} /> {target!.name}</div>}
+      {(pendTeaser ? expanded : !!bridge) && <div className="lf-ct-target">สิทธิ์เมื่อถึง <TierMark tier={target!} /> {target!.name}</div>}
       {visibleGroups.map(g => (
         <div key={g.via} className={`lf-perkgroup`}>
           <div className="lf-perkhead lf-ct-head">

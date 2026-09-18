@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Shell, Loading } from "./ui";
 import { isReview, reviewQS } from "./review";
 import { getEffectiveTier, getNextTier, getTierFromPoints, monthsSince } from "./lib/tiers";
@@ -64,6 +64,11 @@ export default function LiffPage() {
   const [reserve, setReserve]     = useState<RedeemSummary | null>(null);
   const liffReady = useRef(false);
   const scrollToHistory = useRef(false);   // กดเปิดประวัติ → เลื่อนไปที่รายการเลย ไม่ต้องไถผ่านบัตร
+  // r7b: คอลัมน์ซ้าย (บัตร+สิทธิ์) ติดจอบนเดสก์ท็อป — สูงกว่าจอเมื่อไหร่ ให้ top ติดลบพอดีขอบล่างยังเห็น
+  const mainColRef = useRef<HTMLDivElement>(null);
+  const sideColRef = useRef<HTMLDivElement>(null);
+  // r7b: เปิดประวัติบนเดสก์ท็อป → การ์ดสิทธิ์ไปอยู่คอลัมน์ที่สั้นกว่า (ประวัติยาว = ใต้บัตร · ประวัติสั้น = ขวาใต้ประวัติ)
+  const [perksLeft, setPerksLeft] = useState(false);
 
   /** รับคำตอบ /api/member แล้วตัดสินว่าเป็นจอไหน — ไม่มีทางตกไปจอสมัครเพราะระบบล่ม */
   const fetchMember = useCallback(async (tok: string) => {
@@ -153,6 +158,33 @@ export default function LiffPage() {
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     requestAnimationFrame(() => document.getElementById(HISTORY_ID)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }));
   }, [txOpen, txLoading]);
+
+  // r7b: --lf-stick-top = min(24px, ความสูงจอ − ความสูงคอลัมน์ − 24px) · มือถือคอลัมน์เป็น display:contents ค่านี้ไม่มีผล
+  useEffect(() => {
+    const el = mainColRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const GAP = 24;
+    const sync = () => el.style.setProperty("--lf-stick-top", `${Math.min(GAP, window.innerHeight - el.offsetHeight - GAP)}px`);
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    window.addEventListener("resize", sync);
+    sync();
+    return () => { ro.disconnect(); window.removeEventListener("resize", sync); };
+  }, [registered, editing, signupComplete, problem, loading]);
+
+  // r7b: วัดตอนโหลดประวัติเสร็จเท่านั้น (ไม่วัดตอนเปลี่ยนแท็บ — กันการ์ดกระโดดไปมา) · มือถือการ์ดสิทธิ์ถูกซ่อนตอนเปิดประวัติอยู่แล้ว
+  useLayoutEffect(() => {
+    if (!txOpen) { setPerksLeft(false); return; }
+    if (txLoading) return;
+    const main = mainColRef.current, side = sideColRef.current;
+    if (!main || !side || !window.matchMedia("(min-width: 900px)").matches) return;
+    const without = (col: HTMLElement) => {
+      const p = col.querySelector<HTMLElement>(":scope > .lf-perkcard");
+      return col.offsetHeight - (p ? p.offsetHeight + (parseFloat(getComputedStyle(col).rowGap) || 0) : 0);
+    };
+    setPerksLeft(without(main) <= without(side));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txOpen, txLoading, txList, txProblem]);
 
   async function loadTransactions() {
     setTxOpen(true);
@@ -270,11 +302,18 @@ export default function LiffPage() {
   const expectedBirthdayBonus = birthdayIn === 0 ? birthdayPointsOf(tier.name) : 0;
   const birthdayBonus = expectedBirthdayBonus > 0 && points - totalEarned === expectedBirthdayBonus ? expectedBirthdayBonus : 0;
 
+  // เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา
+  const perks = (
+    <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} nextTier={nextTier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
+  );
+
   return (
     <Shell sub="บัตรสมาชิกสะสมแต้ม" layout="split">
       {/* มือถือ: คอลัมน์เดียว เรียงตาม order ใน liff.css → บัตร · ปุ่มลัด · คำเตือน · ประวัติ · สิทธิ์ · กติกา
-          เดสก์ท็อป (r6): ซ้าย = บัตร · ขวา = ปุ่มลัด+คำเตือน+ประวัติ+สิทธิ์ · ท้ายหน้าเต็มความกว้าง */}
-      <div className="lf-col lf-col--main">
+          เดสก์ท็อป (r7b ผู้ตรวจ): ซ้าย = บัตร (+ สิทธิ์ เมื่อเปิดประวัติที่ยาวกว่าบัตร) ติดจอด้วยกัน
+          ขวา = ปุ่มลัด+คำเตือน+(ประวัติ หรือ สิทธิ์) · ท้ายหน้าเต็มความกว้าง
+          สิทธิ์ย้ายคอลัมน์ตามสถานะประวัติ ให้สองคอลัมน์สูงใกล้กันทั้งสองสถานะ (มือถือตอนเปิดประวัติสิทธิ์ถูกซ่อนอยู่แล้ว) */}
+      <div className="lf-col lf-col--main" ref={mainColRef}>
         <MemberCard
           tier={tier} nextTier={nextTier} totalEarned={totalEarned} points={points} progress={progress}
           name={name} formattedPhone={formattedPhone} member={member} profile={profile} pendingLink={pendingLink}
@@ -282,9 +321,10 @@ export default function LiffPage() {
           birthdayBonus={birthdayBonus}
           reserve={reserve}
         />
+        {txOpen && perksLeft && perks}
       </div>
 
-      <div className="lf-col lf-col--side">
+      <div className="lf-col lf-col--side" ref={sideColRef}>
         {/* r6 (ผู้ตรวจ): เดสก์ท็อปปุ่มลัดอยู่บนสุดของคอลัมน์ขวา — สองคอลัมน์สมดุลขึ้น · มือถือยังอยู่ใต้บัตรด้วย order */}
         <QuickActions
           txLoading={txLoading} txOpen={txOpen} locked={!!pendingLink}
@@ -307,8 +347,7 @@ export default function LiffPage() {
             loading={txLoading} problem={txProblem} onRetry={loadTransactions}
           />
         )}
-        {/* เปิดประวัติอยู่ → บนมือถือซ่อนการ์ดสิทธิ์ (หน้ายาวเกิน) · ปิดประวัติแล้วกลับมา */}
-        <TierPerks tier={isInactive ? baseTier : tier} currentTier={tier} nextTier={nextTier} restore={isInactive} hideOnMobile={txOpen} showHow={!txOpen} pending={!!pendingLink} />
+        {!(txOpen && perksLeft) && perks}
       </div>
       {/* r6: ท้ายหน้ากินเต็มความกว้างทั้งสองคอลัมน์ (เดสก์ท็อป) · มือถืออยู่ท้ายสุดด้วย order */}
       <div className="lf-foot">

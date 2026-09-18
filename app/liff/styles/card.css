@@ -80,7 +80,8 @@
   font-size: 28px; font-weight: var(--fw-heavy); line-height: 1.2; letter-spacing: .5px;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.lf-mcard .lf-cd-pend-why { margin: var(--sp-2) 0 0; font-size: 15px; font-weight: var(--fw-med); line-height: 1.4; color: var(--card-ink); }
+/* r7 (ผู้ตรวจ): บรรทัดแต้มย้อนหลังเป็นข้อความรอง — เล็กกว่าและบางกว่าคำสั่ง "บอกพนักงาน" (สีเดิม คอนทราสต์ไม่ลด) */
+.lf-mcard .lf-cd-pend-why { margin: var(--sp-2) 0 0; font-size: 14px; font-weight: 400; line-height: 1.45; color: var(--card-ink); }
 .lf-mcard .lf-cd-pend-late {
   margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--card-well-line);
   display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
@@ -216,3 +217,11 @@
 
 /* ── r6: บัตร Welcome (น้ำเงิน) บนหัวน้ำเงิน — ขอบบนหาย → เส้นขอบจางด้านใน ── */
 .lf-mcard[data-tier="Welcome"]:not(.lf-cd-card--pend) { box-shadow: var(--sh-3), inset 0 0 0 1px var(--card-l-edge); }
+
+/* r7 (ผู้ตรวจ): พักระดับ — ป้ายระดับทึบดำเต็มแรงดูเหมือนระดับยังใช้ได้อยู่ → เหลือแค่กรอบ (ไม่มีพื้น)
+ * ตัวอักษร/กรอบ 1px = --card-ink-2 บนไล่สีบัตร+ม่าน (คู่เดียวกับชื่อบนบัตร ตรวจใน check-contrast แล้ว) · ป้าย "พักระดับ" อำพันยังเป็นจุดเด่น */
+.lf-mcard.lf-cd-card--rest .lf-tier {
+  background: transparent; color: var(--card-ink-2); font-weight: var(--fw-bold);
+  box-shadow: inset 0 0 0 1px var(--card-ink-2);
+}
+.lf-mcard.lf-cd-card--rest .lf-tier .lf-tmark { --tmark-line: var(--card-ink-2); }

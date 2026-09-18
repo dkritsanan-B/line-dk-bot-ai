@@ -86,7 +86,9 @@ function NearDrop({ tier, lastPurchaseAt }: { tier: Tier; lastPurchaseAt: string
     <div className="lf-note lf-note--warn">
       <b><i><Icon name="alert" size={20} /></i> รักษาระดับ {tier.name} ไว้</b>
       {/* r5: กติกาประโยคเดียวกับบัตรพักระดับ (lib/perks.ts reactivateText) */}
-      <ReactivateRule /> <strong className="lf-nw">ก่อน {dropDate}</strong> <span className="lf-nw">ระดับ <TierMark tier={tier} /> <strong>{tier.name}</strong> อยู่ต่ออีก 1 ปี</span> · <span className="lf-nw">ถ้าเลยวันนั้น ระดับจะพักไว้</span> <span className="lf-nw">จนกว่าจะมีบิลถัดไปค่ะ</span>
+      <ReactivateRule /> <strong className="lf-nw">ก่อน {dropDate}</strong> <span className="lf-nw">ระดับ <TierMark tier={tier} /> <strong>{tier.name}</strong> อยู่ต่ออีก 1 ปี</span>
+      {/* r7 (ผู้ตรวจ): "·" ห้อยท้ายบรรทัด → ขึ้นบรรทัดใหม่แทน */}
+      <span className="lf-al-line"><span className="lf-nw">ถ้าเลยวันนั้น ระดับจะพักไว้</span> <span className="lf-nw">จนกว่าจะมีบิลถัดไปค่ะ</span></span>
     </div>
   );
 }

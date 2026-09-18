@@ -141,7 +141,9 @@
   /* ── ความกว้างหน้า ── */
   --w-page: 460px;             /* มือถือ/แท็บเล็ต */
   --w-page-form: 760px;        /* หน้าสมัคร/แก้ไขบนเดสก์ท็อป */
-  --w-page-lg: 980px;          /* เดสก์ท็อป (สองคอลัมน์) */
+  --w-page-lg: 980px;          /* (เลิกใช้ r7b — ใช้ --w-shell) */
+  --w-shell: 1120px;           /* r7b: กรอบหน้าเดสก์ท็อปกว้างเท่ากันทุกหน้า (รวมขอบใน) — หัว/โลโก้ตรงกันทุกหน้า */
+  --w-shell-in: calc(var(--w-shell) - 2 * var(--sp-6));   /* ความกว้างเนื้อหาในกรอบ (หักขอบใน 24px สองข้าง) */
   --focus: 0 0 0 4px rgba(18,80,159,.30);
 }
 
@@ -535,10 +537,12 @@
     padding-bottom: var(--sp-8);
   }
   .lf-hero { padding: var(--sp-6) var(--sp-6) calc(var(--sp-8) + var(--lift-lg)); }
-  .lf-brand { max-width: var(--w-page-lg); gap: var(--sp-4); }
+  /* r7b (ผู้ตรวจ): หัวทุกหน้า (บัตร/ของรางวัล/สมัคร/แจ้งปัญหา) ขอบซ้ายเดียวกัน = ขอบในของกรอบ 1120px
+   * ความกว้างที่ต่างกันมีแค่เนื้อหาข้างใน (ฟอร์ม 560 · แจ้งปัญหา 720 · บัตร/ของรางวัลเต็มกรอบ) */
+  .lf-brand { max-width: var(--w-shell-in); gap: var(--sp-4); }
   .lf-brand img { width: var(--sz-logo-lg); height: var(--sz-logo-lg); }
   .lf-brand-name { font-size: var(--fs-h1); }
-  .lf-wrap { max-width: var(--w-page-lg); padding: 0 var(--sp-6); gap: var(--sp-4); }
+  .lf-wrap { max-width: var(--w-shell-in); padding: 0 var(--sp-6); gap: var(--sp-4); }
   .lf-wrap--short { max-width: 720px; }
   .lf-wrap--lift { margin-top: calc(var(--lift-lg) * -1); }
 
@@ -561,6 +565,7 @@
   .lf-wrap--form .lf-perks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
   /* ของรางวัล: ตารางสองใบต่อแถว */
+  .lf-wrap.lf-wrap--catalog { max-width: var(--w-shell-in); }
   .lf-wrap--catalog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--sp-4); }
   .lf-wrap--catalog > .lf-balance,
   .lf-wrap--catalog > .lf-rules,
@@ -828,3 +833,17 @@
 .lf-confirm-math b { text-align: right; font-weight: var(--fw-black); color: var(--ink); font-variant-numeric: tabular-nums; }
 .lf-confirm p { margin: var(--sp-2) 0 var(--sp-3); font-size: var(--fs-body); color: var(--ink-2); line-height: 1.45; }
 .lf-confirm-acts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+
+/* ══ r7b เดสก์ท็อป (ผู้ตรวจ ข้อ 9) ═══════════════════════════════════
+ * หน้าบัตรสมาชิก: ซ้าย = บัตร (+ สิทธิ์ เมื่อเปิดประวัติ) ติดจอไปด้วยกัน · ขวา = ปุ่มลัด คำเตือน แท็บ+ประวัติ
+ *   ปิดประวัติ: สิทธิ์อยู่ขวาใต้ปุ่มลัด (สองคอลัมน์สูงใกล้กัน) · เปิดประวัติ: สิทธิ์ย้ายไปใต้บัตร (page.tsx)
+ *   คอลัมน์ซ้ายสูงกว่าจอ → top ติดลบพอดีให้ขอบล่างยังเห็น (--lf-stick-top คำนวณใน page.tsx)
+ * ปุ่มลัดอยู่บนแถบหัวสีน้ำเงิน → วางบนแผ่นขาวทึบ ไม่ให้ขอบปุ่มจางบนไล่สี
+ * มือถือไม่โดนกฎนี้ทั้งหมด */
+@media (min-width: 900px) {
+  .lf-wrap.lf-wrap--split > .lf-col--main { top: var(--lf-stick-top, var(--sp-6)); }
+  .lf-wrap--split > .lf-col--side > .lf-actions {
+    background: var(--surface); border-radius: var(--r-md); box-shadow: var(--sh-2);
+    padding: var(--sp-2);
+  }
+}

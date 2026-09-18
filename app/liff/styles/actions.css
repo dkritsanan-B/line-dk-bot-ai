@@ -5,15 +5,19 @@
 /* กล่องข้อความในปุ่ม: ชื่อ + บรรทัดรอง ซ้อนกัน (มือถือกึ่งกลาง · เดสก์ท็อปชิดซ้ายข้างไอคอน) */
 .lf-actions .lf-ac-txt { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
 
-/* r6 (ผู้ตรวจ): ปุ่มที่ยังใช้ไม่ได้ต้องดูต่างจากปุ่มที่กดได้ — พื้นเทาอ่อน ขอบบาง ไม่มีเงา ตัว/ไอคอนเทา
- * ตัวอักษร --ink-2 บน --surface-2 ≈ 9:1 · ไอคอน --ink-3 บน --surface-2 ≈ 5.8:1 */
-.lf-actions .lf-action.lf-ac-locked {
-  background: var(--surface-2); border-color: var(--line); box-shadow: none; cursor: not-allowed;
-}
+/* r7 (ผู้ตรวจ): ปุ่มที่ยังใช้ไม่ได้ "หน้าตาเดียวกับปุ่มปกติ" (พื้นขาว กรอบเท่ากัน ตัวเข้ม) — ไม่ทำเทาทั้งปุ่ม
+ * สถานะล็อกบอกด้วยป้ายกุญแจกลมเล็กที่มุมขวาล่างของไอคอน (.lf-ac-lock) ที่เดียว
+ * ป้าย: ไอคอน --surface บนพื้น --ink ≈ 17:1 · วงนอก --surface แยกป้ายออกจากเส้นไอคอน */
+.lf-actions .lf-action.lf-ac-locked { cursor: not-allowed; }
 .lf-actions .lf-action.lf-ac-locked--browse { cursor: pointer; }
 .lf-actions .lf-action.lf-ac-locked:active { transform: none; }
-.lf-actions .lf-action.lf-ac-locked i { color: var(--ink-3); }
-.lf-actions .lf-action.lf-ac-locked b { color: var(--ink-2); }
+.lf-actions .lf-ac-ico { position: relative; }
+.lf-actions .lf-ac-lock {
+  position: absolute; right: -9px; bottom: -4px; width: 17px; height: 17px; box-sizing: border-box;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--ink); color: var(--surface); box-shadow: 0 0 0 2px var(--surface);
+}
+.lf-actions .lf-action .lf-ac-ico .lf-ac-lock svg { display: block; width: 11px; height: 11px; } /* ชนะกฎขยายไอคอนบนเดสก์ท็อป */
 
 /* ปุ่มแถวนี้มีบรรทัดรองทุกปุ่ม → ลดช่องว่างในปุ่มลงนิดให้ความสูงไม่พอง */
 .lf-actions--locked .lf-action { gap: var(--sp-1); }
@@ -24,10 +28,8 @@
   padding: 0; border: 0; background: transparent; color: var(--ink-2);
   font-style: normal; font-size: 14px; font-weight: var(--fw-bold); line-height: 1.35; text-align: center; white-space: nowrap;
 }
-.lf-actions .lf-ac-tag svg { flex-shrink: 0; }
 @media (max-width: 359px) {
   .lf-actions .lf-ac-tag.lf-ac-tag--text { font-size: var(--fs-label); letter-spacing: -.2px; }
-  .lf-actions .lf-ac-tag svg { display: none; }
 }
 
 /* เดสก์ท็อป (r6 ผู้ตรวจ): ปุ่มสูง ~170px ว่างเปล่า → ปุ่มเตี้ย 88px ไอคอนอยู่ข้างชื่อ */

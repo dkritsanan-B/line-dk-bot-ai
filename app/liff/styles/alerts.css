@@ -27,3 +27,6 @@
 .lf-note.lf-note--gift { color: var(--ink); }
 .lf-note.lf-note--gift > b { color: var(--accent-strong); }
 .lf-note.lf-note--gift strong { color: var(--ink); }
+
+/* r7: ประโยคที่สองของกล่องเตือนขึ้นบรรทัดใหม่ (แทน "·" ที่ห้อยท้ายบรรทัด) */
+.lf-note .lf-al-line { display: block; margin-top: var(--sp-1); }

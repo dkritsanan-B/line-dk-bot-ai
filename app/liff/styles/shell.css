@@ -32,14 +32,18 @@
   .lf-hero { padding: var(--sp-5) var(--sp-6) calc(var(--sp-7) + var(--lift)); }
   .lf-hero--short { padding-bottom: var(--sp-5); }
   .lf-wrap--lift { margin-top: calc(var(--lift) * -1); }
-  /* หน้าสั้น (ของรางวัล/แจ้งปัญหา) เนื้อหากว้าง 720px — โลโก้ชิดซ้ายตรงกับขอบการ์ด ไม่ลอยไปซ้ายสุด */
-  /* r5: ขอบซ้าย/ขวาของหัวตรงกับการ์ด — .lf-wrap--short กว้าง 720px (ไม่รวมขอบใน) หัวจึงกว้าง 720px เท่ากัน */
-  .lf-hero--short .lf-brand { max-width: 720px; }
+  /* r7b (ผู้ตรวจ): หัวทุกหน้ากว้างเท่ากรอบ 1120px (liff.css --w-shell-in) — เลิกย่อหัวตามเนื้อหา
+   * เดิมหัวย่อตามเนื้อหาแต่ละหน้า (720/560/980) โลโก้จึงขยับซ้ายขวาเวลาเปลี่ยนหน้า */
 
   .lf-page { --lf-w-form: 560px; }
   .lf-wrap.lf-wrap--form { max-width: var(--lf-w-form); }
-  /* โลโก้/ชื่อร้านชิดซ้ายตรงกับขอบการ์ดฟอร์ม ไม่ลอยไปซ้ายสุดของหน้า 980px */
-  .lf-hero--form .lf-brand { max-width: var(--lf-w-form); }
   .lf-wrap.lf-wrap--form .lf-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lf-wrap.lf-wrap--form .lf-perks { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* r7b (ผู้ตรวจ): จอกว้างพอ (กรอบ 1120 + ที่ว่างข้างละ 64px) → ปุ่มย้อนยื่นออกนอกขอบซ้ายของกรอบ
+ * โลโก้/ชื่อร้านจึงอยู่ตำแหน่งเดียวกับหน้าที่ไม่มีปุ่มย้อน ไม่ขยับเวลาเปลี่ยนหน้า
+ * จอแคบกว่านี้ไม่มีที่ให้ยื่น → ปุ่มอยู่ในแถวตามเดิม */
+@media (min-width: 1248px) {
+  .lf-brand--back .lf-hero-back { margin-left: calc(-1 * (var(--h-tap) + var(--sp-4))); }
 }
