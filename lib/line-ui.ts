@@ -57,8 +57,9 @@ const btn = (label: string, action: Msg, color = BRAND.blue, style: "primary" | 
 
 // ---------- สีระดับ (ชุดเดียวใช้ทั้งไฟล์) ----------
 // สีหลักของระดับ = สีเดียวกับบัตร LIFF (app/liff) · Gold ใช้ #F9A825 ทุกการ์ด ไม่มีเหลืองมะนาวอีกแล้ว
+// Diamond = ดำกราไฟต์ (กลางไล่สีบัตร #0B1220 → #1E293B) ไม่ใช่น้ำเงินอีกแล้ว — น้ำเงินชนกับ Welcome/สีร้าน (อนุมัติ 18 ก.ย. 69)
 export const TIER_COLOR: Record<string, string> = {
-  Diamond: "#1565C0", Platinum: "#546E7A", Gold: "#F9A825", Silver: "#78909C", Bronze: "#8D6E63", Welcome: "#2B5FB8",
+  Diamond: "#141C2B", Platinum: "#546E7A", Gold: "#F9A825", Silver: "#78909C", Bronze: "#8D6E63", Welcome: "#2B5FB8",
 };
 
 // ตัวอักษรบนพื้นสีระดับ — Gold/Silver พื้นสว่างจึงใช้น้ำเงินเข้ม
@@ -70,7 +71,7 @@ export const TIER_TEXT: Record<string, string> = {
 // ink = สีตัวอักษรระดับบนพื้นขาว/tint · tint = พื้นป้ายระดับในเนื้อการ์ด · bar = สีแถบความคืบหน้า (สีสว่างใช้น้ำเงินเข้มแทน)
 // ทุกคู่ตัวอักษร/พื้นตรวจคอนทราสต์ ≥ 4.5:1 ใน scripts/validate-line-messages.mjs
 export const TIER_THEME: Record<string, { bg: string; text: string; ink: string; tint: string; bar: string }> = {
-  Diamond:  { bg: TIER_COLOR.Diamond,  text: "#FFFFFF", ink: "#1565C0", tint: "#E3EEFB", bar: TIER_COLOR.Diamond },
+  Diamond:  { bg: TIER_COLOR.Diamond,  text: "#FFFFFF", ink: "#1E293B", tint: "#E6F0FA", bar: "#1E293B" },
   Platinum: { bg: TIER_COLOR.Platinum, text: "#FFFFFF", ink: "#455A64", tint: "#ECEFF1", bar: TIER_COLOR.Platinum },
   Gold:     { bg: TIER_COLOR.Gold,     text: BRAND.navy, ink: "#7A4F00", tint: "#FFF3D6", bar: BRAND.navy },
   Silver:   { bg: "#B8C4CC",           text: BRAND.navy, ink: "#455A64", tint: "#ECEFF1", bar: BRAND.navy },

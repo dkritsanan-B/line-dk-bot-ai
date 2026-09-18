@@ -207,6 +207,12 @@ for (const [label, fg, bg] of pairs) {
 const minPair = pairs.map(([l, f, b]) => [l, contrast(f, b)]).sort((a, b) => a[1] - b[1])[0];
 console.log(`✓ คอนทราสต์ตัวอักษร/พื้น ${pairs.length} คู่ ≥ 4.5:1 (ต่ำสุด ${minPair[0]} ${minPair[1].toFixed(2)})`);
 assert.equal(TIER_THEME.Gold.bg, TIER_COLOR.Gold, "Gold ต้องเป็นสีเดียวกันทุกที่");
+// Diamond = ดำกราไฟต์ (ไม่ใช่น้ำเงิน) — ห้ามกลับไปชนกับ Welcome/สีร้าน: ต้องเข้มกว่าน้ำเงินร้านชัด ๆ และไม่ใช่เฉดน้ำเงินจัด
+assert.equal(TIER_THEME.Diamond.bg, TIER_COLOR.Diamond, "Diamond ต้องเป็นสีเดียวกันทุกที่");
+{
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(TIER_COLOR.Diamond.slice(i, i + 2), 16));
+  assert(b - r < 40 && Math.max(r, g, b) < 0x40, `Diamond ${TIER_COLOR.Diamond} ต้องเป็นดำกราไฟต์ ไม่ใช่น้ำเงิน (ชนกับ Welcome ${TIER_COLOR.Welcome})`);
+}
 for (const tier of Object.keys(TIER_THEME)) {
   const m = tierUpFlex({ name: "ก", tierName: tier, tierEmoji: "", points: 1, earned: 1, billNo: "X" });
   assert.equal(m.contents.header.backgroundColor, TIER_THEME[tier].bg, `tierUpFlex ${tier} ต้องใช้สีระดับของตัวเอง`);

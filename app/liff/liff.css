@@ -63,6 +63,13 @@
   --card-d-rest-veil: rgba(238,242,249,.50);
   /* r6: เส้นขอบจางของบัตรน้ำเงิน (Welcome) บนหัวน้ำเงิน */
   --card-l-edge: rgba(255,255,255,.45);   /* ชั้นเงาไล่แสงบนบัตร — คุมไว้ต่ำเพื่อไม่ให้กินคอนทราสต์ */
+  /* Diamond: บัตรดำกราไฟต์ (#0B1220 → #1E293B ใน tiers.ts) + สีเงินน้ำแข็ง — ต่างจาก Welcome (น้ำเงิน) และ Platinum (เทาสเลต)
+   * ป้ายระดับ/แถบคืบหน้าเป็นฟ้าน้ำแข็ง · ขอบบางสีเงิน · ตรวจทุกคู่ใน scripts/check-contrast.mjs */
+  --card-dm-ice: #A5D8FF;
+  --card-dm-silver: #CBD5E1;
+  --card-dm-badge-ink: #0B1220;
+  --card-dm-rim: rgba(203,213,225,.55);
+  --card-dm-sheen: rgba(165,216,255,.08);
 
   /* ── สถานะ ── */
   --ok: #146B31;
@@ -316,6 +323,16 @@
   --card-track-line: var(--card-d-track-line);
   --card-fill: var(--card-d-fill);
   --card-sheen: var(--card-sheen-tint);
+}
+/* Diamond — ชุดสีตัวอักษร light เดิม แต่ป้ายระดับ/แถบเต็มเป็นฟ้าน้ำแข็ง ขอบบางสีเงิน ประกายเย็น
+ * ไม่ใช้กับบัตรรอยืนยัน (พื้นขาว) */
+.lf-mcard[data-tier="Diamond"]:not(.lf-cd-card--pend) {
+  --card-badge-bg: var(--card-dm-ice);
+  --card-badge-ink: var(--card-dm-badge-ink);
+  --card-fill: var(--card-dm-ice);
+  --card-track-line: var(--card-dm-silver);
+  --card-sheen: var(--card-dm-sheen);
+  box-shadow: var(--sh-3), inset 0 0 0 1px var(--card-dm-rim);
 }
 /* ชั้นเงาไล่แสง — อยู่ใต้ตัวอักษรเสมอ และคุมความสว่างไว้ต่ำเพื่อไม่ให้กินคอนทราสต์ */
 .lf-mcard::after {

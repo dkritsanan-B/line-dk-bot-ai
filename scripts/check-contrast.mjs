@@ -78,11 +78,18 @@ for (const m of TIERS_TS.matchAll(/(\w+):\s*\{\s*emoji:.*?ink:\s*"(light|dark)".
   TIER_GRADS[m[1]] = { ink: m[2], stops: gradientStops(m[3]) };
 }
 if (!Object.keys(TIER_GRADS).length) throw new Error("อ่าน TIER_THEME จาก tiers.ts ไม่ได้");
+/** ชุดสีของบัตรแต่ละระดับ = ชุด data-ink + ค่าที่ระดับนั้นทับเอง (.lf-mcard[data-tier="X"]… เช่น Diamond ป้าย/แถบสีน้ำแข็ง) */
+function tierScope(tier) {
+  const base = INK[TIER_GRADS[tier].ink];
+  const sel = `.lf-mcard[data-tier="${tier}"]:not(.lf-cd-card--pend)`;
+  return CSS.includes(sel) ? { ...base, ...vars(block(sel)) } : base;
+}
 
 /** พื้นจริงของบัตร = จุดสีของไล่สี + ชั้น sheen ทับ (กรณีแย่สุดคือทั้งมีและไม่มี) */
 function cardBackdrops(tier) {
-  const { stops, ink } = TIER_GRADS[tier];
-  const sheen = INK[ink]["--card-sheen"] ? val("--card-sheen", INK[ink]) : parseColor(`rgba(255,255,255,${SHEEN_MAX})`);
+  const { stops } = TIER_GRADS[tier];
+  const sc = tierScope(tier);
+  const sheen = sc["--card-sheen"] ? val("--card-sheen", sc) : parseColor(`rgba(255,255,255,${SHEEN_MAX})`);
   const out = [];
   for (const s of stops) { out.push(s); out.push(over(sheen, s)); }
   return out;
@@ -94,7 +101,7 @@ const add = (where, fg, bg, min = 4.5, note = "") => checks.push({ where, fg, bg
 
 /* 1) บัตรสมาชิกทุกระดับ — ตัวอักษร/ตรา/แถบคืบหน้า บนไล่สีทุกจุด */
 for (const [tier, { ink }] of Object.entries(TIER_GRADS)) {
-  const sc = INK[ink];
+  const sc = tierScope(tier);
   const beds = cardBackdrops(tier);
   // ก่อนซ่อม: MemberCard ไม่ได้ใส่ data-ink → var(--card-ink) ไม่มีค่า → สีตกทอดมาจาก .lf-page (--ink)
   const ink1 = BEFORE ? val("--ink") : val("--card-ink", sc);
@@ -228,7 +235,7 @@ addW("ข้อผิดพลาดในกล่องยืนยันแ�
 
 /* 9) r6 — บัตรพักระดับ (ม่านจาง) · ป้ายพักระดับ · รอรับของ · ปุ่มลัดล็อก · ของหมด · ชิป */
 for (const [tier, { ink }] of Object.entries(TIER_GRADS)) {
-  const sc = INK[ink];
+  const sc = tierScope(tier);
   const veil = W(ink === "light" ? "--card-l-rest-veil" : "--card-d-rest-veil");
   if (!veil) continue;
   for (const bed0 of cardBackdrops(tier)) {
@@ -244,6 +251,9 @@ addW("ป้าย พักระดับ บนบัตร (อำพัน)
 if (W("--card-l-edge")) {
   for (const s0 of TIER_GRADS.Welcome ? TIER_GRADS.Welcome.stops : []) add("ขอบจางบัตร Welcome กับพื้นบัตร", over(W("--card-l-edge"), s0), s0, 1.2, "เส้นตกแต่ง — แยกบัตรออกจากหัวน้ำเงิน");
 }
+if (TIER_GRADS.Diamond && W("--card-dm-rim")) {
+  for (const s0 of TIER_GRADS.Diamond.stops) add("ขอบบางสีเงินบัตร Diamond กับพื้นบัตร", over(W("--card-dm-rim"), s0), s0, 1.2, "เส้นตกแต่ง — ขอบบัตรพรีเมียม");
+}
 addW("ปุ่มลัดล็อก · ชื่อบนพื้นเทาอ่อน", "--ink-2", "--surface-2");
 addW("ปุ่มลัดล็อก · ไอคอนบนพื้นเทาอ่อน", "--ink-3", "--surface-2", 3, "ส่วนประกอบ");
 addW("ป้าย หมดชั่วคราว / ยืนยันตัวตนก่อนแลก (เทา)", "--ink-2", "--surface-2");
@@ -255,7 +265,7 @@ addW("แถบระดับพักไว้ · ราวซ้าย", "--w
 
 /* 10) r7 — ป้ายระดับแบบกรอบตอนพักระดับ · ป้ายกุญแจที่มุมไอคอนปุ่มลัด · ปุ่มลัดล็อกพื้นขาว */
 for (const [tier, { ink }] of Object.entries(TIER_GRADS)) {
-  const sc = INK[ink];
+  const sc = tierScope(tier);
   const veil = W(ink === "light" ? "--card-l-rest-veil" : "--card-d-rest-veil");
   if (!veil) continue;
   for (const bed0 of cardBackdrops(tier)) {

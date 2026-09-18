@@ -13,7 +13,7 @@ export interface TierTheme {
   emoji: string;
   ink: TierInk;
   cardGrad: string;
-  /** สีตราระดับ (จุดวงกลม) ถ้าไม่อยากให้เหมือนสีบัตร — Welcome ใช้วงโปร่ง เพราะบัตรน้ำเงินเหมือน Diamond (ผู้ตรวจ r5) */
+  /** สีตราระดับ (จุดวงกลม) ถ้าไม่อยากให้เหมือนสีบัตร — Welcome ใช้วงโปร่ง (ผู้ตรวจ r5 — ตอนนั้น Diamond ยังเป็นน้ำเงิน) */
   mark?: string;
 }
 
@@ -25,7 +25,9 @@ export const TIER_THEME: Record<string, TierTheme> = {
   Silver:   { emoji: "🥈", ink: "dark",  cardGrad: "linear-gradient(135deg, #C6D2DC 0%, #EEF3F7 45%, #AEBDC9 100%)" },
   Gold:     { emoji: "🥇", ink: "dark",  cardGrad: "linear-gradient(135deg, #FFD86B 0%, #FFC02E 45%, #F2A80C 100%)" },
   Platinum: { emoji: "🔱", ink: "light", cardGrad: "linear-gradient(135deg, #1E2A34 0%, #3A4C5C 55%, #43556A 100%)" },
-  Diamond:  { emoji: "💎", ink: "light", cardGrad: "linear-gradient(135deg, #0A2A66 0%, #12459E 55%, #1A54B8 100%)" },
+  // Diamond (อนุมัติโดยเจ้าของร้าน 18 ก.ย. 69): ดำกราไฟต์ + ขอบ/ป้าย/แถบสีเงินน้ำแข็ง (ตั้งใน liff.css ที่ .lf-mcard[data-tier="Diamond"])
+  //   ของเดิมน้ำเงิน #12459E ชนกับบัตร Welcome/สีร้าน ระดับสูงสุดเลยไม่ดูพรีเมียม
+  Diamond:  { emoji: "💎", ink: "light", cardGrad: "linear-gradient(135deg, #0B1220 0%, #141C2B 55%, #1E293B 100%)" },
 };
 
 const FALLBACK_THEME: TierTheme = TIER_THEME.Welcome;

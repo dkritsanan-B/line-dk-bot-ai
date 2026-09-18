@@ -31,7 +31,7 @@ type Tab = "overview" | "members" | "redeem" | "points" | "history" | "settings"
 // เกณฑ์ระดับ (ตรงกับ lib/points.ts) — ของเดิมบนหน้านี้พิมพ์ผิด (Platinum 4,000 / Gold 1,000)
 // ป้ายระดับ: พื้นอ่อน (tint) + ตัวอักษรเข้ม (ink) คอนทราสต์ ≥ 4.5:1 · สีประจำระดับ (color) อยู่ที่จุดหน้าชื่อ
 const TIERS = [
-  { name: "Diamond",  min: 10000, color: "#1565C0", tint: "#E3EEFB", ink: "#0B2A5B" },
+  { name: "Diamond",  min: 10000, color: "#1E293B", tint: "#E6F0FA", ink: "#0B1220" },
   { name: "Platinum", min: 5000,  color: "#546E7A", tint: "#ECF0F2", ink: "#263238" },
   { name: "Gold",     min: 2000,  color: "#F9A825", tint: "#FEF3D6", ink: "#5A3B00" },
   { name: "Silver",   min: 500,   color: "#90A4AE", tint: "#F0F3F5", ink: "#37474F" },
@@ -39,7 +39,7 @@ const TIERS = [
   { name: "Welcome",  min: 0,     color: "#9AA6B8", tint: "#FFFFFF", ink: "#53647C" },
 ];
 const tierOf = (points: number) => TIERS.find(t => points >= t.min) ?? TIERS[TIERS.length - 1];
-// ป้ายระดับฝั่งแอดมิน — Welcome เป็นป้ายขอบเทา (ระดับเริ่มต้น) ไม่ให้สีน้ำเงินชนกับ Diamond
+// ป้ายระดับฝั่งแอดมิน — Welcome เป็นป้ายขอบเทา (ระดับเริ่มต้น) · Diamond จุดกราไฟต์บนพื้นเงินน้ำแข็ง
 function TierChip({ name }: { name: string }) {
   const t = TIERS.find(x => x.name === name) ?? TIERS[TIERS.length - 1];
   return <span className={`ad-chip ad-chip--tier${t.min === 0 ? " ad-chip--tier-base" : ""}`} style={{ background: t.tint, color: t.ink }}><span className="ad-tier-dot" style={{ background: t.color }} aria-hidden="true" />{t.name}</span>;
