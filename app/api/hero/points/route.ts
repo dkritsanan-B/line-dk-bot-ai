@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+// บอทร้านส่งได้ถึง 200 บิล/ครั้ง — ให้เวลาพอ ไม่ให้ Vercel ฆ่ากลางทาง (ถ้าโดนฆ่า บอทจะส่งซ้ำ แต่ตอนนี้กันซ้ำที่ DB แล้ว ดู claim ด้านล่าง)
+export const maxDuration = 60;
 
 // ===================================================================
 //  /api/hero/points — สะพานจาก Hero ERP → แต้มสมาชิก (ตัดสินใจ 12 ก.ย. 69)
@@ -208,6 +210,7 @@ export async function POST(req: NextRequest) {
     if (!billNo || !code || !Number.isFinite(amount)) { results.push({ bill_no: billNo, status: "error", message: "ข้อมูลไม่ครบ" }); continue; }
     if (amount <= 0) { results.push({ bill_no: billNo, status: "skip", message: "ยอด ≤ 0" }); continue; }
 
+    let claimedBill = false, awarded = false;   // ไว้ตัดสินใจตอนพังว่าปล่อยแถวคืนได้ไหม
     try {
       const users = await sql`SELECT id, phone, line_user_id, first_name, display_name, total_earned, points, last_purchase_at, backfill_from, backfill_done_at FROM users WHERE UPPER(TRIM(customer_id)) = ${code} LIMIT 1`;
       const u = users[0];
@@ -243,8 +246,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const dup = await sql`SELECT 1 FROM hero_point_bills WHERE bill_no = ${billNo} LIMIT 1`;
-      if (dup.length) { results.push({ bill_no: billNo, status: "dup" }); continue; }
+      // จองแถวบิลก่อนให้แต้ม (INSERT ... ON CONFLICT DO NOTHING RETURNING) — บอทร้านยิงบิลเดิมซ้ำเมื่อไหร่ก็ได้แถวว่างกลับ = dup ทันที
+      // เดิมเช็ค SELECT แล้วค่อย INSERT ท้ายสุด → ถ้าฟังก์ชันถูกฆ่าระหว่างให้แต้มกับบันทึกบิล บอทจะส่งซ้ำแล้วแต้มเข้า 2 รอบ (ตรวจพบ 19 ก.ย. 69)
+      const claimed = await sql`
+        INSERT INTO hero_point_bills (bill_no, user_id, customer_code, amount, points, bill_date)
+        VALUES (${billNo}, ${u.id as number}, ${code}, ${amount}, 0, ${date})
+        ON CONFLICT (bill_no) DO NOTHING
+        RETURNING bill_no
+      `;
+      if (!claimed.length) { results.push({ bill_no: billNo, status: "dup" }); continue; }
+      claimedBill = true;
 
       const before = getTierFromPoints(Number(u.total_earned ?? 0));
       // ระดับที่ใช้คิดโบนัส = ระดับ ณ ตอนซื้อ (ก่อนแต้มบิลนี้เข้า, คิด hard-drop ถ้าหายไป 12 เดือน)
@@ -254,6 +265,7 @@ export async function POST(req: NextRequest) {
       const bonusPts = bonusPoints(bonus.baht);
 
       const r = await addPoints(u.phone as string, amount, `${isBackfill ? "แต้มย้อนหลัง " : ""}บิล ${billNo}`);
+      awarded = true;   // แต้มเข้าแล้ว (addPoints เป็นคำสั่งเดียว) — จากนี้ห้ามปล่อยแถวบิลคืนเด็ดขาด
       const pts = r?.pointsEarned ?? 0;
       if (bonusPts > 0) {
         // โบนัสไม่นับเข้า total_earned (ไม่ดันระดับ) — เป็นมูลค่าส่วนลดที่คืนเป็นแต้ม แลกได้เหมือนแต้มปกติ
@@ -264,11 +276,11 @@ export async function POST(req: NextRequest) {
           VALUES (${u.id as number}, 0, ${bonusPts}, 'earn', ${`${isBackfill ? "โบนัสย้อนหลัง" : "โบนัส"} ${bonusTier.name} บิล ${billNo} (${[...new Set(summary)].join(", ")})`}, NOW() + INTERVAL '1 year')
         `;
       }
-      // บันทึกบิลแม้ได้ 0 แต้ม (ยอดต่ำกว่า 100) — จะได้ไม่ถูกส่งซ้ำทุกรอบ
+      // เติมผลลัพธ์ลงแถวที่จองไว้ (แถวมีอยู่แล้วแม้ได้ 0 แต้ม — จะได้ไม่ถูกส่งซ้ำทุกรอบ)
       await sql`
-        INSERT INTO hero_point_bills (bill_no, user_id, customer_code, amount, points, bill_date, bonus_points, bonus_tier, bonus_detail)
-        VALUES (${billNo}, ${u.id as number}, ${code}, ${amount}, ${pts}, ${date}, ${bonusPts}, ${bonusTier.name}, ${JSON.stringify({ baht: bonus.baht, lines: bonus.lines })}::jsonb)
-        ON CONFLICT (bill_no) DO NOTHING
+        UPDATE hero_point_bills
+        SET points = ${pts}, bonus_points = ${bonusPts}, bonus_tier = ${bonusTier.name}, bonus_detail = ${JSON.stringify({ baht: bonus.baht, lines: bonus.lines })}::jsonb
+        WHERE bill_no = ${billNo}
       `;
       const name = (u.first_name as string) || (u.display_name as string) || (u.phone as string);
       // ชิ้น D: บรรทัดที่แคชเชียร์ต่อราคา (ขาย < ป้าย) แต่คำส่วนลดระดับยังติดอยู่ = ลดซ้ำ 2 ต่อ → ส่งกลับให้ watcher เปิดการ์ดเตือน
@@ -287,6 +299,8 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (e) {
+      // จองแถวไว้แต่ยังไม่ทันให้แต้ม → ปล่อยแถวคืนให้บอทส่งใหม่รอบหน้า · ถ้าแต้มเข้าไปแล้ว (awarded) ห้ามปล่อย ไม่งั้นได้แต้มซ้ำ
+      if (claimedBill && !awarded) await sql`DELETE FROM hero_point_bills WHERE bill_no = ${billNo}`.catch(() => {});
       console.error("[hero-points]", billNo, e);
       results.push({ bill_no: billNo, status: "error", message: String(e).slice(0, 120) });
     }

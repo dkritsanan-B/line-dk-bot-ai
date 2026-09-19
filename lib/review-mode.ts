@@ -255,7 +255,7 @@ const SCENARIO_DATA: Record<string, Omit<ReviewScenario, "expiry">> = {
     // ระดับจริง Gold (ยอดซื้อสะสม 2,600) แต่ไม่ซื้อเกิน 1 ปี → ระดับคิดจากแต้มคงเหลือชั่วคราว (200 = Bronze) ตามกติกาเดิม
     member: member({ id: 9003, phone: "0867778888", first_name: "มานพ", last_name: "ทองดี", points: 200, total_earned: 2600, last_purchase_at: iso(-425), created_at: iso(-900) }),
     transactions: [
-      { id: 22, purchase_amount: 0, points_earned: 200, type: "earn", note: "วันเกิด — คูปองวันเกิดระดับ Gold", created_at: iso(-60), expires_at: iso(305) },
+      { id: 22, purchase_amount: 0, points_earned: 500, type: "earn", note: "วันเกิด — คูปองวันเกิดระดับ Gold", created_at: iso(-60), expires_at: iso(305) },
       { id: 21, purchase_amount: 0, points_earned: 260, type: "expire", note: "แต้มหมดอายุ 1 ปี", created_at: iso(-60), expires_at: null },
       { ...earn(20, 26000, 260, 425, "บิล IV-688010 · วัสดุก่อสร้าง"), expired: true },
     ],

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { sql } from "@/lib/db";
 import { migrateDB, listExpiryNotices, markExpiryNotified, EXPIRY_NOTICE_DAYS, getTierFromPoints } from "@/lib/points";
 import { pointsExpiringFlex, tierExpiryWarningFlex } from "@/lib/line-ui";
@@ -15,7 +16,7 @@ async function pushMessage(lineUserId: string, message: object): Promise<boolean
 const thaiDate = (d: Date) => d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

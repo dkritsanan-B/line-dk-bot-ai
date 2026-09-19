@@ -273,7 +273,7 @@ export default function AdminPage() {
   async function fetchAuditLog(phone = auditPhone) {
     setAuditLoading(true);
     try {
-      const res  = await fetch(`/api/admin/audit-log?phone=${encodeURIComponent(phone)}`, {
+      const res  = await fetch(apiUrl(`/api/admin/audit-log?phone=${encodeURIComponent(phone)}`), {
         headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername },
       });
       const data = await res.json();
@@ -297,6 +297,7 @@ export default function AdminPage() {
   const [txTo, setTxTo]             = useState("");
   const [txLoading, setTxLoading]   = useState(false);
   const [txLoaded, setTxLoaded]     = useState(false);
+  const [txError, setTxError]       = useState("");   // โหลดประวัติล้ม → บอกตรง ๆ ไม่ให้เข้าใจผิดว่า "ยังไม่มีรายการ"
 
   async function handleAddPoints() {
     if (!/^0\d{9}$/.test(apPhone)) { setApError("เบอร์ไม่ถูกต้อง (10 หลัก)"); return; }
@@ -624,13 +625,16 @@ export default function AdminPage() {
     setTxLoading(true);
     try {
       const params = new URLSearchParams({ search: q, from, to });
-      const res  = await fetch(`/api/admin/transactions?${params}`, {
+      const res  = await fetch(apiUrl(`/api/admin/transactions?${params}`), {
         headers: { "x-admin-password": savedPw, "x-admin-username": savedUsername },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // เดิมกลืน error เงียบ → session หลุด/เซิร์ฟเวอร์ล้ม พนักงานเห็น "ยังไม่มีรายการ" แล้วเข้าใจผิด (QA 19 ก.ย. 69)
+      if (!res.ok) { setTxError(data.error ?? `โหลดประวัติไม่ได้ (${res.status})`); setTxRows([]); return; }
+      setTxError("");
       setTxRows(data.transactions ?? []);
       setTxLoaded(true);
-    } catch { /* silent */ }
+    } catch { setTxError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง"); setTxRows([]); }
     finally { setTxLoading(false); }
   }
 
@@ -1087,7 +1091,8 @@ export default function AdminPage() {
               <button className="ad-btn ad-btn--primary" onClick={() => fetchTransactions()}>ค้นหา</button>
               {(txSearch || txFrom || txTo) && <button className="ad-btn ad-btn--ghost" onClick={() => { setTxSearch(""); setTxFrom(""); setTxTo(""); fetchTransactions("", "", ""); }}>ล้าง</button>}
             </div>
-            {txRows.length === 0 ? <div className="ad-empty"><Icon name="inbox" size={30} />{txLoading ? "กำลังโหลด…" : "ยังไม่มีรายการ"}</div> : (
+            {txError && <div className="ad-alert ad-alert--err" style={{ marginBottom: 10 }}>{txError}</div>}
+            {txRows.length === 0 ? <div className="ad-empty"><Icon name="inbox" size={30} />{txLoading ? "กำลังโหลด…" : txError ? "แสดงประวัติไม่ได้" : "ยังไม่มีรายการ"}</div> : (
               <div className="ad-twrap"><table className="ad-table">
                 <thead><tr><th>#</th><th>ประเภท</th><th>วันเวลา</th><th>ลูกค้า</th><th>เบอร์</th><th className="r">ยอดซื้อ (บาท)</th><th className="r">แต้ม</th><th>หมายเหตุ</th></tr></thead>
                 <tbody>

@@ -38,7 +38,8 @@ test("POST backfill ข้ามบิลก่อนวันสมัคร �
 });
 
 test("POST backfill ใช้ทางเดิมและบิลซ้ำไม่ได้แต้มซ้ำ", async () => {
-  reset(); onQuery("TRIM(customer_id)", [user()]); onQuery("SELECT 1 WHERE", [{ ok: 1 }]); onQuery("FROM hero_point_bills", [{ exists: 1 }]);
+  reset(); onQuery("TRIM(customer_id)", [user()]); onQuery("SELECT 1 WHERE", [{ ok: 1 }]);
+  onQuery("INSERT INTO hero_point_bills", []);   // จองแถวไม่ได้ = บิลนี้เคยให้แต้มแล้ว (ON CONFLICT DO NOTHING คืนว่าง)
   const d = await (await route.POST(req("POST", { backfill: true, bills: [{ customer_code: "CUS-9", bill_no: "DUP-1", amount: 1000, date: "2026-09-02" }] }))).json();
   eq(d.results[0].status, "dup");
   eq(queriesWith("INSERT INTO transactions").length, 0);
@@ -48,6 +49,7 @@ test("POST backfill ที่ผ่านให้แต้มด้วยทา
   reset();
   onQuery("TRIM(customer_id)", [user()]);
   onQuery("SELECT 1 WHERE", [{ ok: 1 }]);
+  onQuery("INSERT INTO hero_point_bills", [{ bill_no: "OLD-1" }]);   // จองแถวได้ → ให้แต้มต่อ
   onQuery("WITH u AS ( UPDATE users SET points = points +", [{ points: 10 }]);
   const d = await (await route.POST(req("POST", { backfill: true, bills: [{ customer_code: "CUS-9", bill_no: "OLD-1", amount: 1000, date: "2026-09-02" }] }))).json();
   eq(d.results[0].status, "ok"); eq(d.results[0].points, 10);

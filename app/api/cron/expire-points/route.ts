@@ -3,6 +3,7 @@ export const maxDuration = 60;
 
 import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { migrateDB } from "@/lib/points";
 import { usersWithDueLots, expireUserPoints, previewExpiredPoints, EXPIRE_USERS_PER_RUN } from "@/lib/points-ledger";
@@ -22,7 +23,7 @@ async function pushMessage(lineUserId: string, message: object): Promise<boolean
 // → ลูกค้าเสียแต้มซ้ำสอง · ตอนนี้คิดแบบเข้าก่อนออกก่อน (lib/points-ledger.ts) ทีละคน ในล็อกของคนนั้น
 // รันซ้ำ / Vercel ยิงซ้อน / ลูกค้าแลกของระหว่างรัน → ไม่หักเกิน (มีเทสต์กับ Postgres จริงที่ tests/ledger-pg.test.mjs)
 export async function GET(req: NextRequest) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

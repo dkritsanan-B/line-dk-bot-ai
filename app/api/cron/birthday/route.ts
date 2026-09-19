@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { pushLine } from "@/lib/line-push";
 import { NextRequest, NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { sql } from "@/lib/db";
 import { getEffectiveTier, migrateDB } from "@/lib/points";
 import { tierIndex } from "@/lib/tierRules";
@@ -18,7 +19,7 @@ async function push(to: string, message: object): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(req.headers.get("authorization"))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   await migrateDB();
 
   // วันนี้ตามเวลาไทย
