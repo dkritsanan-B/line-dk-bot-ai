@@ -9,6 +9,8 @@ import { usersWithDueLots, expireUserPoints, previewExpiredPoints, EXPIRE_USERS_
 import { pointsExpiredFlex } from "@/lib/line-ui";
 
 
+const SEND_EXPIRED_NOTICE = process.env.SEND_EXPIRED_NOTICE === "1";
+
 async function pushMessage(lineUserId: string, message: object): Promise<boolean> {
   // ตัวส่งกลาง: ดูโควตาก่อนส่ง · ความสำคัญ "notice" (ดู lib/line-push.ts)
   return (await pushLine(lineUserId, message, "notice")).sent;
@@ -48,8 +50,9 @@ export async function GET(req: NextRequest) {
     applied++;
     totalExpired += r.expired;
 
-    // ทักเฉพาะคนที่เสียแต้มจริง
-    if (r.expired > 0 && r.lineUserId) {
+    // ทักเฉพาะคนที่เสียแต้มจริง — ปิดไว้ตามเจ้าของร้าน (19 ก.ย. 69): แจ้งหลังแต้มหายแล้วลูกค้าทำอะไรไม่ได้
+    // และมีเตือนล่วงหน้า (cron/notify-expiry) อยู่แล้ว · เปิดกลับได้ด้วย env SEND_EXPIRED_NOTICE=1
+    if (SEND_EXPIRED_NOTICE && r.expired > 0 && r.lineUserId) {
       const sent = await pushMessage(
         r.lineUserId,
         pointsExpiredFlex({ name: r.firstName ?? "คุณ", points: r.expired, balance: r.balanceAfter ?? 0 }),
